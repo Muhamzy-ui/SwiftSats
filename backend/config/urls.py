@@ -21,7 +21,8 @@ urlpatterns = [
     # Built-in admin kept quietly for emergency database recovery only
     path("system-control-internal/", admin.site.urls),
 
-    # Health check
+    # Root API info & Health check
+    path("", health_check_view, name="root-health"),
     path("health/", health_check_view, name="health-check"),
 
     # Public APIs
