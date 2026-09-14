@@ -18,7 +18,7 @@ if env_file.exists():
 # Core Security Settings
 SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="insecure-dev-key-change-in-production-swiftsats-2026")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*", ".onrender.com", "localhost", "127.0.0.1", "0.0.0.0"])
+ALLOWED_HOSTS = list(set(env.list("DJANGO_ALLOWED_HOSTS", default=["*"]) + ["*", ".onrender.com", "swiftsats.onrender.com", "localhost", "127.0.0.1", "0.0.0.0"]))
 
 # Application definition
 DJANGO_APPS = [

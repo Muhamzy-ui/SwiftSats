@@ -12,8 +12,15 @@ from .base import *  # noqa: F403, F401
 
 DEBUG = False
 
-# Host configuration
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*", ".onrender.com", "localhost", "127.0.0.1"])
+# Host configuration: Always ensure Render domains and wildcards are allowed
+ALLOWED_HOSTS = list(set(env.list("DJANGO_ALLOWED_HOSTS", default=["*"]) + ["*", ".onrender.com", "swiftsats.onrender.com", "localhost", "127.0.0.1"]))
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.onrender.com",
+    "https://swiftsats.onrender.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 # Security & HTTPS Enforcement (Non-negotiable in Production)
 SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
