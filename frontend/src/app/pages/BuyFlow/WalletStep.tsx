@@ -1,0 +1,186 @@
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, ArrowRight, AlertCircle, Clock } from 'lucide-react';
+import { QuoteCreatedResponse, OrderLockedResponse } from '../../../shared/types';
+import { ordersApi } from '../../../shared/api/orders';
+import { validateCryptoAddress } from '../../../shared/utils/validation';
+import { formatNaira } from '../../../shared/utils/formatters';
+import { getCoinLogo } from '../../../shared/components/CryptoLogos';
+
+interface WalletStepProps {
+  quote: QuoteCreatedResponse;
+  onOrderLocked: (order: OrderLockedResponse) => void;
+  onBack: () => void;
+}
+
+export const WalletStep: React.FC<WalletStepProps> = ({
+  quote,
+  onOrderLocked,
+  onBack,
+}) => {
+  const [walletAddress, setWalletAddress] = useState('');
+  const [email, setEmail] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(quote.expires_in_seconds || 90);
+
+  const [symbol] = quote.coin.split('_');
+
+  // Countdown timer for locked quote
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleWalletChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.trim();
+    setWalletAddress(val);
+    setServerError(null);
+
+    if (val.length > 5) {
+      const check = validateCryptoAddress(val, quote.network);
+      setValidationError(check.valid ? null : check.error || 'Invalid address');
+    } else {
+      setValidationError(null);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!walletAddress) {
+      setValidationError('Please enter your destination wallet address');
+      return;
+    }
+
+    const check = validateCryptoAddress(walletAddress, quote.network);
+    if (!check.valid) {
+      setValidationError(check.error || 'Invalid destination wallet address');
+      return;
+    }
+
+    setIsValidating(true);
+    setServerError(null);
+
+    try {
+      const order = await ordersApi.lockAndCreateOrder(
+        quote.order_reference,
+        walletAddress,
+        email || undefined
+      );
+      onOrderLocked(order);
+    } catch (err: any) {
+      setServerError(err.message || 'Failed to generate virtual account.');
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6 animate-in fade-in duration-200">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-xs font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Adjust Amount</span>
+        </button>
+
+        <span className={`text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
+          timeLeft <= 20
+            ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40 animate-pulse'
+            : 'bg-indigo-950/80 text-indigo-300 border border-indigo-500/30'
+        }`}>
+          <Clock className="w-3.5 h-3.5" />
+          <span>Rate Locked: {timeLeft}s</span>
+        </span>
+      </div>
+
+      {/* Hero Delivery Summary Badge */}
+      <div className="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.08] text-center space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          {getCoinLogo(quote.coin, 24)}
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Delivery Summary
+          </span>
+        </div>
+        <div className="flex items-baseline justify-center gap-1.5">
+          <span className="text-3xl font-black font-mono text-white">
+            {quote.crypto_amount}
+          </span>
+          <span className="text-lg font-bold font-mono text-[#00e676]">
+            {symbol}
+          </span>
+        </div>
+        <span className="text-xs text-slate-400 block">
+          Total to Pay: <strong className="font-mono text-white text-sm">{formatNaira(quote.fiat_amount_ngn)}</strong>
+        </span>
+      </div>
+
+      {/* Inputs */}
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+            Destination {symbol} Address ({quote.network})
+          </label>
+          <input
+            type="text"
+            value={walletAddress}
+            onChange={handleWalletChange}
+            placeholder={`Paste your ${quote.network} wallet address`}
+            className={`w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+              validationError
+                ? 'border-rose-400 ring-1 ring-rose-400'
+                : 'border-slate-800'
+            }`}
+          />
+          {validationError && (
+            <p className="text-xs font-semibold text-rose-400 mt-1.5 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{validationError}</span>
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+            Receipt Email <span className="text-slate-500 font-normal lowercase">(optional)</span>
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@gmail.com for receipt"
+            className="w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
+      </div>
+
+      {serverError && (
+        <div className="p-3.5 rounded-2xl bg-rose-950/40 border border-rose-800/80 text-xs font-semibold text-rose-300 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{serverError}</span>
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isValidating || timeLeft === 0}
+        className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 active:scale-[0.99] disabled:opacity-50 text-white font-black text-sm shadow-lg shadow-purple-950/50 transition-all flex items-center justify-center gap-2"
+      >
+        <span>{isValidating ? 'Generating Virtual Account...' : 'Get Virtual Bank Account'}</span>
+        <ArrowRight className="w-4 h-4" />
+      </button>
+    </form>
+  );
+};

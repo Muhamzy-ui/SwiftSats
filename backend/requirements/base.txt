@@ -1,0 +1,27 @@
+# Django core & REST Framework
+Django>=5.0.3,<5.2
+djangorestframework>=3.15.1,<4.0
+django-environ>=0.11.2
+django-cors-headers>=4.3.1
+django-ratelimit>=4.1.0
+
+# 2FA & Auth
+django-otp>=1.5.0
+qrcode>=7.4.2
+pyotp>=2.9.0
+PyJWT>=2.8.0
+
+# Async tasks & Caching
+celery>=5.3.6,<6.0
+redis>=5.0.3,<6.0
+
+# Database
+psycopg2-binary>=2.9.9
+
+# HTTP Clients & Utilities
+requests>=2.31.0
+urllib3>=2.2.1
+
+# Production server & Monitoring
+gunicorn>=21.2.0
+sentry-sdk>=1.43.0

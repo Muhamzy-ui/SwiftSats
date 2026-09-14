@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-primary: #00c853;
+  }
+
+  html {
+    background-color: #f8fafc;
+    color: #0f172a;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html.dark {
+    background-color: #07080d;
+    color: #f8fafc;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    min-height: 100vh;
+    background-color: inherit;
+    color: inherit;
+  }
+}
+
+/* Light Theme Defaults (Spenda Clean Aesthetic) */
+.glass-panel {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+.glass-panel-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark Theme Overrides (Obsidian Midnight Neon) */
+html.dark .glass-panel {
+  background-color: rgba(14, 17, 27, 0.85) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+}
+
+html.dark .glass-panel-hover:hover {
+  background-color: rgba(22, 27, 43, 0.95) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Shiny Obsidian Black & Neon Green Gloss Card (Reference: Image 1 & Image 4) */
+.glossy-black-card {
+  position: relative;
+  background: radial-gradient(120% 120% at 85% 15%, rgba(0, 230, 118, 0.16) 0%, transparent 55%),
+              linear-gradient(145deg, #131822 0%, #0a0d14 45%, #05070a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.7),
+              0 0 25px -5px rgba(0, 230, 118, 0.15),
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+
+.glossy-black-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 70%;
+  height: 100%;
+  background: linear-gradient(125deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 30%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-gradient-card {
+  position: relative;
+  background: radial-gradient(120% 120% at 85% 15%, rgba(0, 230, 118, 0.16) 0%, transparent 55%),
+              linear-gradient(145deg, #131822 0%, #0a0d14 45%, #05070a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.7),
+              0 0 25px -5px rgba(0, 230, 118, 0.15),
+              inset 0 1px 1px 0 rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+
+/* Ambient animations */
+@keyframes ambient-float {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+    opacity: 0.12;
+  }
+  50% {
+    transform: translateY(-20px) scale(1.08);
+    opacity: 0.25;
+  }
+}
+
+.animate-ambient-glow {
+  animation: ambient-float 8s ease-in-out infinite;
+}

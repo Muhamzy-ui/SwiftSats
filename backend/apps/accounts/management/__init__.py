@@ -1,0 +1,3 @@
+"""
+Accounts management commands init.
+"""
