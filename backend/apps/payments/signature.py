@@ -21,7 +21,7 @@ def verify_paystack_webhook_signature(
     Verify Paystack webhook signature using HMAC SHA512.
     Uses timing-safe comparison to prevent timing attacks.
     """
-    secret = secret_key or getattr(settings, "PAYSTACK_WEBHOOK_SECRET", "") or getattr(settings, "PAYSTACK_SECRET_KEY", "")
+    secret = secret_key or getattr(settings, "PAYSTACK_SECRET_KEY", "") or getattr(settings, "PAYSTACK_WEBHOOK_SECRET", "")
 
     if not secret:
         logger.error("Paystack secret key is not configured.")

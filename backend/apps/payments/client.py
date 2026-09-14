@@ -4,10 +4,12 @@ Handles customer creation, dedicated virtual bank accounts, and payment verifica
 """
 from decimal import Decimal
 from typing import Any, Dict, Optional
+import datetime
 import logging
 import random
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -100,20 +102,54 @@ class PaystackClient:
                 "customer_code": f"CUS_DEV_{order_reference}",
             }
 
-        # Live Paystack Dedicated Virtual Account Creation
-        customer = self.create_or_get_customer(email=email)
-        customer_code = customer.get("customer_code")
+        # Live Paystack Dynamic Bank Transfer Creation (Charge API)
+        email = customer_email if (customer_email and "@" in customer_email) else f"order_{order_reference.lower().replace('-', '_')}@swiftsats.com"
+        expires_at = (timezone.now() + datetime.timedelta(minutes=60)).isoformat()
+        amount_kobo = int(Decimal(str(amount_ngn)) * 100)
 
-        url = f"{self.base_url}/dedicated_account"
         payload = {
-            "customer": customer_code,
-            "preferred_bank": "wema-bank",
+            "email": email,
+            "amount": amount_kobo,
+            "bank_transfer": {
+                "account_expires_at": expires_at
+            }
         }
 
         try:
-            response = requests.post(url, json=payload, headers=self._get_headers(), timeout=10)
+            response = requests.post(f"{self.base_url}/charge", json=payload, headers=self._get_headers(), timeout=12)
             if response.status_code in (200, 201):
-                data = response.json().get("data", {})
+                res_data = response.json()
+                if res_data.get("status"):
+                    data = res_data.get("data", {})
+                    bank_info = data.get("bank", {})
+                    actual_kobo = data.get("amount", amount_kobo)
+                    actual_ngn = Decimal(str(actual_kobo)) / Decimal("100.00")
+                    return {
+                        "success": True,
+                        "paystack_reference": data.get("reference"),
+                        "account_number": data.get("account_number"),
+                        "bank_name": bank_info.get("name", "Paystack-Titan"),
+                        "account_name": data.get("account_name", "PAYSTACK CHECKOUT"),
+                        "amount_ngn": str(actual_ngn),
+                        "expires_at": data.get("account_expires_at"),
+                        "customer_code": None,
+                    }
+            logger.warning("Paystack dynamic bank transfer attempt returned %s: %s", response.status_code, response.text)
+        except Exception as exc:
+            logger.error("Paystack dynamic bank transfer exception: %s", exc)
+
+        # Fallback to Dedicated Virtual Account if Charge API is unavailable
+        try:
+            customer = self.create_or_get_customer(email=email)
+            customer_code = customer.get("customer_code")
+            dva_url = f"{self.base_url}/dedicated_account"
+            dva_payload = {
+                "customer": customer_code,
+                "preferred_bank": "wema-bank",
+            }
+            dva_res = requests.post(dva_url, json=dva_payload, headers=self._get_headers(), timeout=10)
+            if dva_res.status_code in (200, 201):
+                data = dva_res.json().get("data", {})
                 bank_info = data.get("bank", {})
                 return {
                     "success": True,
@@ -124,11 +160,10 @@ class PaystackClient:
                     "amount_ngn": str(amount_ngn),
                     "customer_code": customer_code,
                 }
-            logger.error("Paystack DVA creation failed: %s", response.text)
         except Exception as exc:
-            logger.error("Paystack DVA exception: %s", exc)
+            logger.error("Paystack DVA fallback exception: %s", exc)
 
-        # Fallback to simulated account with clear logging if live sandbox fails
+        # Fallback to simulated account with clear logging in dev/test
         bank = VIRTUAL_BANKS[0]
         return {
             "success": True,
@@ -137,7 +172,7 @@ class PaystackClient:
             "bank_name": bank["name"],
             "account_name": f"SWIFTSATS / {order_reference}",
             "amount_ngn": str(amount_ngn),
-            "customer_code": customer_code,
+            "customer_code": None,
         }
 
     def verify_transaction(self, reference: str) -> Dict[str, Any]:

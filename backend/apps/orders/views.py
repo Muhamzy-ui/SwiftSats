@@ -22,6 +22,9 @@ import secrets
 from apps.admin_api.models import PlatformSettings
 from core.constants import OrderStatus, AuditActor, COIN_METADATA
 from core.validators import validate_wallet_for_coin
+import logging
+
+logger = logging.getLogger(__name__)
 
 QUOTE_VALIDITY_SECONDS = 900  # 15 minutes strict operational window
 
@@ -124,6 +127,29 @@ class LockAndGeneratePaymentView(APIView):
         wallet_address: str = serializer.validated_data["clean_wallet"]
         user_email: str = serializer.validated_data.get("user_email")
 
+        # Check if Paystack live collection is active
+        paystack_client = PaystackClient()
+        target_bank_name = order.virtual_bank_name
+        target_account_num = order.virtual_account_number
+        target_account_name = order.virtual_account_name
+        target_amount_expected = order.fiat_amount_expected
+        paystack_ref = order.paystack_reference
+
+        if paystack_client.is_live:
+            try:
+                ps_res = paystack_client.generate_virtual_account(
+                    order_reference=order.order_reference,
+                    amount_ngn=order.fiat_amount_ngn,
+                    customer_email=user_email
+                )
+                if ps_res.get("success") and ps_res.get("account_number"):
+                    target_bank_name = ps_res.get("bank_name")
+                    target_account_num = ps_res.get("account_number")
+                    target_account_name = ps_res.get("account_name")
+                    paystack_ref = ps_res.get("paystack_reference")
+            except Exception as exc:
+                logger.error("Failed to generate Paystack virtual account for %s: %s", order.order_reference, exc)
+
         # Transition Order to AWAITING_PAYMENT
         client_ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR"))
         updated_order = OrderStateMachine.transition_to(
@@ -133,16 +159,21 @@ class LockAndGeneratePaymentView(APIView):
             ip_address=client_ip,
             metadata={
                 "wallet_submitted": wallet_address,
-                "settlement_bank": order.virtual_bank_name,
-                "settlement_account": order.virtual_account_number,
-                "fiat_amount_expected": str(order.fiat_amount_expected),
+                "settlement_bank": target_bank_name,
+                "settlement_account": target_account_num,
+                "fiat_amount_expected": str(target_amount_expected),
+                "paystack_reference": paystack_ref,
             },
             wallet_address=wallet_address,
             user_email=user_email,
-            virtual_account_number=order.virtual_account_number,
-            virtual_bank_name=order.virtual_bank_name,
-            virtual_account_name=order.virtual_account_name,
+            virtual_account_number=target_account_num,
+            virtual_bank_name=target_bank_name,
+            virtual_account_name=target_account_name,
         )
+
+        if paystack_ref and paystack_ref != updated_order.paystack_reference:
+            updated_order.paystack_reference = paystack_ref
+            updated_order.save(update_fields=["paystack_reference"])
 
         return Response({
             "success": True,

@@ -264,22 +264,22 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
         </div>
       </div>
 
-      {/* Nomba Settlement Card */}
+      {/* Dynamic Virtual Bank Settlement Card */}
       <div className="p-5 rounded-3xl bg-slate-900/80 border border-white/[0.08] space-y-4 shadow-xl">
         {/* Account Number Box */}
         <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between shadow-inner">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Settlement Account Number
+              Dynamic Virtual Account Number
             </span>
             <span className="text-2xl font-black font-mono tracking-wider text-white">
-              {payment_instructions.account_number || '6010450034'}
+              {payment_instructions.account_number || '—'}
             </span>
           </div>
 
           <button
             type="button"
-            onClick={() => copyToClipboard(payment_instructions.account_number || '6010450034', 'acc')}
+            onClick={() => copyToClipboard(payment_instructions.account_number || '', 'acc')}
             className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-colors"
             title="Copy Account Number"
           >
@@ -292,7 +292,7 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-400">Destination Bank</span>
             <span className="font-bold text-white text-sm">
-              {payment_instructions.bank_name || 'Nomba MFB'}
+              {payment_instructions.bank_name || 'Bank Transfer'}
             </span>
           </div>
 
@@ -330,7 +330,7 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
         <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2 text-emerald-300 font-semibold">
             <span className="w-2 h-2 rounded-full bg-[#00e676] animate-ping" />
-            <span>Listening for Nomba transfer in real-time...</span>
+            <span>Listening for bank transfer in real-time...</span>
           </div>
           <span className="text-[10px] font-mono text-[#00e676]">24/7 Live</span>
         </div>
