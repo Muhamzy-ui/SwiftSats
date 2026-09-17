@@ -293,3 +293,65 @@ class RecentTelemetryOrdersView(APIView):
             "in_process": in_process_data,
             "completed": completed_data,
         })
+
+
+class CancelOrderView(APIView):
+    """
+    Allows a user to cancel an open/unpaid order (QUOTE_LOCKED or AWAITING_PAYMENT).
+    Releases the locked quote and virtual account, transitioning the order to CANCELLED.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, order_reference: str):
+        order = Order.objects.filter(order_reference=order_reference.strip()).first()
+        if not order:
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "ORDER_NOT_FOUND",
+                        "message": f"Order with reference '{order_reference}' does not exist.",
+                    },
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Idempotent response if already cancelled
+        if order.status == OrderStatus.CANCELLED:
+            return Response({
+                "success": True,
+                "message": "Order is already cancelled.",
+                "order": PublicOrderDetailSerializer(order).data,
+            })
+
+        # Only open/unpaid orders can be cancelled by the user
+        if order.status not in [OrderStatus.AWAITING_PAYMENT, OrderStatus.QUOTE_LOCKED]:
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "CANNOT_CANCEL",
+                        "message": f"Order cannot be cancelled because it is in '{order.status}' status.",
+                    },
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        client_ip = get_client_ip(request)
+
+        # Transition order to CANCELLED
+        updated_order = OrderStateMachine.transition_to(
+            order=order,
+            target_state=OrderStatus.CANCELLED,
+            actor=AuditActor.PUBLIC_USER,
+            ip_address=client_ip,
+            metadata={"reason": "User cancelled order from payment flow"},
+        )
+
+        logger.info("Order %s successfully cancelled by user from IP %s", order_reference, client_ip)
+
+        return Response({
+            "success": True,
+            "message": "Order cancelled successfully.",
+            "order": PublicOrderDetailSerializer(updated_order).data,
+        })

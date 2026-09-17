@@ -19,6 +19,7 @@ class OrderStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
     FAILED = "FAILED", "Failed"
     REFUNDED = "REFUNDED", "Refunded"
+    CANCELLED = "CANCELLED", "Cancelled"
 
 
 NOMBA_DEFAULT_BANK_NAME = "Nomba MFB"

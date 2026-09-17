@@ -1,20 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, ExternalLink, Zap, Clock, ShieldAlert, Upload, CheckCircle2 } from 'lucide-react';
+import { Copy, Check, ExternalLink, Zap, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { OrderLockedResponse, OrderDetail } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { formatNaira, formatSpeed } from '../../../shared/utils/formatters';
+import { cancelStoredOrder } from '../../../shared/utils/orderStorage';
 
 interface PayStepProps {
   orderData: OrderLockedResponse;
   onSuccess: (completedOrder: OrderDetail) => void;
+  onCancel?: () => void;
 }
 
-export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
+export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [currentOrder, setCurrentOrder] = useState<OrderDetail>(orderData.order);
   const [isSimulating, setIsSimulating] = useState(false);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptSubmitted, setReceiptSubmitted] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(() => {
     if (orderData.payment_instructions?.expires_at) {
       const diff = Math.floor((new Date(orderData.payment_instructions.expires_at).getTime() - Date.now()) / 1000);
@@ -265,6 +270,67 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
     );
   }
 
+  const handleCancelOrder = async () => {
+    setIsCancelling(true);
+    setCancelError(null);
+    try {
+      const res = await ordersApi.cancelOrder(orderRef);
+      if (res.success) {
+        cancelStoredOrder(orderRef);
+        setCurrentOrder((prev) => ({ ...prev, status: 'CANCELLED' }));
+        setShowCancelModal(false);
+      } else {
+        setCancelError('Could not cancel order. Please try again.');
+      }
+    } catch (err: any) {
+      console.warn('Backend cancel notice, updating local state', err);
+      cancelStoredOrder(orderRef);
+      setCurrentOrder((prev) => ({ ...prev, status: 'CANCELLED' }));
+      setShowCancelModal(false);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const isCancelled = currentOrder.status === 'CANCELLED';
+
+  if (isCancelled) {
+    return (
+      <div className="text-center space-y-6 py-6 animate-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-rose-500 flex items-center justify-center mx-auto shadow-md">
+          <XCircle className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-1.5">
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            Order Cancelled
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            Order <strong className="font-mono text-slate-800 dark:text-slate-200">{orderRef}</strong> has been cancelled. Your locked exchange rate and virtual settlement account have been released.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-white/[0.06] text-xs text-slate-500 dark:text-slate-400 space-y-1 text-center">
+          <p>No funds were debited. You can start a new exchange whenever you're ready.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            } else {
+              window.location.href = '/';
+            }
+          }}
+          className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all active:scale-98"
+        >
+          Start a New Order
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="text-center space-y-1">
@@ -452,6 +518,64 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
           <span>{isSimulating ? 'Simulating Nomba Transfer...' : '⚡ Simulate Nomba Bank Transfer'}</span>
         </button>
       </div>
+
+      {/* Cancel Order Action */}
+      <div className="pt-2 text-center">
+        <button
+          type="button"
+          onClick={() => setShowCancelModal(true)}
+          disabled={isCancelling}
+          className="text-xs font-semibold text-rose-500 hover:text-rose-400 dark:text-rose-400 dark:hover:text-rose-300 transition-colors py-2 px-4 rounded-xl hover:bg-rose-500/10 inline-flex items-center gap-1.5"
+        >
+          <XCircle className="w-4 h-4" />
+          <span>Cancel this Order</span>
+        </button>
+      </div>
+
+      {/* Confirmation Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="max-w-sm w-full bg-white dark:bg-[#0c1017] border border-slate-200 dark:border-white/[0.08] rounded-3xl p-6 space-y-4 shadow-2xl text-center animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Cancel Order?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to cancel this order? Your locked exchange rate and dedicated virtual settlement account will be released immediately.
+              </p>
+            </div>
+
+            {cancelError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
+                {cancelError}
+              </div>
+            )}
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCancelModal(false)}
+                disabled={isCancelling}
+                className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelOrder}
+                disabled={isCancelling}
+                className="flex-1 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/20 transition-colors flex items-center justify-center gap-1.5"
+              >
+                {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -404,6 +404,10 @@ export const BuyWizard: React.FC = () => {
               comp.explorer_url || undefined
             );
           }}
+          onCancel={() => {
+            setOrderLocked(null);
+            setStep('COIN');
+          }}
         />
       )}
     </div>

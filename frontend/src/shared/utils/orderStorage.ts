@@ -61,6 +61,10 @@ export function updateStoredOrderStatus(order_reference: string, status: string,
   }
 }
 
+export function cancelStoredOrder(order_reference: string): void {
+  updateStoredOrderStatus(order_reference, 'CANCELLED');
+}
+
 /**
  * Returns the most recent open order on this device if one exists.
  * An open order has status 'AWAITING_PAYMENT' or 'QUOTE_LOCKED'

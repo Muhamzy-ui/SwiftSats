@@ -200,7 +200,11 @@ export const PayPage: React.FC = () => {
         </div>
 
         {/* Embedded PayStep with Live Reading Countdown and Bank Virtual Account */}
-        <PayStep orderData={orderLockedData} onSuccess={handlePaymentSuccess} />
+        <PayStep
+          orderData={orderLockedData}
+          onSuccess={handlePaymentSuccess}
+          onCancel={() => navigate('/')}
+        />
       </div>
 
       {/* Safety & Compliance Micro-Notice */}

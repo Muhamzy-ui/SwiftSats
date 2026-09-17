@@ -64,6 +64,13 @@ export const ordersApi = {
     return request<{ success: boolean; order: OrderPublic }>(`/api/v1/orders/${orderReference}/`);
   },
 
+  /** Cancel an open/unpaid order */
+  async cancelOrder(orderReference: string): Promise<{ success: boolean; message: string; order?: OrderPublic }> {
+    return request<{ success: boolean; message: string; order?: OrderPublic }>(`/api/v1/orders/${orderReference}/cancel/`, {
+      method: 'POST',
+    });
+  },
+
   /** Simulate payment in development mode */
   async simulatePayment(orderReference: string): Promise<{ success: boolean; message: string; order: unknown }> {
     return request<{ success: boolean; message: string; order: unknown }>('/api/v1/payments/simulate-payment/', {

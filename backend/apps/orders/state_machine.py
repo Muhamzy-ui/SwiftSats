@@ -20,11 +20,13 @@ VALID_TRANSITIONS: Dict[str, Set[str]] = {
         OrderStatus.VERIFYING,
         OrderStatus.PAYMENT_CONFIRMED,
         OrderStatus.FAILED,
+        OrderStatus.CANCELLED,
     },
     OrderStatus.AWAITING_PAYMENT: {
         OrderStatus.VERIFYING,
         OrderStatus.PAYMENT_CONFIRMED,
         OrderStatus.FAILED,
+        OrderStatus.CANCELLED,
     },
     OrderStatus.VERIFYING: {
         OrderStatus.PAYMENT_CONFIRMED,
@@ -48,6 +50,7 @@ VALID_TRANSITIONS: Dict[str, Set[str]] = {
     },
     OrderStatus.COMPLETED: set(),  # Terminal state
     OrderStatus.REFUNDED: set(),   # Terminal state
+    OrderStatus.CANCELLED: set(),  # Terminal state
 }
 
 

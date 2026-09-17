@@ -64,6 +64,12 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           bg: 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-800',
           dot: 'bg-slate-500',
         };
+      case 'CANCELLED':
+        return {
+          label: 'Cancelled',
+          bg: 'bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800',
+          dot: 'bg-slate-400',
+        };
       default:
         return {
           label: st,

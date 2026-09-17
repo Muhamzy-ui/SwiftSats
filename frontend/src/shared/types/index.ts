@@ -39,7 +39,8 @@ export type OrderStatus =
   | 'PAYOUT_PROCESSING'
   | 'COMPLETED'
   | 'FAILED'
-  | 'REFUNDED';
+  | 'REFUNDED'
+  | 'CANCELLED';
 
 export type AdminRole = 'SUPER_ADMIN' | 'OPERATOR' | 'AUDITOR' | 'SUPPORT';
 
