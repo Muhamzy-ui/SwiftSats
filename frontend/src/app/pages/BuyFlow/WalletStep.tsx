@@ -19,6 +19,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
 }) => {
   const [walletAddress, setWalletAddress] = useState('');
   const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -67,14 +68,21 @@ export const WalletStep: React.FC<WalletStepProps> = ({
       return;
     }
 
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setEmailError('Please enter a valid email address to receive your payment receipt');
+      return;
+    }
+
     setIsValidating(true);
     setServerError(null);
+    setEmailError(null);
 
     try {
       const order = await ordersApi.lockAndCreateOrder(
         quote.order_reference,
         walletAddress,
-        email || undefined
+        cleanEmail
       );
       onOrderLocked(order);
     } catch (err: any) {
@@ -153,16 +161,34 @@ export const WalletStep: React.FC<WalletStepProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
-            Receipt Email <span className="text-slate-500 font-normal lowercase">(optional)</span>
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+            <span>Email Address <span className="text-[#00c853] dark:text-[#00e676] font-black">*</span></span>
+            <span className="text-[10px] text-slate-400 font-normal lowercase">for receipt & order recovery</span>
           </label>
           <input
             type="email"
+            required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@gmail.com for receipt"
-            className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#00c853] dark:focus:ring-[#00e676]"
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setEmailError(null);
+            }}
+            placeholder="you@gmail.com (receipt & tracking sent here)"
+            className={`w-full px-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#00c853] dark:focus:ring-[#00e676] transition-all ${
+              emailError
+                ? 'border-rose-400 ring-1 ring-rose-400'
+                : 'border-slate-200 dark:border-slate-800'
+            }`}
           />
+          {emailError && (
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{emailError}</span>
+            </p>
+          )}
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-normal">
+            🔒 In case your device turns off or browser closes, your payment receipt and private tracking link will be safely delivered here.
+          </p>
         </div>
       </div>
 

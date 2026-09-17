@@ -104,4 +104,30 @@ export const ordersApi = {
       completed: Partial<OrderPublic>[];
     }>('/api/v1/orders/recent/');
   },
+
+  /** Request a 6-digit OTP to user's email to recover their private orders */
+  async sendEmailOTP(email: string): Promise<{ success: boolean; message: string; email?: string; order_count?: number }> {
+    return request<{ success: boolean; message: string; email?: string; order_count?: number }>('/api/v1/orders/auth/send-otp/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /** Verify OTP and retrieve user's private orders */
+  async verifyEmailOTP(email: string, otp: string): Promise<{
+    success: boolean;
+    message: string;
+    email?: string;
+    orders?: Partial<OrderPublic>[];
+  }> {
+    return request<{
+      success: boolean;
+      message: string;
+      email?: string;
+      orders?: Partial<OrderPublic>[];
+    }>('/api/v1/orders/auth/verify-otp/', {
+      method: 'POST',
+      body: JSON.stringify({ email, otp }),
+    });
+  },
 };
