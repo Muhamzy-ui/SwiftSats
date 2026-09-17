@@ -5,7 +5,7 @@ import { WalletStep } from './WalletStep';
 import { PayStep } from './PayStep';
 import { LiveRate, CoinCode, QuoteCreatedResponse, OrderLockedResponse } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
-import { storeRecentOrder, updateStoredOrderStatus } from '../../../shared/utils/orderStorage';
+import { storeRecentOrder, updateStoredOrderStatus, getOpenOrder } from '../../../shared/utils/orderStorage';
 
 export type Step = 'COIN' | 'AMOUNT' | 'WALLET' | 'PAY';
 
@@ -256,6 +256,29 @@ export const BuyWizard: React.FC = () => {
       }
     };
     fetchRates();
+
+    // If user has an open order awaiting payment, auto-resume directly on Step 4 (PAY)
+    const openOrder = getOpenOrder();
+    if (openOrder && (openOrder.status === 'AWAITING_PAYMENT' || openOrder.status === 'QUOTE_LOCKED')) {
+      ordersApi.lookupOrder(openOrder.order_reference).then((res) => {
+        if (res.success && res.order && res.order.status === 'AWAITING_PAYMENT') {
+          setOrderLocked({
+            success: true,
+            order: res.order,
+            payment_instructions: {
+              bank_name: res.order.virtual_bank_name || 'Paystack-Titan / Wema',
+              account_number: res.order.virtual_account_number || '',
+              account_name: res.order.virtual_account_name || 'SwiftSats Checkout Desk',
+              amount_ngn: String(res.order.fiat_amount_expected || res.order.fiat_amount_ngn),
+              salt_kobo: res.order.salt_kobo_value,
+              order_reference: res.order.order_reference,
+              expires_at: res.order.quote_expires_at,
+            },
+          });
+          setStep('PAY');
+        }
+      }).catch(() => {});
+    }
   }, []);
 
   const selectedRate = rates.find((r) => r.coin === selectedCoin) || rates[0];

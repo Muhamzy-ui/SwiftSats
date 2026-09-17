@@ -4,8 +4,7 @@ import { ordersApi } from '../../shared/api/orders';
 import { OrderPublic, OrderLockedResponse, OrderDetail } from '../../shared/types';
 import { PayStep } from './BuyFlow/PayStep';
 import { getOpenOrder, updateStoredOrderStatus } from '../../shared/utils/orderStorage';
-import { ArrowLeft, RefreshCw, AlertCircle, Zap, Search, ShieldCheck } from 'lucide-react';
-import { getCoinLogo } from '../../shared/components/CryptoLogos';
+import { RefreshCw, AlertCircle, Zap, Search, ShieldCheck } from 'lucide-react';
 
 export const PayPage: React.FC = () => {
   const { reference } = useParams<{ reference?: string }>();
@@ -148,61 +147,64 @@ export const PayPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-lg mx-auto py-4 sm:py-6 px-3 sm:px-4 space-y-4">
-      {/* Top Navigation & Status Bar */}
-      <div className="flex items-center justify-between">
-        <Link
-          to="/"
-          className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors flex items-center gap-1.5"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Change Order</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold text-[#00c853] dark:text-[#00e676] bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/30 font-mono shadow-xs">
+    <div className="max-w-lg mx-auto py-2 sm:py-6 px-3 sm:px-4 space-y-4">
+      {/* Primary Card Shell Matching BuyWizard */}
+      <div className="w-full bg-white dark:bg-[#0c1017] border border-slate-200/90 dark:border-white/[0.08] rounded-2xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-[0_8px_20px_rgba(0,0,0,0.04)] dark:shadow-2xl transition-all duration-200 relative">
+        {/* Step Indicator Navigation - Page Number 4 */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
+            {[
+              { key: 'COIN', num: '1', label: 'Coin' },
+              { key: 'AMOUNT', num: '2', label: 'Amount' },
+              { key: 'WALLET', num: '3', label: 'Wallet' },
+              { key: 'PAY', num: '4', label: 'Pay' },
+            ].map((s, idx, arr) => {
+              const isCurrent = s.key === 'PAY';
+              const isPassed = s.key !== 'PAY';
+
+              return (
+                <React.Fragment key={s.key}>
+                  <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                    <div
+                      className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-black transition-all ${
+                        isCurrent
+                          ? 'border-2 border-[#00c853] dark:border-[#00e676] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-[#00e676]'
+                          : 'bg-[#00c853] dark:bg-[#00e676] text-white dark:text-slate-950 font-black'
+                      }`}
+                    >
+                      {isPassed ? '✓' : s.num}
+                    </div>
+                    <span
+                      className={`text-[9px] sm:text-[10px] font-bold ${
+                        isCurrent
+                          ? 'text-slate-950 dark:text-white'
+                          : 'text-emerald-700 dark:text-emerald-400'
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                  {idx < arr.length - 1 && (
+                    <div className="h-[1.5px] w-2 sm:w-4 rounded-full mb-3 bg-[#00c853] dark:bg-[#00e676]" />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Small Rounded Step 4 of 4 Live Rates Pill */}
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-[#00e676] border border-emerald-300 dark:border-emerald-500/40 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00c853] dark:bg-[#00e676] animate-pulse" />
-            <span>Awaiting Transfer</span>
+            <span>Step 4: Pay</span>
           </span>
-          <Link
-            to={`/track/${order.order_reference}`}
-            className="text-[11px] font-semibold text-slate-500 hover:text-[#00c853] dark:text-slate-400 dark:hover:text-[#00e676] transition-colors"
-          >
-            Track Page →
-          </Link>
-        </div>
-      </div>
-
-      {/* Primary Card Shell */}
-      <div className="w-full bg-white dark:bg-[#0c1017] border border-slate-200/90 dark:border-white/[0.08] rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-[0_8px_24px_rgba(0,0,0,0.04)] dark:shadow-2xl space-y-4">
-        {/* Coin Target Banner */}
-        <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-100 dark:border-white/[0.06]">
-          <div className="flex items-center gap-2.5">
-            {getCoinLogo(order.coin, 28)}
-            <div>
-              <span className="text-xs font-black text-slate-900 dark:text-white block">
-                {order.crypto_amount} {order.coin.split('_')[0]}
-              </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">
-                Network: {order.network}
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Reference
-            </span>
-            <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-              {order.order_reference}
-            </span>
-          </div>
         </div>
 
-        {/* Embedded PayStep with Live Countdown and Bank Virtual Account */}
+        {/* Embedded PayStep with Live Reading Countdown and Bank Virtual Account */}
         <PayStep orderData={orderLockedData} onSuccess={handlePaymentSuccess} />
       </div>
 
       {/* Safety & Compliance Micro-Notice */}
-      <div className="text-center pt-2">
+      <div className="text-center pt-1">
         <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-[#00c853] dark:text-[#00e676]" />
           <span>Direct SEC-regulated execution • Zero customer BVN required</span>

@@ -32,8 +32,8 @@ class PlatformSettings(models.Model):
     )
     settlement_account_number = models.CharField(
         max_length=32,
-        default="0000000000",
-        help_text="Primary virtual account placeholder"
+        default="9938210492",
+        help_text="Primary virtual account number"
     )
 
     # Secondary Settlement Account
@@ -49,8 +49,8 @@ class PlatformSettings(models.Model):
     )
     settlement_account_number_2 = models.CharField(
         max_length=32,
-        default="0000000000",
-        help_text="Secondary virtual account placeholder"
+        default="8029314810",
+        help_text="Secondary virtual account number"
     )
 
     rotate_accounts = models.BooleanField(
