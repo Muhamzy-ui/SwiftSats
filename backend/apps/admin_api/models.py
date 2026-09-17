@@ -32,7 +32,7 @@ class PlatformSettings(models.Model):
     )
     settlement_account_number = models.CharField(
         max_length=32,
-        default="Dynamic Virtual Account",
+        default="0000000000",
         help_text="Primary virtual account placeholder"
     )
 
@@ -49,7 +49,7 @@ class PlatformSettings(models.Model):
     )
     settlement_account_number_2 = models.CharField(
         max_length=32,
-        default="Dynamic Virtual Account",
+        default="0000000000",
         help_text="Secondary virtual account placeholder"
     )
 

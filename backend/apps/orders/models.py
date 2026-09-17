@@ -95,7 +95,7 @@ class Order(models.Model):
 
     # Paystack Virtual Account Details (Naira Inflow)
     paystack_reference = models.CharField(max_length=128, blank=True, null=True, db_index=True)
-    virtual_account_number = models.CharField(max_length=20, blank=True, null=True)
+    virtual_account_number = models.CharField(max_length=64, blank=True, null=True)
     virtual_bank_name = models.CharField(max_length=64, blank=True, null=True)
     virtual_account_name = models.CharField(max_length=128, blank=True, null=True)
     paystack_customer_code = models.CharField(max_length=64, blank=True, null=True)
