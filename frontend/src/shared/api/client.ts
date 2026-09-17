@@ -62,7 +62,26 @@ export async function request<T>(
       }
     }
     const errorData = data?.error || {};
-    const message = errorData.message || data.detail || `Request failed with status ${response.status}`;
+    let message = errorData.message || data?.detail;
+
+    if (!message && typeof data === 'object' && data !== null) {
+      const keys = Object.keys(data);
+      if (keys.length > 0) {
+        const firstVal = (data as Record<string, unknown>)[keys[0]];
+        if (Array.isArray(firstVal) && firstVal.length > 0 && typeof firstVal[0] === 'string') {
+          message = firstVal[0];
+        } else if (typeof firstVal === 'string') {
+          message = firstVal;
+        }
+      }
+    }
+
+    if (!message) {
+      message = response.status >= 500
+        ? 'An unexpected server error occurred. Please contact support.'
+        : `Request failed with status ${response.status}`;
+    }
+
     const code = errorData.code || 'HTTP_ERROR';
     throw new ApiException(message, code, response.status, errorData.details);
   }

@@ -19,38 +19,38 @@ class PlatformSettings(models.Model):
         default=PayoutMode.AUTOMATED,
         help_text="24/7 automated instant payout vs manual 1-tap admin approval"
     )
-    # Primary Account 1 (e.g. Moniepoint MFB)
+    # Primary Settlement Account
     settlement_bank_name = models.CharField(
         max_length=64,
-        default="Moniepoint MFB",
-        help_text="Primary bank name"
+        default="Paystack-Titan / Wema",
+        help_text="Primary virtual bank partner"
     )
     settlement_account_name = models.CharField(
         max_length=128,
-        default="Mahmud Bashir Olakanmi",
-        help_text="Primary account name"
+        default="SwiftSats Settlement Desk",
+        help_text="Primary settlement desk account name"
     )
     settlement_account_number = models.CharField(
         max_length=32,
-        default="8072410373",
-        help_text="Primary account number"
+        default="Dynamic Virtual Account",
+        help_text="Primary virtual account placeholder"
     )
 
-    # Secondary Account 2 (e.g. Nomba MFB)
+    # Secondary Settlement Account
     settlement_bank_name_2 = models.CharField(
         max_length=64,
-        default="Nomba MFB",
-        help_text="Secondary bank name for rotation"
+        default="Paystack-Titan / Providus",
+        help_text="Secondary virtual bank partner"
     )
     settlement_account_name_2 = models.CharField(
         max_length=128,
-        default="Mahmud Bashir Olakanmi",
-        help_text="Secondary account name for rotation"
+        default="SwiftSats Checkout Desk",
+        help_text="Secondary settlement desk account name"
     )
     settlement_account_number_2 = models.CharField(
         max_length=32,
-        default="8072410373",
-        help_text="Secondary account number for rotation"
+        default="Dynamic Virtual Account",
+        help_text="Secondary virtual account placeholder"
     )
 
     rotate_accounts = models.BooleanField(

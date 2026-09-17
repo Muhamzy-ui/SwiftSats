@@ -228,7 +228,7 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="text-center space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-white">
-          Transfer to Nomba Settlement
+          Transfer to {payment_instructions.bank_name || 'Bank Settlement'}
         </h2>
         <p className="text-xs text-slate-400">
           Transfer the exact amount below from your bank app. Crypto releases in seconds!

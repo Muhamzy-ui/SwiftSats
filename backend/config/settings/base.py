@@ -128,19 +128,34 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 
-# Redis & Cache Settings
-REDIS_URL = env.str("REDIS_URL", default="redis://localhost:6379/0")
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": REDIS_URL,
-        "TIMEOUT": 300,
+# Redis & Cache Settings (Graceful fallback to in-memory LocMemCache when Redis is not available)
+REDIS_URL = env.str("REDIS_URL", default="")
+if REDIS_URL and not REDIS_URL.startswith("redis://localhost") and not REDIS_URL.startswith("redis://127.0.0.1"):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "TIMEOUT": 300,
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "swiftsats-cache",
+            "TIMEOUT": 300,
+        }
+    }
 
-# Celery Settings
-CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="redis://localhost:6379/1")
-CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="redis://localhost:6379/2")
+# Celery Settings (Synchronous eager execution if no external broker)
+CELERY_BROKER_URL = env.str("CELERY_BROKER_URL", default="")
+CELERY_RESULT_BACKEND = env.str("CELERY_RESULT_BACKEND", default="")
+if not CELERY_BROKER_URL or "localhost" in CELERY_BROKER_URL or "127.0.0.1" in CELERY_BROKER_URL:
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    CELERY_TASK_ALWAYS_EAGER = False
+
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
