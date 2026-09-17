@@ -253,7 +253,7 @@ COIN_METADATA = {
         "min_amount_usd": Decimal("5.00"),
         "min_amount_ngn": Decimal("7000.00"),
         "max_amount_ngn": Decimal("5000000.00"),
-        "quidax_currency": "matic",
+        "quidax_currency": "pol",
         "quidax_network": "polygon",
         "network_fee_crypto": Decimal("0.1"),
         "explorer_url": "https://polygonscan.com/tx/{tx_hash}",

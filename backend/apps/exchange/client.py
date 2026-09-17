@@ -77,7 +77,7 @@ class QuidaxClient:
     def get_all_market_tickers(self) -> Dict[str, Decimal]:
         """
         Fetch all market tickers from Quidax in a single batch request, cached for speed.
-        Uses fast 1.2s timeout without retry-blocking to guarantee sub-50ms user experience.
+        Dynamically resolves direct NGN pairs and cross-calculates USDT pairs with the real USD/NGN rate.
         """
         cache_key = "quidax:all_tickers"
         cached = cache.get(cache_key)
@@ -88,17 +88,34 @@ class QuidaxClient:
         if self.is_live:
             try:
                 url = f"{self.base_url}/markets/tickers"
-                # Use raw requests without backoff retries so 503s don't stall the UI
-                response = requests.get(url, headers=self._get_headers(), timeout=1.2)
+                # Use 6.0s timeout to allow Quidax API to respond without prematurely failing
+                response = requests.get(url, headers=self._get_headers(), timeout=6.0)
                 if response.status_code == 200:
                     data = response.json().get("data", {})
-                    for market_name, mdata in data.items():
-                        ticker = mdata.get("ticker", {})
-                        price = ticker.get("last") or ticker.get("buy")
-                        if price:
-                            for coin, meta in COIN_METADATA.items():
-                                if f"{meta['quidax_currency']}ngn" == market_name.lower():
-                                    tickers[coin] = Decimal(str(price))
+                    # 1. Determine real-time USD/NGN benchmark from Quidax USDT/NGN
+                    usdt_data = data.get("usdtngn", {}).get("ticker", {})
+                    usdt_ngn = Decimal(str(usdt_data.get("last") or usdt_data.get("buy") or "1372.09"))
+                    tickers["_usd_to_ngn"] = usdt_ngn
+
+                    # 2. Map all supported coins to real live prices
+                    for coin, meta in COIN_METADATA.items():
+                        q_curr = meta.get("quidax_currency", "").lower()
+                        if q_curr == "matic":
+                            q_curr = "pol"
+
+                        direct_pair = f"{q_curr}ngn"
+                        usdt_pair = f"{q_curr}usdt"
+
+                        if direct_pair in data:
+                            ticker = data[direct_pair].get("ticker", {})
+                            price = ticker.get("last") or ticker.get("buy")
+                            if price:
+                                tickers[coin] = Decimal(str(price))
+                        elif usdt_pair in data:
+                            ticker = data[usdt_pair].get("ticker", {})
+                            price_usdt = ticker.get("last") or ticker.get("buy")
+                            if price_usdt:
+                                tickers[coin] = (Decimal(str(price_usdt)) * usdt_ngn).quantize(Decimal("0.01"))
                 else:
                     logger.warning("Quidax returned status %s for tickers, using reference rates", response.status_code)
             except Exception as exc:

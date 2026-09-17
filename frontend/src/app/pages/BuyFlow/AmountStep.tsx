@@ -26,8 +26,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
 
   const [symbol] = selectedRate.coin.split('_');
   const coinPriceUsd = parseFloat(selectedRate.price_usd || '1.00');
-  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1410.65');
-  const serviceFeeNgn = 1310.0;
+  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1372.20');
 
   // Active numeric dollar value
   const dollarAmount = useMemo(() => {
@@ -39,20 +38,27 @@ export const AmountStep: React.FC<AmountStepProps> = ({
     }
   }, [currencyMode, dollarInput, cryptoInput, coinPriceUsd]);
 
-  // Live calculated amounts
+  // Live calculated amounts: $1 fee for <= $10 USD; 10% fee for > $10 USD
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
     const cryptoReceived = (dollarAmount / coinPriceUsd).toFixed(8);
     const cryptoValueNgn = dollarAmount * ratePerDollar;
-    const totalNgnToPay = cryptoValueNgn + serviceFeeNgn;
+    
+    // Fee rule: $1.00 flat for <= $10 USD; 5% of deposit for > $10 USD
+    const feeNgn = dollarAmount <= 10.0
+      ? (1.0 * ratePerDollar)
+      : (cryptoValueNgn * 0.05);
+
+    const totalNgnToPay = cryptoValueNgn + feeNgn;
 
     return {
       cryptoReceived,
       cryptoValueNgn,
+      feeNgn,
       totalNgnToPay,
     };
-  }, [dollarAmount, coinPriceUsd, ratePerDollar, serviceFeeNgn]);
+  }, [dollarAmount, coinPriceUsd, ratePerDollar]);
 
   const handleDollarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9.]/g, '');
@@ -241,9 +247,9 @@ export const AmountStep: React.FC<AmountStepProps> = ({
 
           {/* 6. Service fee */}
           <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 font-mono text-xs">
-            <span>Service fee</span>
+            <span>Service fee {dollarAmount <= 10 ? '($1.00 flat)' : '(5%)'}</span>
             <span className="text-emerald-600 dark:text-[#00e676] font-semibold">
-              {formatNaira(serviceFeeNgn)}
+              {formatNaira(calculations.feeNgn)}
             </span>
           </div>
 

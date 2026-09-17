@@ -2,6 +2,7 @@
 URL Routing for Orders API.
 """
 from django.urls import path
+from apps.exchange.views import LiveRatesView
 from .views import (
     CreateQuoteView,
     LockAndGeneratePaymentView,
@@ -14,6 +15,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path("rates/", LiveRatesView.as_view(), name="order-live-rates"),
     path("quote/", CreateQuoteView.as_view(), name="order-create-quote"),
     path("create/", LockAndGeneratePaymentView.as_view(), name="order-lock-and-pay"),
     path("validate-wallet/", ValidateWalletPreflightView.as_view(), name="order-validate-wallet"),
