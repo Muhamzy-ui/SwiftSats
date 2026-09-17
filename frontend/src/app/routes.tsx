@@ -3,7 +3,8 @@ import { Route, Routes } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { OrderStatusPage } from './pages/OrderStatus';
 import { PayPage } from './pages/PayPage';
-import { PinEntryPage } from './pages/PinEntry';
+import { SupportPage } from './pages/Support';
+import { ProfilePage } from './pages/Profile';
 import { Header } from '../shared/components/Header';
 import { Footer } from '../shared/components/Footer';
 import { MobileBottomNav } from '../shared/components/MobileBottomNav';
@@ -24,16 +25,13 @@ export const AppRoutes: React.FC = () => {
       )}
 
       <Routes>
-        {/* Full-screen PIN screen */}
-        <Route path="/pin" element={<PinEntryPage />} />
-
-        {/* Standard flow with header & footer */}
+        {/* Standard flow with header, footer & floating glass dock */}
         <Route
           path="*"
           element={
             <>
               <Header />
-              <main className="flex-1 pb-24 md:pb-12 z-10">
+              <main className="flex-1 pb-28 md:pb-12 z-10">
                 <Routes>
                   <Route index element={<Home />} />
                   <Route path="buy" element={<Home />} />
@@ -42,6 +40,10 @@ export const AppRoutes: React.FC = () => {
                   <Route path="track" element={<OrderStatusPage />} />
                   <Route path="track/:reference" element={<OrderStatusPage />} />
                   <Route path="orders/:reference" element={<OrderStatusPage />} />
+                  <Route path="support" element={<SupportPage />} />
+                  <Route path="profile" element={<ProfilePage />} />
+                  <Route path="account" element={<ProfilePage />} />
+                  <Route path="pin" element={<ProfilePage />} />
                 </Routes>
               </main>
               <Footer />
