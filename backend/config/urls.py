@@ -13,7 +13,7 @@ def health_check_view(request):
     return JsonResponse({
         "status": "healthy",
         "service": "SwiftSats Backend API",
-        "version": "1.0.0"
+        "version": "1.0.2-prod"
     })
 
 
