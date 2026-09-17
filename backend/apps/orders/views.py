@@ -21,6 +21,7 @@ from apps.payments.client import PaystackClient
 from decimal import Decimal
 import secrets
 from apps.admin_api.models import PlatformSettings
+from apps.accounts.authentication import CustomerJWTAuthentication
 from core.constants import OrderStatus, AuditActor, COIN_METADATA
 from core.validators import validate_wallet_for_coin
 from core.utils import get_client_ip
@@ -167,16 +168,39 @@ class LockAndGeneratePaymentView(APIView):
     """
     Step 3 & 4: Bind validated wallet address to quote and provide
     settlement account details with dynamic kobo amount.
+    Strictly requires customer registration/authentication.
     """
+    authentication_classes = [CustomerJWTAuthentication]
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         serializer = LockQuoteAndSubmitWalletSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Enforce that users cannot complete order without signing up
+        customer = getattr(request, "user", None)
+        if not customer or not getattr(customer, "is_authenticated", False):
+            user_email_input = serializer.validated_data.get("user_email")
+            if user_email_input:
+                from apps.accounts.models import Customer
+                customer = Customer.objects.filter(email__iexact=user_email_input.strip()).first()
+
+        if not customer or not getattr(customer, "is_authenticated", False):
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "AUTH_REQUIRED",
+                        "message": "Account registration is required. Please sign up or log in to complete your order.",
+                        "details": {},
+                    },
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
         order: Order = serializer.validated_data["order_instance"]
         wallet_address: str = serializer.validated_data["clean_wallet"]
-        user_email: str = serializer.validated_data.get("user_email")
+        user_email: str = customer.email if customer else serializer.validated_data.get("user_email")
 
         # Check if Paystack live collection is active
         paystack_client = PaystackClient()
@@ -235,13 +259,11 @@ class LockAndGeneratePaymentView(APIView):
             updated_order.paystack_reference = paystack_ref
             updated_order.save(update_fields=["paystack_reference"])
 
-        # Link order to registered Customer account if matching email exists
-        if user_email:
-            from apps.accounts.models import Customer
-            matched_customer = Customer.objects.filter(email__iexact=user_email.strip()).first()
-            if matched_customer and updated_order.customer != matched_customer:
-                updated_order.customer = matched_customer
-                updated_order.save(update_fields=["customer"])
+        # Strictly bind registered customer account to order
+        if customer and updated_order.customer != customer:
+            updated_order.customer = customer
+            updated_order.user_email = customer.email
+            updated_order.save(update_fields=["customer", "user_email"])
 
         # Send instant receipt and tracking email to user
         send_order_confirmation_email(updated_order)

@@ -76,3 +76,55 @@ class CustomerAuthTests(APITestCase):
         logout_url = "/api/v1/auth/customer/logout/"
         logout_res = self.client.post(logout_url)
         self.assertEqual(logout_res.status_code, status.HTTP_200_OK)
+
+    def test_order_cannot_be_locked_without_signup(self):
+        from datetime import timedelta
+        # Create quote
+        quote_order = Order.objects.create(
+            coin=SupportedCoin.BNB,
+            network=BlockchainNetwork.BEP20,
+            fiat_amount_ngn=Decimal("20000.00"),
+            crypto_amount=Decimal("0.02"),
+            quote_rate=Decimal("1000000.00"),
+            wallet_address="PENDING_WALLET_SUBMISSION",
+            status=OrderStatus.QUOTE_LOCKED,
+            quote_expires_at=timezone.now() + timedelta(minutes=15),
+        )
+
+        valid_wallet = "0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+        lock_url = "/api/v1/orders/create/"
+        unregistered_payload = {
+            "order_reference": quote_order.order_reference,
+            "wallet_address": valid_wallet,
+            "user_email": "unregistered_stranger@example.com",
+        }
+
+        # 1. Unauthenticated request without registered account fails with 401
+        self.client.credentials()  # Clear credentials
+        res = self.client.post(lock_url, data=unregistered_payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(res.json()["error"]["code"], "AUTH_REQUIRED")
+
+        # 2. Authenticated customer request succeeds
+        customer = Customer.objects.create(email="registered_user@example.com", full_name="John Doe")
+        customer.set_password("SecurePass123!")
+        customer.save()
+
+        from apps.accounts.authentication import generate_customer_jwt_token
+        cust_token = generate_customer_jwt_token(customer)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {cust_token}")
+
+        registered_payload = {
+            "order_reference": quote_order.order_reference,
+            "wallet_address": valid_wallet,
+            "user_email": "registered_user@example.com",
+        }
+        success_res = self.client.post(lock_url, data=registered_payload, format="json")
+        self.assertEqual(success_res.status_code, status.HTTP_200_OK)
+        self.assertTrue(success_res.json()["success"])
+
+        # Verify order in DB is bound to registered customer
+        quote_order.refresh_from_db()
+        self.assertEqual(quote_order.customer, customer)
+        self.assertEqual(quote_order.user_email, "registered_user@example.com")
+        self.assertEqual(quote_order.status, OrderStatus.AWAITING_PAYMENT)
