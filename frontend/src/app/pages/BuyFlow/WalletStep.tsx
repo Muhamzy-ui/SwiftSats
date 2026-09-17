@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, AlertCircle, Clock } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 import { QuoteCreatedResponse, OrderLockedResponse } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { validateCryptoAddress } from '../../../shared/utils/validation';
 import { formatNaira } from '../../../shared/utils/formatters';
 import { getCoinLogo } from '../../../shared/components/CryptoLogos';
+import { useAuth } from '../../../shared/context/AuthContext';
 
 interface WalletStepProps {
   quote: QuoteCreatedResponse;
@@ -17,13 +19,20 @@ export const WalletStep: React.FC<WalletStepProps> = ({
   onOrderLocked,
   onBack,
 }) => {
+  const { user, isAuthenticated } = useAuth();
   const [walletAddress, setWalletAddress] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(user?.email || '');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(quote.expires_in_seconds || 90);
+
+  useEffect(() => {
+    if (user?.email && !email) {
+      setEmail(user.email);
+    }
+  }, [user, email]);
 
   const [symbol] = quote.coin.split('_');
 
@@ -186,6 +195,23 @@ export const WalletStep: React.FC<WalletStepProps> = ({
               <span>{emailError}</span>
             </p>
           )}
+
+          {isAuthenticated && user ? (
+            <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 flex items-center gap-2 text-xs">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#00c853] dark:text-[#00e676] shrink-0" />
+              <span className="text-emerald-800 dark:text-emerald-300 text-[11px] font-medium">
+                Order will be saved to your SwiftSats account (<strong>{user.email}</strong>).
+              </span>
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <span>Already registered?</span>
+              <Link to="/login" className="font-bold text-[#00c853] dark:text-[#00e676] hover:underline">
+                Sign in to link order
+              </Link>
+            </div>
+          )}
+
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-normal">
             🔒 In case your device turns off or browser closes, your payment receipt and private tracking link will be safely delivered here.
           </p>

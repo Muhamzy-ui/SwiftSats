@@ -89,3 +89,47 @@ class AdminUser(AbstractBaseUser, PermissionsMixin):
         """Generate otpauth:// URI for QR code scanning in Google Authenticator."""
         totp = pyotp.TOTP(self.two_factor_secret)
         return totp.provisioning_uri(name=self.email, issuer_name="SwiftSats Admin")
+
+
+class Customer(models.Model):
+    """
+    Public customer account model.
+    Allows customer registration and authentication with email and hashed password.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True, db_index=True)
+    password = models.CharField(max_length=256, help_text="Securely hashed password")
+    full_name = models.CharField(max_length=128, blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_email_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "customers"
+        verbose_name = "Customer"
+        verbose_name_plural = "Customers"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        name = self.full_name.strip() if self.full_name else "Anonymous"
+        return f"{self.email} ({name})"
+
+    def set_password(self, raw_password: str) -> None:
+        """Hash and save customer password using Django default hasher."""
+        from django.contrib.auth.hashers import make_password
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password: str) -> bool:
+        """Verify raw password against stored hash."""
+        from django.contrib.auth.hashers import check_password
+        return check_password(raw_password, self.password)
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False

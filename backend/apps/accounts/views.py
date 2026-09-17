@@ -5,12 +5,28 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.db import models
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from .models import AdminUser
-from .serializers import AdminLoginInitSerializer, Admin2FAVerifySerializer, AdminUserSerializer
-from .authentication import generate_admin_jwt_token, AdminJWTAuthentication
+from .models import AdminUser, Customer
+from .serializers import (
+    AdminLoginInitSerializer,
+    Admin2FAVerifySerializer,
+    AdminUserSerializer,
+    CustomerRegisterSerializer,
+    CustomerLoginSerializer,
+    CustomerSerializer,
+    CustomerOrderSerializer,
+)
+from .authentication import (
+    generate_admin_jwt_token,
+    AdminJWTAuthentication,
+    generate_customer_jwt_token,
+    CustomerJWTAuthentication,
+)
+from apps.orders.models import Order
+from core.constants import OrderStatus
 from core.exceptions import SwiftSatsBaseException
 
 
@@ -221,3 +237,168 @@ class AdminProfileView(APIView):
             "user": AdminUserSerializer(request.user).data,
             "totp_uri": request.user.get_totp_uri(),
         })
+
+
+class CustomerRegisterView(APIView):
+    """
+    Public Customer Registration with Email, Password, Name, and optional Phone.
+    Issues JWT bearer token upon successful signup and links prior unlinked orders.
+    """
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = CustomerRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        password = serializer.validated_data["password"]
+        full_name = serializer.validated_data.get("full_name", "").strip()
+        phone = serializer.validated_data.get("phone", "").strip()
+
+        customer = Customer(
+            email=email,
+            full_name=full_name,
+            phone=phone,
+            is_active=True,
+        )
+        customer.set_password(password)
+        customer.save()
+
+        # Link any existing unlinked orders made with this email address
+        Order.objects.filter(user_email__iexact=email, customer__isnull=True).update(customer=customer)
+
+        # Issue 30-day JWT session token
+        token = generate_customer_jwt_token(customer)
+
+        response = Response({
+            "success": True,
+            "message": "Account created successfully.",
+            "token": token,
+            "user": CustomerSerializer(customer).data,
+        }, status=status.HTTP_201_CREATED)
+
+        # Set secure customer cookie
+        cookie_secure = getattr(settings, "JWT_AUTH_COOKIE_SECURE", False)
+        response.set_cookie(
+            key="swiftsats_customer_jwt",
+            value=token,
+            max_age=30 * 86400,
+            httponly=False,
+            secure=cookie_secure,
+            samesite="Lax",
+            path="/",
+        )
+
+        return response
+
+
+class CustomerLoginView(APIView):
+    """
+    Customer Login with Email and Password.
+    Returns JWT bearer token and user profile.
+    """
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = CustomerLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+        password = serializer.validated_data["password"]
+
+        customer = Customer.objects.filter(email__iexact=email).first()
+        if not customer or not customer.check_password(password):
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "INVALID_CREDENTIALS",
+                        "message": "Invalid email or password. Please try again.",
+                        "details": {},
+                    },
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not customer.is_active:
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "ACCOUNT_DISABLED",
+                        "message": "This account is inactive. Please contact support.",
+                        "details": {},
+                    },
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Link any existing unlinked orders
+        Order.objects.filter(user_email__iexact=customer.email, customer__isnull=True).update(customer=customer)
+
+        token = generate_customer_jwt_token(customer)
+
+        response = Response({
+            "success": True,
+            "message": "Login successful.",
+            "token": token,
+            "user": CustomerSerializer(customer).data,
+        })
+
+        cookie_secure = getattr(settings, "JWT_AUTH_COOKIE_SECURE", False)
+        response.set_cookie(
+            key="swiftsats_customer_jwt",
+            value=token,
+            max_age=30 * 86400,
+            httponly=False,
+            secure=cookie_secure,
+            samesite="Lax",
+            path="/",
+        )
+
+        return response
+
+
+class CustomerMeView(APIView):
+    """
+    Get current logged-in customer profile and order history.
+    """
+    authentication_classes = [CustomerJWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        customer = request.user
+        orders_qs = Order.objects.filter(
+            models.Q(customer=customer) | models.Q(user_email__iexact=customer.email)
+        ).distinct().order_by("-created_at")
+
+        orders = list(orders_qs[:50])
+        total_orders = len(orders)
+        completed_orders = sum(1 for o in orders if o.status == OrderStatus.COMPLETED)
+        total_spent_ngn = sum(o.fiat_amount_ngn for o in orders if o.status == OrderStatus.COMPLETED)
+
+        return Response({
+            "success": True,
+            "user": CustomerSerializer(customer).data,
+            "metrics": {
+                "total_orders": total_orders,
+                "completed_orders": completed_orders,
+                "total_spent_ngn": str(total_spent_ngn),
+            },
+            "orders": CustomerOrderSerializer(orders, many=True).data,
+        })
+
+
+class CustomerLogoutView(APIView):
+    """
+    Clear customer session cookie.
+    """
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        response = Response({"success": True, "message": "Logged out successfully."})
+        response.delete_cookie("swiftsats_customer_jwt", path="/")
+        return response

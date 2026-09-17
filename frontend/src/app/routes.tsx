@@ -5,6 +5,8 @@ import { OrderStatusPage } from './pages/OrderStatus';
 import { PayPage } from './pages/PayPage';
 import { SupportPage } from './pages/Support';
 import { ProfilePage } from './pages/Profile';
+import { LoginPage } from './pages/Auth/LoginPage';
+import { RegisterPage } from './pages/Auth/RegisterPage';
 import { Header } from '../shared/components/Header';
 import { Footer } from '../shared/components/Footer';
 import { MobileBottomNav } from '../shared/components/MobileBottomNav';
@@ -44,6 +46,9 @@ export const AppRoutes: React.FC = () => {
                   <Route path="profile" element={<ProfilePage />} />
                   <Route path="account" element={<ProfilePage />} />
                   <Route path="pin" element={<ProfilePage />} />
+                  <Route path="login" element={<LoginPage />} />
+                  <Route path="signup" element={<RegisterPage />} />
+                  <Route path="register" element={<RegisterPage />} />
                 </Routes>
               </main>
               <Footer />

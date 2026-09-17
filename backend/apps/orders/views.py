@@ -235,6 +235,14 @@ class LockAndGeneratePaymentView(APIView):
             updated_order.paystack_reference = paystack_ref
             updated_order.save(update_fields=["paystack_reference"])
 
+        # Link order to registered Customer account if matching email exists
+        if user_email:
+            from apps.accounts.models import Customer
+            matched_customer = Customer.objects.filter(email__iexact=user_email.strip()).first()
+            if matched_customer and updated_order.customer != matched_customer:
+                updated_order.customer = matched_customer
+                updated_order.save(update_fields=["customer"])
+
         # Send instant receipt and tracking email to user
         send_order_confirmation_email(updated_order)
 

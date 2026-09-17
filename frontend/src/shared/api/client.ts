@@ -28,8 +28,20 @@ export async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const isPublicAuthRoute = endpoint.includes('/login/init/') || endpoint.includes('/login/verify-2fa/');
-  const token = (!isPublicAuthRoute && typeof localStorage !== 'undefined') ? localStorage.getItem('swiftsats_admin_token') : null;
+  const isAdminRoute = endpoint.includes('/admin/') || endpoint.includes('/auth/login/init/') || endpoint.includes('/auth/login/verify-2fa/');
+  const isCustomerAuthInit = endpoint.includes('/auth/customer/register/') || endpoint.includes('/auth/customer/login/');
+
+  let token: string | null = null;
+  if (typeof localStorage !== 'undefined') {
+    if (isAdminRoute) {
+      token = !endpoint.includes('/login/init/') && !endpoint.includes('/login/verify-2fa/')
+        ? localStorage.getItem('swiftsats_admin_token')
+        : null;
+    } else if (!isCustomerAuthInit) {
+      token = localStorage.getItem('swiftsats_customer_token') || localStorage.getItem('swiftsats_admin_token');
+    }
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -58,7 +70,11 @@ export async function request<T>(
     // If unauthorized or forbidden, invalidate any stale stored token
     if (response.status === 401 || response.status === 403) {
       if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('swiftsats_admin_token');
+        if (isAdminRoute) {
+          localStorage.removeItem('swiftsats_admin_token');
+        } else if (endpoint.includes('/customer/')) {
+          localStorage.removeItem('swiftsats_customer_token');
+        }
       }
     }
     const errorData = data?.error || {};

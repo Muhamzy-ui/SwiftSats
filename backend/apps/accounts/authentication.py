@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 import jwt
 from django.conf import settings
 from rest_framework import authentication, exceptions
-from .models import AdminUser
+from .models import AdminUser, Customer
 
 
 def generate_admin_jwt_token(user: AdminUser) -> str:
@@ -73,3 +73,69 @@ class AdminJWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed("User account not found or inactive.")
 
         return user, payload
+
+
+def generate_customer_jwt_token(customer: Customer) -> str:
+    """
+    Generate signed JWT for authenticated customer.
+    Standard session length: 30 days.
+    """
+    now = datetime.now(timezone.utc)
+    expiration = now + timedelta(days=30)
+    payload = {
+        "sub": str(customer.id),
+        "email": customer.email,
+        "type": "customer",
+        "iat": int(now.timestamp()),
+        "exp": int(expiration.timestamp()),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
+
+
+class CustomerJWTAuthentication(authentication.BaseAuthentication):
+    """
+    DRF Authentication class for Customer API endpoints.
+    Extracts signed JWT from Authorization Bearer header or customer cookie.
+    """
+
+    def authenticate(self, request) -> Optional[Tuple[Customer, dict]]:
+        raw_token = None
+
+        # 1. Primary: Extract from Authorization Bearer header
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            parts = auth_header.split()
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                raw_token = parts[1]
+
+        # 2. Fallback: Extract from cookie
+        if not raw_token:
+            cookie_name = "swiftsats_customer_jwt"
+            if cookie_name in request.COOKIES:
+                raw_token = request.COOKIES.get(cookie_name)
+
+        if not raw_token:
+            return None
+
+        try:
+            payload = jwt.decode(
+                raw_token,
+                settings.JWT_SECRET_KEY,
+                algorithms=["HS256"],
+                options={"require": ["exp", "sub"]},
+            )
+        except jwt.ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed("Session has expired. Please log in again.")
+        except jwt.InvalidTokenError:
+            raise exceptions.AuthenticationFailed("Invalid authentication token.")
+
+        if payload.get("type") != "customer":
+            return None
+
+        customer_id = payload.get("sub")
+        try:
+            customer = Customer.objects.get(id=customer_id, is_active=True)
+        except Customer.DoesNotExist:
+            raise exceptions.AuthenticationFailed("Customer account not found or inactive.")
+
+        return customer, payload

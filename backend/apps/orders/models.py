@@ -66,6 +66,14 @@ class Order(models.Model):
     )
 
     # Destination & Customer
+    customer = models.ForeignKey(
+        "accounts.Customer",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="orders",
+        help_text="Registered customer account linked to this order"
+    )
     wallet_address = models.CharField(max_length=128, db_index=True)
     user_email = models.EmailField(blank=True, null=True, help_text="Optional receipt email")
     ip_address = models.GenericIPAddressField(null=True, blank=True)
