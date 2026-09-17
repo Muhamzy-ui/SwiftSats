@@ -90,7 +90,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="text-xs font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1"
+          className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors flex items-center gap-1"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Adjust Amount</span>
@@ -98,8 +98,8 @@ export const WalletStep: React.FC<WalletStepProps> = ({
 
         <span className={`text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
           timeLeft <= 20
-            ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40 animate-pulse'
-            : 'bg-emerald-950/80 text-[#00e676] border border-emerald-500/30'
+            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-500/40 animate-pulse'
+            : 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-[#00e676] border border-emerald-300 dark:border-emerald-500/30'
         }`}>
           <Clock className="w-3.5 h-3.5" />
           <span>Rate Locked: {timeLeft}s</span>
@@ -107,7 +107,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
       </div>
 
       {/* Hero Delivery Summary Badge */}
-      <div className="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.08] text-center space-y-2">
+      <div className="p-5 rounded-2xl bg-slate-900 dark:bg-slate-900/80 border border-slate-800 dark:border-white/[0.08] text-center space-y-2 shadow-sm">
         <div className="flex items-center justify-center gap-2">
           {getCoinLogo(quote.coin, 24)}
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -130,7 +130,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
       {/* Inputs */}
       <div className="space-y-4">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
             Destination {symbol} Address ({quote.network})
           </label>
           <input
@@ -138,14 +138,14 @@ export const WalletStep: React.FC<WalletStepProps> = ({
             value={walletAddress}
             onChange={handleWalletChange}
             placeholder={`Paste your ${quote.network} wallet address`}
-            className={`w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-[#00e676] transition-all ${
+            className={`w-full px-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#00c853] dark:focus:ring-[#00e676] transition-all ${
               validationError
                 ? 'border-rose-400 ring-1 ring-rose-400'
-                : 'border-slate-800'
+                : 'border-slate-200 dark:border-slate-800'
             }`}
           />
           {validationError && (
-            <p className="text-xs font-semibold text-rose-400 mt-1.5 flex items-center gap-1">
+            <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1">
               <AlertCircle className="w-3.5 h-3.5" />
               <span>{validationError}</span>
             </p>
@@ -153,7 +153,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
             Receipt Email <span className="text-slate-500 font-normal lowercase">(optional)</span>
           </label>
           <input
@@ -161,7 +161,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@gmail.com for receipt"
-            className="w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#00e676]"
+            className="w-full px-4 py-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#00c853] dark:focus:ring-[#00e676]"
           />
         </div>
       </div>

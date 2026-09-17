@@ -60,3 +60,22 @@ export function updateStoredOrderStatus(order_reference: string, status: string,
     // Ignore storage errors
   }
 }
+
+/**
+ * Returns the most recent open order on this device if one exists.
+ * An open order has status 'AWAITING_PAYMENT' or 'QUOTE_LOCKED'
+ * and was created within the active operational window (60 minutes).
+ */
+export function getOpenOrder(): LocalTrackedOrder | null {
+  const orders = getStoredRecentOrders();
+  const now = Date.now();
+  const ONE_HOUR = 60 * 60 * 1000;
+
+  const open = orders.find((o) => {
+    const isOpenStatus = o.status === 'AWAITING_PAYMENT' || o.status === 'QUOTE_LOCKED';
+    const isRecent = !o.timestamp || (now - o.timestamp) < ONE_HOUR;
+    return isOpenStatus && isRecent;
+  });
+
+  return open || null;
+}

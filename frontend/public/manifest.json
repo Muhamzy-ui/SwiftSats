@@ -1,0 +1,21 @@
+{
+  "short_name": "SwiftSats",
+  "name": "SwiftSats Direct Crypto Onramp",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#07080d",
+  "theme_color": "#00e676",
+  "display": "standalone",
+  "orientation": "portrait"
+}

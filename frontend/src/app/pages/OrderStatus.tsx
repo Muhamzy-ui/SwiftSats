@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   ExternalLink,
@@ -15,10 +15,11 @@ import { OrderPublic } from '../../shared/types';
 import { StatusBadge } from '../../shared/components/StatusBadge';
 import { formatNaira, formatDateTime, formatSpeed } from '../../shared/utils/formatters';
 import { getCoinLogo } from '../../shared/components/CryptoLogos';
-import { getStoredRecentOrders, LocalTrackedOrder } from '../../shared/utils/orderStorage';
+import { getStoredRecentOrders, getOpenOrder, LocalTrackedOrder } from '../../shared/utils/orderStorage';
 
 export const OrderStatusPage: React.FC = () => {
   const { reference } = useParams<{ reference: string }>();
+  const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(reference || '');
   const [order, setOrder] = useState<OrderPublic | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +39,12 @@ export const OrderStatusPage: React.FC = () => {
     try {
       const res = await ordersApi.lookupOrder(ref.trim());
       if (res.success && res.order) {
+        // Redirect to payment page ONLY when the order is open
+        if (res.order.status === 'AWAITING_PAYMENT' || res.order.status === 'QUOTE_LOCKED') {
+          navigate(`/pay/${res.order.order_reference}`);
+          return;
+        }
+
         setOrder(res.order);
         // Scroll smoothly to top to inspect tracked order
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -68,11 +75,20 @@ export const OrderStatusPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // If no explicit reference in URL, check if there is an open order on this device
+    if (!reference) {
+      const openOrder = getOpenOrder();
+      if (openOrder) {
+        navigate(`/pay/${openOrder.order_reference}`, { replace: true });
+        return;
+      }
+    }
+
     // Load local stored orders from this browser
     setLocalOrders(getStoredRecentOrders());
     // Load network telemetry
     loadRecentTelemetry();
-  }, []);
+  }, [reference, navigate]);
 
   useEffect(() => {
     if (reference) {
@@ -86,7 +102,11 @@ export const OrderStatusPage: React.FC = () => {
     fetchOrder(searchInput);
   };
 
-  const selectOrderToTrack = (ref: string) => {
+  const selectOrderToTrack = (ref: string, orderStatus?: string) => {
+    if (orderStatus === 'AWAITING_PAYMENT' || orderStatus === 'QUOTE_LOCKED') {
+      navigate(`/pay/${ref}`);
+      return;
+    }
     setSearchInput(ref);
     fetchOrder(ref);
   };
@@ -258,36 +278,39 @@ export const OrderStatusPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {localOrders.map((ord) => (
-              <button
-                key={ord.order_reference}
-                type="button"
-                onClick={() => selectOrderToTrack(ord.order_reference)}
-                className={`p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between group ${
-                  searchInput === ord.order_reference
-                    ? 'border-[#00c853] dark:border-[#00e676] bg-emerald-500/10'
-                    : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/40'
-                }`}
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    {getCoinLogo(ord.coin, 16)}
-                    <span className="font-mono font-bold text-xs text-slate-900 dark:text-white">
-                      {ord.order_reference}
+            {localOrders.map((ord) => {
+              const isOpen = ord.status === 'AWAITING_PAYMENT' || ord.status === 'QUOTE_LOCKED';
+              return (
+                <button
+                  key={ord.order_reference}
+                  type="button"
+                  onClick={() => selectOrderToTrack(ord.order_reference, ord.status)}
+                  className={`p-3.5 rounded-2xl border text-left transition-all flex items-center justify-between group ${
+                    searchInput === ord.order_reference
+                      ? 'border-[#00c853] dark:border-[#00e676] bg-emerald-500/10'
+                      : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-white/[0.08] hover:border-emerald-500/40'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      {getCoinLogo(ord.coin, 16)}
+                      <span className="font-mono font-bold text-xs text-slate-900 dark:text-white">
+                        {ord.order_reference}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                      {formatNaira(ord.amount_ngn)} • {ord.crypto_amount} {ord.coin.split('_')[0]}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <StatusBadge status={ord.status} showDot={false} className="text-[10px] py-0.5 px-2" />
+                    <span className="text-[10px] font-bold text-[#00c853] dark:text-[#00e676] group-hover:underline flex items-center">
+                      {isOpen ? 'Pay Now' : 'Track'} <ArrowUpRight className="w-3 h-3 ml-0.5" />
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                    {formatNaira(ord.amount_ngn)} • {ord.crypto_amount} {ord.coin.split('_')[0]}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <StatusBadge status={ord.status} showDot={false} className="text-[10px] py-0.5 px-2" />
-                  <span className="text-[10px] font-bold text-[#00c853] dark:text-[#00e676] group-hover:underline flex items-center">
-                    Track <ArrowUpRight className="w-3 h-3 ml-0.5" />
-                  </span>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -359,7 +382,7 @@ export const OrderStatusPage: React.FC = () => {
               {inProcessOrders.map((procOrder) => (
                 <div
                   key={procOrder.order_reference}
-                  onClick={() => procOrder.order_reference && selectOrderToTrack(procOrder.order_reference)}
+                  onClick={() => procOrder.order_reference && selectOrderToTrack(procOrder.order_reference, procOrder.status)}
                   className="p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] hover:border-[#00c853] dark:hover:border-[#00e676] transition-all cursor-pointer shadow-xs group"
                 >
                   <div className="flex items-center justify-between">

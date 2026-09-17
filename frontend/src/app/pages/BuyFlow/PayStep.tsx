@@ -227,16 +227,16 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="text-center space-y-1">
-        <h2 className="text-xl font-bold tracking-tight text-white">
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
           Transfer to {payment_instructions.bank_name || 'Bank Settlement'}
         </h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-600 dark:text-slate-400">
           Transfer the exact amount below from your bank app. Crypto releases in seconds!
         </p>
       </div>
 
       {/* 15-Minute Countdown Timer & Kobo Salt Warning */}
-      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 text-xs">
+      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900 dark:bg-slate-900/90 border border-emerald-500/30 text-xs shadow-md">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-[#00e676] animate-pulse" />
           <span className="text-slate-300 font-semibold">Rate Locked:</span>
@@ -252,20 +252,20 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
 
       {/* Hero Primary Element: Large, Confident Exact Naira with Kobo Salt */}
       <div className="text-center space-y-1 py-1">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
           Exact Amount to Pay (Include Kobo Decimal)
         </span>
-        <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-[#00e676]">
+        <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-[#00c853] dark:text-[#00e676]">
           {formatNaira(payment_instructions.amount_ngn)}
         </div>
-        <div className="flex items-center justify-center gap-1 text-[11px] text-amber-400 font-medium">
+        <div className="flex items-center justify-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
           <ShieldAlert className="w-3.5 h-3.5" />
           <span>You MUST pay the exact kobo amount shown above</span>
         </div>
       </div>
 
       {/* Dynamic Virtual Bank Settlement Card */}
-      <div className="p-5 rounded-3xl bg-slate-900/80 border border-white/[0.08] space-y-4 shadow-xl">
+      <div className="p-5 rounded-3xl bg-slate-900 dark:bg-slate-900/80 border border-slate-800 dark:border-white/[0.08] space-y-4 shadow-xl">
         {/* Account Number Box */}
         <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between shadow-inner">
           <div>
@@ -305,7 +305,7 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
 
           <div className="flex justify-between items-center py-1 border-t border-slate-800">
             <span className="text-slate-400">Order Reference</span>
-            <span className="font-bold text-indigo-400 font-mono">
+            <span className="font-bold text-[#00e676] font-mono">
               {orderRef}
             </span>
           </div>

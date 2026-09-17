@@ -13,52 +13,44 @@ export const SwiftSatsLogo: React.FC<LogoProps> = ({
 }) => {
   return (
     <div className={`flex items-center gap-2 sm:gap-2.5 select-none ${className}`}>
-      {/* Custom SwiftSats Vector Icon: Dynamic Lightning + Sat Ring Emblem */}
+      {/* Precision Geometric SwiftSats Squircle Emblem */}
       <div
         style={{ width: size, height: size }}
-        className="relative rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#00e676] via-[#00c853] to-[#0091ea] p-[1.5px] sm:p-[2px] shadow-sm shadow-emerald-500/25 shrink-0 group-hover:scale-105 transition-transform duration-200"
+        className="relative rounded-[28%] bg-[#07080d] p-[1.5px] border border-[#00e676]/40 shadow-sm shadow-emerald-500/25 shrink-0 group-hover:scale-105 transition-transform duration-200 flex items-center justify-center overflow-hidden"
       >
-        <div className="w-full h-full rounded-[9px] sm:rounded-[14px] bg-[#07080d] flex items-center justify-center relative overflow-hidden">
-          {/* Subtle Ambient Radial Glow */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/30 to-cyan-500/20" />
+        <svg
+          viewBox="0 0 64 64"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-[78%] h-[78%] relative z-10"
+        >
+          <defs>
+            <linearGradient id="ssLogoGrad" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#00f59b" />
+              <stop offset="50%" stopColor="#00e676" />
+              <stop offset="100%" stopColor="#00c853" />
+            </linearGradient>
+          </defs>
 
-          {/* Stylized Double Lightning & 'S' Emblem SVG */}
-          <svg
-            viewBox="0 0 32 32"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 relative z-10"
-          >
-            <defs>
-              <linearGradient id="ssLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00e676" />
-                <stop offset="50%" stopColor="#00f59b" />
-                <stop offset="100%" stopColor="#00e5ff" />
-              </linearGradient>
-              <filter id="ssGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="1.5" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
+          {/* Top S-arm */}
+          <path
+            d="M44 14H24C19.58 14 16 17.58 16 22C16 26.42 19.58 30 24 30H36"
+            stroke="url(#ssLogoGrad)"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+          />
 
-            {/* Top Bolt Segment forming S-curve */}
-            <path
-              d="M18.5 3L8 15.5H16L13.5 29L24 16.5H16L18.5 3Z"
-              fill="url(#ssLogoGrad)"
-              filter="url(#ssGlow)"
-            />
-            {/* Satoshi Ring Arc */}
-            <circle
-              cx="16"
-              cy="16"
-              r="13.5"
-              stroke="url(#ssLogoGrad)"
-              strokeWidth="1.8"
-              strokeDasharray="4 3"
-              strokeOpacity="0.4"
-            />
-          </svg>
-        </div>
+          {/* Bottom S-arm */}
+          <path
+            d="M28 34H40C44.42 34 48 37.58 48 42C48 46.42 44.42 50 40 50H20"
+            stroke="url(#ssLogoGrad)"
+            strokeWidth="5.5"
+            strokeLinecap="round"
+          />
+
+          {/* Core Lightning Velocity Slice */}
+          <polygon points="37,12 26,28 38,28 27,52 40,30 30,30" fill="#ffffff" />
+        </svg>
       </div>
 
       {/* Brand Wordmark Typography - Balanced and Proportional on Mobile */}

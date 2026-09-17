@@ -2,6 +2,7 @@ import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { OrderStatusPage } from './pages/OrderStatus';
+import { PayPage } from './pages/PayPage';
 import { PinEntryPage } from './pages/PinEntry';
 import { Header } from '../shared/components/Header';
 import { Footer } from '../shared/components/Footer';
@@ -36,6 +37,8 @@ export const AppRoutes: React.FC = () => {
                 <Routes>
                   <Route index element={<Home />} />
                   <Route path="buy" element={<Home />} />
+                  <Route path="pay" element={<PayPage />} />
+                  <Route path="pay/:reference" element={<PayPage />} />
                   <Route path="track" element={<OrderStatusPage />} />
                   <Route path="track/:reference" element={<OrderStatusPage />} />
                   <Route path="orders/:reference" element={<OrderStatusPage />} />

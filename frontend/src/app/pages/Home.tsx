@@ -1,11 +1,37 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BuyWizard } from './BuyFlow/BuyWizard';
 import { ShieldCheck, Zap, Lock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getOpenOrder, LocalTrackedOrder } from '../../shared/utils/orderStorage';
 
 export const Home: React.FC = () => {
+  const [openOrder, setOpenOrder] = useState<LocalTrackedOrder | null>(null);
+
+  useEffect(() => {
+    setOpenOrder(getOpenOrder());
+  }, []);
+
   return (
     <div className="space-y-4 sm:space-y-6 py-2 sm:py-6 max-w-xl mx-auto px-3 sm:px-4">
+      {/* Open Order Resumption Banner */}
+      {openOrder && (
+        <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-500/40 flex items-center justify-between text-xs animate-in fade-in shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#00c853] dark:bg-[#00e676] animate-ping" />
+            <span className="font-bold text-slate-900 dark:text-white">
+              Open Order: <span className="font-mono text-[#00c853] dark:text-[#00e676]">{openOrder.order_reference}</span>
+            </span>
+          </div>
+          <Link
+            to={`/pay/${openOrder.order_reference}`}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs flex items-center gap-1 shadow-sm shadow-emerald-500/20 active:scale-95 transition-all"
+          >
+            <span>Complete Payment</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
+
       {/* 1. Sleek, Proportionate Hero Header */}
       <div className="text-center space-y-1.5 max-w-lg mx-auto">
         <h1 className="text-2xl sm:text-3xl lg:text-[38px] font-extrabold tracking-tight text-slate-950 dark:text-white leading-[1.2]">
