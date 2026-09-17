@@ -13,6 +13,7 @@ from .serializers import (
     CreateQuoteRequestSerializer,
     LockQuoteAndSubmitWalletSerializer,
     PublicOrderDetailSerializer,
+    PublicRecentOrderSerializer,
 )
 from .state_machine import OrderStateMachine
 from apps.exchange.rates import RateService
@@ -238,4 +239,38 @@ class ValidateWalletPreflightView(APIView):
             "message": err_msg or "Valid wallet address format.",
             "coin": coin,
             "network": COIN_METADATA[coin]["network"],
+        })
+
+
+class RecentTelemetryOrdersView(APIView):
+    """
+    Public telemetry endpoint returning recent platform activity for the order tracking page:
+    - Orders in process (AWAITING_PAYMENT, VERIFYING, PAYOUT_PROCESSING, QUOTE_LOCKED)
+    - Orders once completed (COMPLETED)
+    Zero sensitive data: masked wallet address, zero IP, zero bank credentials.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        in_process_qs = Order.objects.filter(
+            status__in=[
+                OrderStatus.QUOTE_LOCKED,
+                OrderStatus.AWAITING_PAYMENT,
+                OrderStatus.VERIFYING,
+                OrderStatus.PAYMENT_CONFIRMED,
+                OrderStatus.PAYOUT_PROCESSING,
+            ]
+        ).order_by("-created_at")[:8]
+
+        completed_qs = Order.objects.filter(
+            status=OrderStatus.COMPLETED
+        ).order_by("-completed_at", "-created_at")[:10]
+
+        in_process_data = PublicRecentOrderSerializer(in_process_qs, many=True).data
+        completed_data = PublicRecentOrderSerializer(completed_qs, many=True).data
+
+        return Response({
+            "success": True,
+            "in_process": in_process_data,
+            "completed": completed_data,
         })

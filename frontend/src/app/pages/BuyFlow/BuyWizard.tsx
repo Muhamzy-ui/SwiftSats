@@ -5,6 +5,7 @@ import { WalletStep } from './WalletStep';
 import { PayStep } from './PayStep';
 import { LiveRate, CoinCode, QuoteCreatedResponse, OrderLockedResponse } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
+import { storeRecentOrder, updateStoredOrderStatus } from '../../../shared/utils/orderStorage';
 
 export type Step = 'COIN' | 'AMOUNT' | 'WALLET' | 'PAY';
 
@@ -335,6 +336,14 @@ export const BuyWizard: React.FC = () => {
         <AmountStep
           selectedRate={selectedRate}
           onQuoteCreated={(q) => {
+            storeRecentOrder({
+              order_reference: q.order_reference,
+              coin: q.coin,
+              amount_ngn: q.fiat_amount_ngn,
+              crypto_amount: q.crypto_amount,
+              status: 'QUOTE_LOCKED',
+              timestamp: Date.now(),
+            });
             setQuote(q);
             setStep('WALLET');
           }}
@@ -346,6 +355,14 @@ export const BuyWizard: React.FC = () => {
         <WalletStep
           quote={quote}
           onOrderLocked={(ord) => {
+            storeRecentOrder({
+              order_reference: ord.order.order_reference,
+              coin: ord.order.coin,
+              amount_ngn: ord.order.fiat_amount_expected || ord.order.fiat_amount_ngn,
+              crypto_amount: ord.order.crypto_amount,
+              status: ord.order.status || 'AWAITING_PAYMENT',
+              timestamp: Date.now(),
+            });
             setOrderLocked(ord);
             setStep('PAY');
           }}
@@ -356,8 +373,13 @@ export const BuyWizard: React.FC = () => {
       {step === 'PAY' && orderLocked && (
         <PayStep
           orderData={orderLocked}
-          onSuccess={(_comp) => {
-            // Completed
+          onSuccess={(comp) => {
+            updateStoredOrderStatus(
+              comp.order_reference,
+              'COMPLETED',
+              comp.tx_hash || undefined,
+              comp.explorer_url || undefined
+            );
           }}
         />
       )}

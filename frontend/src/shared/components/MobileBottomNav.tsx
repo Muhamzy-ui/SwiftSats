@@ -32,14 +32,14 @@ export const MobileBottomNav: React.FC = () => {
               to={item.to}
               className={`flex flex-col items-center gap-1 transition-all py-1 px-3 rounded-2xl ${
                 isActive
-                  ? 'text-slate-900 dark:text-white font-bold'
+                  ? 'text-[#00c853] dark:text-[#00e676] font-bold'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300 font-medium'
               }`}
             >
               <div
                 className={`w-9 h-8 rounded-full flex items-center justify-center transition-all ${
                   isActive
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-indigo-500/30'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/25'
                     : ''
                 }`}
               >

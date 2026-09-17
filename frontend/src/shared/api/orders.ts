@@ -84,4 +84,17 @@ export const ordersApi = {
     });
     return res.json();
   },
+
+  /** Fetch live public telemetry of recent platform orders (in-process and completed) */
+  async getRecentTelemetryOrders(): Promise<{
+    success: boolean;
+    in_process: Partial<OrderPublic>[];
+    completed: Partial<OrderPublic>[];
+  }> {
+    return request<{
+      success: boolean;
+      in_process: Partial<OrderPublic>[];
+      completed: Partial<OrderPublic>[];
+    }>('/api/v1/orders/recent/');
+  },
 };

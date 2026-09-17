@@ -99,7 +99,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
         <span className={`text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5 ${
           timeLeft <= 20
             ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40 animate-pulse'
-            : 'bg-indigo-950/80 text-indigo-300 border border-indigo-500/30'
+            : 'bg-emerald-950/80 text-[#00e676] border border-emerald-500/30'
         }`}>
           <Clock className="w-3.5 h-3.5" />
           <span>Rate Locked: {timeLeft}s</span>
@@ -138,7 +138,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
             value={walletAddress}
             onChange={handleWalletChange}
             placeholder={`Paste your ${quote.network} wallet address`}
-            className={`w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+            className={`w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border text-xs font-mono text-white focus:outline-none focus:ring-2 focus:ring-[#00e676] transition-all ${
               validationError
                 ? 'border-rose-400 ring-1 ring-rose-400'
                 : 'border-slate-800'
@@ -161,7 +161,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@gmail.com for receipt"
-            className="w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="w-full px-4 py-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#00e676]"
           />
         </div>
       </div>
@@ -176,7 +176,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
       <button
         type="submit"
         disabled={isValidating || timeLeft === 0}
-        className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 active:scale-[0.99] disabled:opacity-50 text-white font-black text-sm shadow-lg shadow-purple-950/50 transition-all flex items-center justify-center gap-2"
+        className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-[0.99] disabled:opacity-50 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
       >
         <span>{isValidating ? 'Generating Virtual Account...' : 'Get Virtual Bank Account'}</span>
         <ArrowRight className="w-4 h-4" />

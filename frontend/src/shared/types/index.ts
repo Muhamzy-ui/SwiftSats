@@ -95,6 +95,8 @@ export interface OrderPublic {
   coin: CoinCode;
   network: BlockchainNetwork;
   fiat_amount_ngn: string;
+  fiat_amount_expected?: string;
+  salt_kobo_value?: number;
   crypto_amount: string;
   quote_rate: string;
   service_fee_ngn: string;

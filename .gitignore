@@ -45,6 +45,7 @@ yarn-error.log*
 dist/
 dist-ssr/
 *.local
+*.tsbuildinfo
 
 # IDE
 .idea/

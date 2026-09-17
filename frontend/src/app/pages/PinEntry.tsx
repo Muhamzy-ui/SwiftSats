@@ -66,7 +66,7 @@ export const PinEntryPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#07080d] text-white flex flex-col justify-between pt-6 pb-10 px-6 max-w-sm mx-auto select-none relative overflow-hidden font-sans">
       {/* Background Ambient Glows */}
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-indigo-600/20 blur-[90px] pointer-events-none" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/15 blur-[90px] pointer-events-none" />
 
       {/* Top Bar: "Log out" left, "Help" right */}
       <div className="flex items-center justify-between w-full pt-2 relative z-10">
@@ -82,7 +82,7 @@ export const PinEntryPage: React.FC = () => {
           onClick={() => alert('SwiftSats Support: WhatsApp +234 800 SWIFTSATS or support@swiftsats.com')}
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-white/[0.08] hover:bg-slate-800 text-xs font-semibold text-slate-200 transition-colors shadow-sm"
         >
-          <Headphones className="w-3.5 h-3.5 text-indigo-400" />
+          <Headphones className="w-3.5 h-3.5 text-[#00e676]" />
           <span>Help</span>
         </button>
       </div>
@@ -90,7 +90,7 @@ export const PinEntryPage: React.FC = () => {
       {/* Center Section: Avatar + Heading + PIN Inputs */}
       <div className="flex flex-col items-center text-center mt-6 mb-2 space-y-4 relative z-10">
         {/* Centered Circular Avatar Placeholder Icon */}
-        <div className="w-16 h-16 rounded-full bg-slate-900 border border-white/[0.08] flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-950/40">
+        <div className="w-16 h-16 rounded-full bg-slate-900 border border-white/[0.08] flex items-center justify-center text-[#00e676] shadow-lg shadow-emerald-950/40">
           <svg
             className="w-8 h-8"
             fill="currentColor"
@@ -122,16 +122,16 @@ export const PinEntryPage: React.FC = () => {
                   isSuccess
                     ? 'border-emerald-500 bg-emerald-950/40 text-[#00e676]'
                     : isFilled
-                    ? 'border-indigo-500/80 bg-slate-900/90 shadow-sm shadow-indigo-950/50'
+                    ? 'border-emerald-500/80 bg-slate-900/90 shadow-sm shadow-emerald-950/50'
                     : isCurrent
-                    ? 'border-indigo-400 ring-2 ring-indigo-500/30 bg-slate-950'
+                    ? 'border-[#00e676] ring-2 ring-emerald-500/30 bg-slate-950'
                     : 'border-white/[0.08] bg-slate-950/60'
                 }`}
               >
                 {isSuccess ? (
                   <Check className="w-5 h-5 stroke-[3] text-[#00e676] animate-in zoom-in" />
                 ) : isFilled ? (
-                  <span className="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-400 animate-in zoom-in-50 duration-100" />
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#00e676] animate-in zoom-in-50 duration-100" />
                 ) : null}
               </div>
             );
@@ -164,7 +164,7 @@ export const PinEntryPage: React.FC = () => {
             type="button"
             onClick={handleBiometricAuth}
             disabled={biometricLoading}
-            className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-indigo-400 hover:bg-slate-900 active:scale-95 transition-all focus:outline-none"
+            className="w-16 h-16 mx-auto rounded-full flex items-center justify-center text-[#00e676] hover:bg-slate-900 active:scale-95 transition-all focus:outline-none"
             title={biometricAvailable ? 'Face ID / Touch ID Authenticator' : 'Biometric Auth (Simulated)'}
           >
             <ScanFace className={`w-7 h-7 stroke-[1.8] ${biometricLoading ? 'animate-pulse' : ''}`} />

@@ -111,3 +111,26 @@ class PublicOrderDetailSerializer(serializers.ModelSerializer):
             return 0
         diff = (obj.quote_expires_at - timezone.now()).total_seconds()
         return max(0, int(diff))
+
+
+class PublicRecentOrderSerializer(serializers.ModelSerializer):
+    """Sanitized representation of recent orders for public tracking telemetry."""
+    masked_wallet_address = serializers.CharField(read_only=True)
+    explorer_url = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            "order_reference",
+            "coin",
+            "network",
+            "fiat_amount_ngn",
+            "crypto_amount",
+            "status",
+            "speed_metric_ms",
+            "tx_hash",
+            "explorer_url",
+            "masked_wallet_address",
+            "created_at",
+            "completed_at",
+        ]

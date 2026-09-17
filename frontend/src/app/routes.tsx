@@ -16,9 +16,9 @@ export const AppRoutes: React.FC = () => {
       {/* Floating Ambient Glow Orbs - Only rendered in Dark Mode */}
       {theme === 'dark' && (
         <>
-          <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/15 blur-[120px] pointer-events-none animate-ambient-glow" />
-          <div className="fixed bottom-[-10%] right-[-10%] w-[550px] h-[550px] rounded-full bg-purple-600/15 blur-[140px] pointer-events-none animate-ambient-glow" style={{ animationDelay: '-4s' }} />
-          <div className="fixed top-[40%] right-[-5%] w-[350px] h-[350px] rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none animate-ambient-glow" style={{ animationDelay: '-2s' }} />
+          <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-emerald-500/10 blur-[130px] pointer-events-none animate-ambient-glow" />
+          <div className="fixed bottom-[-10%] right-[-10%] w-[550px] h-[550px] rounded-full bg-teal-500/10 blur-[140px] pointer-events-none animate-ambient-glow" style={{ animationDelay: '-4s' }} />
+          <div className="fixed top-[40%] right-[-5%] w-[350px] h-[350px] rounded-full bg-[#00e676]/5 blur-[110px] pointer-events-none animate-ambient-glow" style={{ animationDelay: '-2s' }} />
         </>
       )}
 
