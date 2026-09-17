@@ -1,25 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Premium Squircle Background -->
+  <!-- Obsidian Black Squircle Background -->
   <rect width="64" height="64" rx="16" fill="#07080d"/>
-  <rect x="1" y="1" width="62" height="62" rx="15" stroke="#00e676" stroke-width="1.5" stroke-opacity="0.35"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="14.5" stroke="#00e676" stroke-width="3"/>
 
-  <defs>
-    <linearGradient id="ssBolt" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00f59b"/>
-      <stop offset="60%" stop-color="#00e676"/>
-      <stop offset="100%" stop-color="#00c853"/>
-    </linearGradient>
-  </defs>
-
-  <!-- Precision SwiftSats "S" Chevron Lightning Bolt -->
-  <!-- Top S-arm -->
-  <path d="M44 14H24C19.58 14 16 17.58 16 22C16 26.42 19.58 30 24 30H36" 
-        stroke="url(#ssBolt)" stroke-width="5.5" stroke-linecap="round"/>
-
-  <!-- Bottom S-arm -->
-  <path d="M28 34H40C44.42 34 48 37.58 48 42C48 46.42 44.42 50 40 50H20" 
-        stroke="url(#ssBolt)" stroke-width="5.5" stroke-linecap="round"/>
-
-  <!-- Core Lightning Velocity Slice -->
-  <polygon points="37,12 26,28 38,28 27,52 40,30 30,30" fill="#ffffff"/>
+  <!-- Bold High-Visibility Solid Emerald Lightning Emblem -->
+  <path d="M37 6L14 34H30L24 58L50 28H34L39 6Z" fill="#00e676"/>
+  <!-- Crisp Pure White Core Highlight -->
+  <path d="M37 6L26 34H32L24 58L31 34H22L37 6Z" fill="#ffffff" opacity="0.9"/>
 </svg>

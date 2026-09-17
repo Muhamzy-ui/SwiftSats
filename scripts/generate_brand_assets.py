@@ -99,79 +99,39 @@ def render_swiftsats_icon(size):
             bg_g = int(bg_g * (1 - b_alpha) + 230 * b_alpha)
             bg_b = int(bg_b * (1 - b_alpha) + 118 * b_alpha)
 
-        # Draw the SwiftSats Monogram:
+        # Draw the Bold SwiftSats High-Visibility Lightning Emblem
         # Normalized coordinates in [0, 64]
         nx = (x + 0.5) / scale
         ny = (y + 0.5) / scale
 
-        # Color gradient: #00f59b (top) to #00e676 (mid) to #00c853 (bottom)
-        t = max(0.0, min(1.0, (ny - 12.0) / 40.0))
-        g_r = int(0 * (1 - t) + 0 * t)
-        g_g = int(245 * (1 - t) + 200 * t)
-        g_b = int(155 * (1 - t) + 83 * t)
-
-        is_emblem = False
-        is_core_bolt = False
-
-        # 1. Top S-arm curve: stroke from (44, 15) to (24, 15), curved down to (17, 23), to (24, 30), to (34, 30)
-        # We test distance to segments
-        def pt_seg_dist(px, py, x1, y1, x2, y2):
-            dx = x2 - x1
-            dy = y2 - y1
-            if dx == 0 and dy == 0:
-                return math.hypot(px - x1, py - y1)
-            u = max(0.0, min(1.0, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
-            return math.hypot(px - (x1 + u * dx), py - (y1 + u * dy))
-
-        d1 = pt_seg_dist(nx, ny, 24, 16, 44, 16)
-        d2 = pt_seg_dist(nx, ny, 20, 22, 24, 16)
-        d3 = pt_seg_dist(nx, ny, 18, 23, 22, 29)
-        d4 = pt_seg_dist(nx, ny, 22, 29, 36, 29)
-        top_d = min(d1, d2, d3, d4)
-
-        # 2. Bottom S-arm curve: stroke from (28, 35) to (42, 35), curved to (46, 41), to (40, 48), to (20, 48)
-        d5 = pt_seg_dist(nx, ny, 28, 35, 42, 35)
-        d6 = pt_seg_dist(nx, ny, 42, 35, 46, 41)
-        d7 = pt_seg_dist(nx, ny, 46, 41, 42, 48)
-        d8 = pt_seg_dist(nx, ny, 42, 48, 20, 48)
-        bot_d = min(d5, d6, d7, d8)
-
-        min_arm_dist = min(top_d, bot_d)
-
-        # Arm thickness: radius 3.0 (width 6.0)
-        if min_arm_dist < 3.2:
-            is_emblem = True
-
-        # 3. Core High-Velocity Lightning Strike Polygon:
-        # Points: (37, 12), (25, 29), (37, 29), (27, 52), (39, 31), (29, 31)
-        # Point-in-polygon test:
-        poly = [(37, 12), (25, 29), (37, 29), (27, 52), (39, 31), (29, 31)]
-        inside = False
-        j = len(poly) - 1
-        for i in range(len(poly)):
-            xi, yi = poly[i]
-            xj, yj = poly[j]
+        # 1. Primary Bold Lightning Polygon
+        poly_main = [(37, 6), (14, 34), (30, 34), (24, 58), (50, 28), (34, 28), (39, 6)]
+        inside_main = False
+        j = len(poly_main) - 1
+        for i in range(len(poly_main)):
+            xi, yi = poly_main[i]
+            xj, yj = poly_main[j]
             if ((yi > ny) != (yj > ny)) and (nx < (xj - xi) * (ny - yi) / (yj - yi) + xi):
-                inside = not inside
+                inside_main = not inside_main
             j = i
 
-        if inside:
-            is_core_bolt = True
+        # 2. Crisp Pure White Core Highlight Polygon
+        poly_core = [(37, 6), (26, 34), (32, 34), (24, 58), (31, 34), (22, 34), (37, 6)]
+        inside_core = False
+        j = len(poly_core) - 1
+        for i in range(len(poly_core)):
+            xi, yi = poly_core[i]
+            xj, yj = poly_core[j]
+            if ((yi > ny) != (yj > ny)) and (nx < (xj - xi) * (ny - yi) / (yj - yi) + xi):
+                inside_core = not inside_core
+            j = i
 
-        if is_core_bolt:
-            # Brilliant white-mint lightning core
-            fg_r, fg_g, fg_b = 255, 255, 255
-            # Composite with glow
-            fin_r = int(bg_r * 0.1 + fg_r * 0.9)
-            fin_g = int(bg_g * 0.1 + fg_g * 0.9)
-            fin_b = int(bg_b * 0.1 + fg_b * 0.9)
-            return (fin_r, fin_g, fin_b, int(outer_alpha * 255))
-        elif is_emblem:
-            arm_alpha = max(0.0, min(1.0, (3.2 - min_arm_dist) / 0.8))
-            fin_r = int(bg_r * (1 - arm_alpha) + g_r * arm_alpha)
-            fin_g = int(bg_g * (1 - arm_alpha) + g_g * arm_alpha)
-            fin_b = int(bg_b * (1 - arm_alpha) + g_b * arm_alpha)
-            return (fin_r, fin_g, fin_b, int(outer_alpha * 255))
+        if inside_core:
+            # Pure white velocity highlight
+            return (255, 255, 255, int(outer_alpha * 255))
+        elif inside_main:
+            # Luminous vibrant emerald green (#00e676)
+            return (0, 230, 118, int(outer_alpha * 255))
         else:
             return (bg_r, bg_g, bg_b, int(outer_alpha * 255))
 

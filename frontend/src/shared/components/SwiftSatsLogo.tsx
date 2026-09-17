@@ -13,51 +13,42 @@ export const SwiftSatsLogo: React.FC<LogoProps> = ({
 }) => {
   return (
     <div className={`flex items-center gap-2 sm:gap-2.5 select-none ${className}`}>
-      {/* Precision Geometric SwiftSats Squircle Emblem */}
+      {/* High-Impact SwiftSats Radiant Emerald Emblem */}
       <div
         style={{ width: size, height: size }}
-        className="relative rounded-[28%] bg-[#07080d] p-[1.5px] border border-[#00e676]/40 shadow-sm shadow-emerald-500/25 shrink-0 group-hover:scale-105 transition-transform duration-200 flex items-center justify-center overflow-hidden"
+        className="relative rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#00f59b] via-[#00e676] to-[#00c853] p-[2px] shadow-md shadow-emerald-500/25 shrink-0 group-hover:scale-105 transition-transform duration-200 flex items-center justify-center overflow-hidden"
       >
-        <svg
-          viewBox="0 0 64 64"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="w-[78%] h-[78%] relative z-10"
-        >
-          <defs>
-            <linearGradient id="ssLogoGrad" x1="12" y1="8" x2="52" y2="56" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#00f59b" />
-              <stop offset="50%" stopColor="#00e676" />
-              <stop offset="100%" stopColor="#00c853" />
-            </linearGradient>
-          </defs>
+        <div className="w-full h-full rounded-[9px] sm:rounded-[12px] bg-[#07080d] flex items-center justify-center relative overflow-hidden">
+          {/* Subtle Ambient Radial Glow */}
+          <div className="absolute inset-0 bg-emerald-500/20" />
 
-          {/* Top S-arm */}
-          <path
-            d="M44 14H24C19.58 14 16 17.58 16 22C16 26.42 19.58 30 24 30H36"
-            stroke="url(#ssLogoGrad)"
-            strokeWidth="5.5"
-            strokeLinecap="round"
-          />
-
-          {/* Bottom S-arm */}
-          <path
-            d="M28 34H40C44.42 34 48 37.58 48 42C48 46.42 44.42 50 40 50H20"
-            stroke="url(#ssLogoGrad)"
-            strokeWidth="5.5"
-            strokeLinecap="round"
-          />
-
-          {/* Core Lightning Velocity Slice */}
-          <polygon points="37,12 26,28 38,28 27,52 40,30 30,30" fill="#ffffff" />
-        </svg>
+          {/* Bold, Razor-Sharp High-Velocity Lightning Emblem */}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-[74%] h-[74%] relative z-10 drop-shadow-[0_0_8px_rgba(0,230,118,0.75)]"
+          >
+            {/* Primary Solid Emerald Bolt */}
+            <path
+              d="M14.5 1.5L3.5 12.5H11.5L8.5 22.5L20.5 10.5H12.5L15 1.5H14.5Z"
+              fill="#00e676"
+            />
+            {/* High-Contrast Crisp Pure White Velocity Core */}
+            <path
+              d="M14.5 1.5L8.5 12.5H12L8.5 22.5L11.5 12.5H7.5L14.5 1.5Z"
+              fill="#ffffff"
+              opacity="0.95"
+            />
+          </svg>
+        </div>
       </div>
 
       {/* Brand Wordmark Typography - Balanced and Proportional on Mobile */}
       {showText && (
         <div className="flex flex-col">
           <span className="font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white leading-none">
-            Swift<span className="text-[#00e676]">Sats</span>
+            Swift<span className="text-[#00c853] dark:text-[#00e676]">Sats</span>
           </span>
           <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase leading-tight mt-0.5">
             Instant Onramp

@@ -1,44 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <!-- Obsidian Black Rounded Squircle Backdrop -->
   <rect width="512" height="512" rx="128" fill="#07080d"/>
-  <rect x="8" y="8" width="496" height="496" rx="120" stroke="url(#borderGrad)" stroke-width="6" stroke-opacity="0.4"/>
-
-  <defs>
-    <linearGradient id="primaryBolt" x1="96" y1="64" x2="416" y2="448" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00f59b"/>
-      <stop offset="50%" stop-color="#00e676"/>
-      <stop offset="100%" stop-color="#00c853"/>
-    </linearGradient>
-    <linearGradient id="coreSlice" x1="200" y1="100" x2="320" y2="410" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="70%" stop-color="#f0fdf4"/>
-      <stop offset="100%" stop-color="#00e676"/>
-    </linearGradient>
-    <linearGradient id="borderGrad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00e676"/>
-      <stop offset="100%" stop-color="#004d26"/>
-    </linearGradient>
-    <filter id="emeraldGlow" x="0" y="0" width="512" height="512" filterUnits="userSpaceOnUse">
-      <feGaussianBlur stdDeviation="24" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
-  </defs>
+  <rect x="12" y="12" width="488" height="488" rx="116" stroke="#00e676" stroke-width="24" stroke-opacity="0.9"/>
 
   <!-- Ambient Glow Center -->
-  <circle cx="256" cy="256" r="140" fill="#00e676" opacity="0.16"/>
+  <circle cx="256" cy="256" r="160" fill="#00e676" opacity="0.2"/>
 
-  <!-- Top Geometric S-sweep -->
-  <path d="M352 120H192C156.65 120 128 148.65 128 184C128 219.35 156.65 248 192 248H288" 
-        stroke="url(#primaryBolt)" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- Bottom Geometric S-sweep -->
-  <path d="M224 280H320C355.35 280 384 308.65 384 344C384 379.35 355.35 408 320 408H160" 
-        stroke="url(#primaryBolt)" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- Central Sharp Lightning Vertex Core -->
-  <polygon points="296,96 208,232 304,232 216,424 320,250 240,250" fill="url(#coreSlice)"/>
-
-  <!-- Satoshi Accent Facet -->
-  <circle cx="372" cy="120" r="10" fill="#00f59b"/>
-  <circle cx="140" cy="408" r="10" fill="#00e676"/>
+  <!-- Bold High-Visibility Solid Emerald Lightning Emblem -->
+  <path d="M296 48L112 272H240L192 464L400 224H272L312 48Z" fill="#00e676"/>
+  <!-- Crisp Pure White Core Highlight -->
+  <path d="M296 48L208 272H256L192 464L248 272H176L296 48Z" fill="#ffffff" opacity="0.9"/>
 </svg>

@@ -12,8 +12,8 @@ export const Header: React.FC = () => {
       <div className="max-w-5xl mx-auto px-3.5 sm:px-6 h-13 sm:h-15 py-2 flex items-center justify-between">
         {/* Responsive SwiftSats Brand Logo */}
         <Link to="/" className="group flex items-center">
-          <SwiftSatsLogo size={26} showText={true} className="sm:hidden" />
-          <SwiftSatsLogo size={32} showText={true} className="hidden sm:flex" />
+          <SwiftSatsLogo size={32} showText={true} className="sm:hidden" />
+          <SwiftSatsLogo size={38} showText={true} className="hidden sm:flex" />
         </Link>
 
         {/* Right Action Bar */}

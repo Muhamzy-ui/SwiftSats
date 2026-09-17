@@ -90,9 +90,30 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
   }, [orderRef, currentOrder.status, onSuccess]);
 
   const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => fallbackCopyText(text));
+    } else {
+      fallbackCopyText(text);
+    }
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const fallbackCopyText = (text: string) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    } catch (err) {
+      console.error('Copy fallback failed', err);
+    }
   };
 
   // Client-side image compression before upload (keeps file < 100KB)
@@ -270,14 +291,37 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
         </div>
       </div>
 
-      {/* Hero Primary Element: Large, Confident Exact Naira with Kobo Salt */}
-      <div className="text-center space-y-1 py-1">
+      {/* Hero Primary Element: Large, Confident Exact Naira with Kobo Salt & Copy Button */}
+      <div className="text-center space-y-2 py-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
           Exact Amount to Pay (Include Kobo Decimal)
         </span>
-        <div className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-[#00c853] dark:text-[#00e676]">
-          {formatNaira(payment_instructions.amount_ngn)}
+
+        {/* Interactive Copy Amount Box */}
+        <div className="inline-flex items-center justify-center gap-2.5 p-2 px-3.5 sm:px-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-500/40 shadow-xs">
+          <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono tracking-tight text-[#00c853] dark:text-[#00e676]">
+            {formatNaira(payment_instructions.amount_ngn)}
+          </span>
+          <button
+            type="button"
+            onClick={() => copyToClipboard(parseFloat(payment_instructions.amount_ngn || '0').toFixed(2), 'amount')}
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-[#00c853] hover:bg-[#00b048] dark:bg-[#00e676] dark:hover:bg-[#00c853] text-slate-950 font-black text-xs transition-all shadow-sm shadow-emerald-500/25 active:scale-95 flex items-center gap-1.5 shrink-0"
+            title="Copy exact amount for bank transfer"
+          >
+            {copiedField === 'amount' ? (
+              <>
+                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Copy Amount</span>
+              </>
+            )}
+          </button>
         </div>
+
         <div className="flex items-center justify-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
           <ShieldAlert className="w-3.5 h-3.5" />
           <span>You MUST pay the exact kobo amount shown above</span>
@@ -314,6 +358,24 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess }) => {
             <span className="font-bold text-white text-sm">
               {payment_instructions.bank_name || 'Paystack-Titan / Wema'}
             </span>
+          </div>
+
+          <div className="flex justify-between items-center py-1 border-t border-slate-800">
+            <span className="text-slate-400">Exact Amount</span>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-[#00e676] font-mono text-sm">
+                {formatNaira(payment_instructions.amount_ngn)}
+              </span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(parseFloat(payment_instructions.amount_ngn || '0').toFixed(2), 'amount_row')}
+                className="p-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-[10px] font-bold flex items-center gap-1"
+                title="Copy exact amount"
+              >
+                {copiedField === 'amount_row' ? <Check className="w-3.5 h-3.5 text-[#00e676]" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedField === 'amount_row' ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
           </div>
 
           <div className="flex justify-between items-center py-1 border-t border-slate-800">
