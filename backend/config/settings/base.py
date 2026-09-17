@@ -175,9 +175,9 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Quidax Integration Settings
-QUIDAX_API_KEY = env.str("QUIDAX_API_KEY", default="h7TY_xQ0eKNZDO-vQ11gE028CXaaZLi4")
-QUIDAX_SECRET_KEY = env.str("QUIDAX_SECRET_KEY", default="XsXWyGRZxkosOgpd5OhfsXBAXHvXClaHfJrU9UV0aIc")
-QUIDAX_BASE_URL = env.str("QUIDAX_BASE_URL", default="https://app.quidax.com/api/v1")
+QUIDAX_API_KEY = env.str("QUIDAX_API_KEY", default="N01w1Hp-xN0rWxR8gtuiPTwi1uWLcCM2")
+QUIDAX_SECRET_KEY = env.str("QUIDAX_SECRET_KEY", default="xigBo_MYVKN-8PeECOxl-Hxurgk_yrrUWPpVsRPSmyo")
+QUIDAX_BASE_URL = env.str("QUIDAX_BASE_URL", default="https://openapi.quidax.io/exchange-open-api/api/v1")
 QUIDAX_RATE_SPREAD_PERCENTAGE = Decimal(env.str("QUIDAX_RATE_SPREAD_PERCENTAGE", default="1.5"))
 
 # Paystack Integration Settings

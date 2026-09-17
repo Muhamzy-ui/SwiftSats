@@ -51,7 +51,7 @@ class QuidaxClient:
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         self.api_key = api_key or getattr(settings, "QUIDAX_API_KEY", "")
-        self.base_url = (base_url or getattr(settings, "QUIDAX_BASE_URL", "https://app.quidax.com/api/v1")).rstrip("/")
+        self.base_url = (base_url or getattr(settings, "QUIDAX_BASE_URL", "https://openapi.quidax.io/exchange-open-api/api/v1")).rstrip("/")
         self.is_live = bool(self.api_key and not self.api_key.startswith("sec_example"))
 
         # Configure resilient session with retries for idempotent/safe GET requests
