@@ -17,6 +17,7 @@ from apps.orders.models import Order
 from apps.orders.state_machine import OrderStateMachine
 from apps.orders.tasks import process_crypto_payout
 from core.constants import OrderStatus, AuditActor
+from core.utils import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ class PaystackWebhookView(APIView):
                 return Response({"status": "underpayment_recorded"}, status=status.HTTP_200_OK)
 
             # 5. Atomically transition to PAYMENT_CONFIRMED
-            client_ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR"))
+            client_ip = get_client_ip(request)
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.PAYMENT_CONFIRMED,

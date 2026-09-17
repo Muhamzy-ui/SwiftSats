@@ -22,6 +22,7 @@ import secrets
 from apps.admin_api.models import PlatformSettings
 from core.constants import OrderStatus, AuditActor, COIN_METADATA
 from core.validators import validate_wallet_for_coin
+from core.utils import get_client_ip
 import logging
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ class CreateQuoteView(APIView):
         salt_kobo = secrets.choice(available_salts)
         fiat_amount_expected = Decimal(str(base_fiat)) + (Decimal(str(salt_kobo)) / Decimal("100.0"))
 
-        client_ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR"))
+        client_ip = get_client_ip(request)
         platform_settings = PlatformSettings.get_settings()
         assigned_acc = platform_settings.get_next_settlement_account()
 
@@ -151,7 +152,7 @@ class LockAndGeneratePaymentView(APIView):
                 logger.error("Failed to generate Paystack virtual account for %s: %s", order.order_reference, exc)
 
         # Transition Order to AWAITING_PAYMENT
-        client_ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR"))
+        client_ip = get_client_ip(request)
         updated_order = OrderStateMachine.transition_to(
             order=order,
             target_state=OrderStatus.AWAITING_PAYMENT,
