@@ -11,7 +11,7 @@ interface AmountStepProps {
   onBack: () => void;
 }
 
-const PRESET_DOLLAR_VALUES = [5, 10, 20, 50, 100, 200, 250, 500, 750, 1000, 2000];
+const PRESET_DOLLAR_VALUES = [2, 3, 5, 10, 20, 50, 100, 200, 500, 1000];
 
 export const AmountStep: React.FC<AmountStepProps> = ({
   selectedRate,
@@ -19,7 +19,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   onBack,
 }) => {
   const [currencyMode, setCurrencyMode] = useState<'USD' | 'CRYPTO'>('USD');
-  const [dollarInput, setDollarInput] = useState<string>('5');
+  const [dollarInput, setDollarInput] = useState<string>('2');
   const [cryptoInput, setCryptoInput] = useState<string>('');
   const [isLocking, setIsLocking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -79,8 +79,9 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   };
 
   const handleProceed = async () => {
-    if (dollarAmount < 5) {
-      setErrorMsg('Minimum deposit is $5.00 USD');
+    const minUsd = parseFloat(selectedRate.min_amount_usd || '1.00');
+    if (dollarAmount < minUsd) {
+      setErrorMsg(`Minimum deposit is $${minUsd.toFixed(2)} USD`);
       return;
     }
     if (dollarAmount > 5000) {
