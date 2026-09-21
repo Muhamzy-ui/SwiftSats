@@ -105,7 +105,8 @@ class PaystackClient:
         # Live Paystack Dynamic Bank Transfer Creation (Charge API)
         email = customer_email if (customer_email and "@" in customer_email) else f"order_{order_reference.lower().replace('-', '_')}@swiftsats.com"
         expires_at = (timezone.now() + datetime.timedelta(minutes=60)).isoformat()
-        amount_kobo = int(Decimal(str(amount_ngn)) * 100)
+        clean_naira = int(Decimal(str(amount_ngn)))
+        amount_kobo = clean_naira * 100
 
         payload = {
             "email": email,
@@ -122,15 +123,13 @@ class PaystackClient:
                 if res_data.get("status"):
                     data = res_data.get("data", {})
                     bank_info = data.get("bank", {})
-                    actual_kobo = data.get("amount", amount_kobo)
-                    actual_ngn = Decimal(str(actual_kobo)) / Decimal("100.00")
                     return {
                         "success": True,
                         "paystack_reference": data.get("reference"),
                         "account_number": data.get("account_number"),
                         "bank_name": bank_info.get("name", "Paystack-Titan"),
                         "account_name": data.get("account_name", "PAYSTACK CHECKOUT"),
-                        "amount_ngn": str(actual_ngn),
+                        "amount_ngn": str(clean_naira),
                         "expires_at": data.get("account_expires_at"),
                         "customer_code": None,
                     }

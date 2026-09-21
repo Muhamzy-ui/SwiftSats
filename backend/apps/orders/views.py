@@ -104,22 +104,10 @@ class CreateQuoteView(APIView):
         now = timezone.now()
         expires_at = now + timedelta(seconds=QUOTE_VALIDITY_SECONDS)
 
-        # Dynamic Kobo Salt: Prevent collision across active pending orders
-        base_fiat = int(amount_ngn)
-        active_orders = Order.objects.filter(
-            status__in=[OrderStatus.QUOTE_LOCKED, OrderStatus.AWAITING_PAYMENT, OrderStatus.VERIFYING],
-            quote_expires_at__gt=now,
-            fiat_amount_ngn__gte=Decimal(str(base_fiat)),
-            fiat_amount_ngn__lt=Decimal(str(base_fiat + 1)),
-        ).values_list("salt_kobo_value", flat=True)
-
-        used_salts = set(filter(None, active_orders))
-        available_salts = [s for s in range(11, 100) if s not in used_salts]
-        if not available_salts:
-            available_salts = list(range(11, 100))
-
-        salt_kobo = secrets.choice(available_salts)
-        fiat_amount_expected = Decimal(str(base_fiat)) + (Decimal(str(salt_kobo)) / Decimal("100.0"))
+        # Clean whole Naira: No fractional kobo decimals for 100% bank transfer reliability
+        clean_fiat = Decimal(str(int(Decimal(str(amount_ngn)))))
+        fiat_amount_expected = clean_fiat
+        salt_kobo = 0
 
         client_ip = get_client_ip(request)
         platform_settings = PlatformSettings.get_settings()
@@ -129,9 +117,9 @@ class CreateQuoteView(APIView):
         order = Order.objects.create(
             coin=coin,
             network=calc["network"],
-            fiat_amount_ngn=amount_ngn,
+            fiat_amount_ngn=clean_fiat,
             salt_kobo_value=salt_kobo,
-            fiat_amount_expected=fiat_amount_expected,
+            fiat_amount_expected=clean_fiat,
             crypto_amount=calc["net_crypto_amount"],
             quote_rate=calc["unit_rate_ngn"],
             network_fee_crypto=calc["network_fee_crypto"],

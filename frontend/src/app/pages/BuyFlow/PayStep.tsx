@@ -357,10 +357,10 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
         </div>
       </div>
 
-      {/* Hero Primary Element: Large, Confident Exact Naira with Kobo Salt & Copy Button */}
+      {/* Hero Primary Element: Large, Confident Exact Naira & Copy Button */}
       <div className="text-center space-y-2 py-1">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-          Exact Amount to Pay (Include Kobo Decimal)
+          Exact Amount to Transfer
         </span>
 
         {/* Interactive Copy Amount Box */}
@@ -370,7 +370,7 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
           </span>
           <button
             type="button"
-            onClick={() => copyToClipboard(parseFloat(payment_instructions.amount_ngn || '0').toFixed(2), 'amount')}
+            onClick={() => copyToClipboard(Math.round(parseFloat(payment_instructions.amount_ngn || '0')).toString(), 'amount')}
             className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-[#00c853] hover:bg-[#00b048] dark:bg-[#00e676] dark:hover:bg-[#00c853] text-slate-950 font-black text-xs transition-all shadow-sm shadow-emerald-500/25 active:scale-95 flex items-center gap-1.5 shrink-0"
             title="Copy exact amount for bank transfer"
           >
