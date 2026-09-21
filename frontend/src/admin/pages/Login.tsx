@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, ShieldCheck, Lock, KeyRound, ArrowRight, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Zap, ShieldCheck, Lock, KeyRound, ArrowRight, ShieldAlert, CheckCircle2, Eye, EyeOff, RotateCcw } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { useAdminAuth } from '../../shared/hooks/useAdminAuth';
 
@@ -8,6 +8,7 @@ export const AdminLoginPage: React.FC = () => {
   const [stage, setStage] = useState<'CREDENTIALS' | '2FA'>('CREDENTIALS');
   const [email, setEmail] = useState('admin@swiftsats.com');
   const [password, setPassword] = useState('SwiftAdmin2026!');
+  const [showPassword, setShowPassword] = useState(false);
   const [totpCode, setTotpCode] = useState('123456');
   const [tempToken, setTempToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,6 +17,14 @@ export const AdminLoginPage: React.FC = () => {
   const { login } = useAdminAuth();
   const navigate = useNavigate();
 
+  // Reset to default known credentials
+  const handleResetDefaults = () => {
+    setEmail('admin@swiftsats.com');
+    setPassword('SwiftAdmin2026!');
+    setTotpCode('123456');
+    setErrorMessage(null);
+  };
+
   // Step 1: Submit email & password
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +32,7 @@ export const AdminLoginPage: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      const res = await adminApi.loginInit(email, password);
+      const res = await adminApi.loginInit(email.trim(), password.trim());
       if (res.success && res.requires_2fa) {
         setTempToken(res.temp_session_token);
         setStage('2FA');
@@ -43,7 +52,7 @@ export const AdminLoginPage: React.FC = () => {
     setErrorMessage(null);
 
     try {
-      const res = await adminApi.verify2FA(email, tempToken, totpCode);
+      const res = await adminApi.verify2FA(email.trim(), tempToken, totpCode.trim());
       if (res.success && res.token) {
         login(res.token, res.user);
         navigate('/admin');
@@ -135,16 +144,37 @@ export const AdminLoginPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-600"
-                  required
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleResetDefaults}
+                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 font-medium"
+                    title="Fill default admin credentials"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Reset to default
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-600 font-mono"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <button

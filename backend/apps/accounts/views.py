@@ -42,8 +42,8 @@ class AdminLoginInitView(APIView):
         serializer = AdminLoginInitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data["email"].lower()
-        password = serializer.validated_data["password"]
+        email = serializer.validated_data["email"].lower().strip()
+        password = serializer.validated_data["password"].strip()
 
         user = AdminUser.objects.filter(email=email).first()
         if not user or not user.check_password(password):
