@@ -8,6 +8,7 @@ export const SettingsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dangerConfirm, setDangerConfirm] = useState(false);
   const [dangerNotice, setDangerNotice] = useState<string | null>(null);
+  const [isPurging, setIsPurging] = useState(false);
 
   const fetchHealth = async () => {
     setIsLoading(true);
@@ -25,13 +26,24 @@ export const SettingsPage: React.FC = () => {
     fetchHealth();
   }, []);
 
-  const handleFlushCache = () => {
+  const handlePurgeAllOrders = async () => {
     if (!dangerConfirm) {
       setDangerNotice('Please click the confirmation checkbox first.');
       return;
     }
-    setDangerNotice('Rate caches and stale quote locks flushed successfully.');
-    setDangerConfirm(false);
+    setIsPurging(true);
+    setDangerNotice(null);
+    try {
+      const res = await adminApi.purgeTestOrders();
+      setDangerNotice(res.message || 'All test orders purged successfully.');
+      setDangerConfirm(false);
+      fetchHealth();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to purge orders.';
+      setDangerNotice(`Error: ${msg}`);
+    } finally {
+      setIsPurging(false);
+    }
   };
 
   return (
@@ -142,17 +154,18 @@ export const SettingsPage: React.FC = () => {
               className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4 bg-white dark:bg-slate-950"
             />
             <label htmlFor="confirmDanger" className="text-xs font-semibold text-rose-900 dark:text-rose-300 cursor-pointer">
-              I understand this action will purge volatile Redis quote caches
+              I understand this action will permanently delete all mock, demo, and test orders from database (Admin user will remain intact).
             </label>
           </div>
 
           <button
             type="button"
-            onClick={handleFlushCache}
-            disabled={!dangerConfirm}
-            className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-colors"
+            onClick={handlePurgeAllOrders}
+            disabled={!dangerConfirm || isPurging}
+            className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5"
           >
-            Flush Price Quote Caches
+            <AlertTriangle className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin' : ''}`} />
+            <span>{isPurging ? 'Purging Orders...' : 'Purge All Test & Mock Orders'}</span>
           </button>
         </div>
       </div>

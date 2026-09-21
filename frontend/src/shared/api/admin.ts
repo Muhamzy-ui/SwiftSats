@@ -228,4 +228,11 @@ export const adminApi = {
       method: 'POST',
     });
   },
+
+  /** Wipe all mock / test orders and clear the ledger (Super Admin only) */
+  async purgeTestOrders(): Promise<{ success: boolean; message: string; purged_count: number }> {
+    return request('/api/v1/admin/orders/purge/', {
+      method: 'POST',
+    });
+  },
 };

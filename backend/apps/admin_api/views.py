@@ -737,3 +737,33 @@ class AdminManualOrderReleaseView(APIView):
             "status": order.status,
         })
 
+
+class AdminPurgeOrdersView(APIView):
+    """
+    POST /api/v1/admin/orders/purge/
+    Purges all test/mock orders and clears the ledger.
+    Super Admin only.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if not getattr(request.user, "is_superuser", False) and getattr(request.user, "role", "") != AdminRole.SUPER_ADMIN:
+            return Response({"error": "Unauthorized. Super Admin only."}, status=status.HTTP_403_FORBIDDEN)
+
+        count = Order.objects.count()
+        Order.objects.all().delete()
+        AuditLog.objects.exclude(actor=AuditActor.SYSTEM).delete()
+
+        send_telegram_alert(
+            f"🗑️ <b>TEST ORDERS PURGED</b>\n"
+            f"<b>Count:</b> {count} orders deleted\n"
+            f"<b>Executed by:</b> {request.user.email}"
+        )
+
+        return Response({
+            "success": True,
+            "message": f"Successfully purged {count} orders. The operational ledger is completely fresh and clean.",
+            "purged_count": count,
+        })
+
+
