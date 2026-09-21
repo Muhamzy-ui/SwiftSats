@@ -99,25 +99,31 @@ export const PaymentMonitorPage: React.FC = () => {
             <span className="text-xs text-slate-400 dark:text-slate-500">Total pipeline breakdown</span>
           </div>
 
-          <div className="h-48 w-48 relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={3}
-                  dataKey="count"
-                >
-                  {donutData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="h-48 w-48 relative flex items-center justify-center">
+            {donutData.some((d) => d.count > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={75}
+                    paddingAngle={3}
+                    dataKey="count"
+                  >
+                    {donutData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-32 h-32 rounded-full border-4 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center text-center p-2">
+                <span className="text-[10px] text-slate-400 font-mono">Pipeline Empty</span>
+              </div>
+            )}
           </div>
 
           <div className="w-full space-y-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
@@ -145,30 +151,36 @@ export const PaymentMonitorPage: React.FC = () => {
             <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">Auto-updating</span>
           </div>
 
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto">
-            {liveFeed.map((ord) => (
-              <div key={ord.id} className="py-3 flex items-center justify-between text-xs">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">{ord.order_reference}</span>
-                    <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded text-[10px]">
-                      {ord.coin.split('_')[0]}
+          {liveFeed.length === 0 ? (
+            <div className="py-16 text-center text-xs text-slate-400 font-mono">
+              No live transactions in stream right now. Active customer payments will appear here in real-time.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto">
+              {liveFeed.map((ord) => (
+                <div key={ord.id} className="py-3 flex items-center justify-between text-xs">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">{ord.order_reference}</span>
+                      <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded text-[10px]">
+                        {ord.coin.split('_')[0]}
+                      </span>
+                    </div>
+                    <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px] block">
+                      {formatNaira(ord.fiat_amount_ngn)} ➔ {ord.crypto_amount}
                     </span>
                   </div>
-                  <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px] block">
-                    {formatNaira(ord.fiat_amount_ngn)} ➔ {ord.crypto_amount}
-                  </span>
-                </div>
 
-                <div className="text-right space-y-1">
-                  <StatusBadge status={ord.status} />
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono block">
-                    {formatDateTime(ord.created_at)}
-                  </span>
+                  <div className="text-right space-y-1">
+                    <StatusBadge status={ord.status} />
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono block">
+                      {formatDateTime(ord.created_at)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

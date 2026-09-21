@@ -72,65 +72,71 @@ export const PayoutsPage: React.FC = () => {
 
       {/* Payouts Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-subtle overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="px-5 py-3">Order Ref</th>
-                <th className="px-5 py-3">Asset</th>
-                <th className="px-5 py-3">Crypto Sent</th>
-                <th className="px-5 py-3">Fiat Equivalent</th>
-                <th className="px-5 py-3">Tx Hash</th>
-                <th className="px-5 py-3">Speed</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Settled Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-              {payouts.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-3.5 font-mono font-bold text-slate-900 dark:text-white">
-                    {p.order_reference}
-                  </td>
-                  <td className="px-5 py-3.5 font-mono">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 font-sans">{p.coin.split('_')[0]}</span>
-                    <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1 uppercase">({p.network})</span>
-                  </td>
-                  <td className="px-5 py-3.5 font-mono font-bold text-emerald-700 dark:text-emerald-400">
-                    {p.crypto_amount}
-                  </td>
-                  <td className="px-5 py-3.5 font-mono text-slate-800 dark:text-slate-200">
-                    {formatNaira(p.fiat_amount_ngn)}
-                  </td>
-                  <td className="px-5 py-3.5 font-mono">
-                    {p.tx_hash ? (
-                      <a
-                        href={p.explorer_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 underline flex items-center gap-1 font-mono text-[11px]"
-                      >
-                        <span>{p.tx_hash.slice(0, 12)}...</span>
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
-                      </a>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500 text-[11px]">Pending broadcast</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3.5 font-mono text-emerald-700 dark:text-emerald-400 font-bold">
-                    {formatSpeed(p.speed_metric_ms)}
-                  </td>
-                  <td className="px-5 py-3.5 font-sans">
-                    <StatusBadge status={p.status} />
-                  </td>
-                  <td className="px-5 py-3.5 text-right font-mono text-slate-500 dark:text-slate-400">
-                    {p.completed_at ? formatDateTime(p.completed_at) : '—'}
-                  </td>
+        {payouts.length === 0 ? (
+          <div className="py-16 text-center text-xs text-slate-400 font-mono">
+            No payout records found. Completed blockchain withdrawals will appear here automatically.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="px-5 py-3">Order Ref</th>
+                  <th className="px-5 py-3">Asset</th>
+                  <th className="px-5 py-3">Crypto Sent</th>
+                  <th className="px-5 py-3">Fiat Equivalent</th>
+                  <th className="px-5 py-3">Tx Hash</th>
+                  <th className="px-5 py-3">Speed</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Settled Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                {payouts.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="px-5 py-3.5 font-mono font-bold text-slate-900 dark:text-white">
+                      {p.order_reference}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 font-sans">{p.coin.split('_')[0]}</span>
+                      <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1 uppercase">({p.network})</span>
+                    </td>
+                    <td className="px-5 py-3.5 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                      {p.crypto_amount}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-slate-800 dark:text-slate-200">
+                      {formatNaira(p.fiat_amount_ngn)}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono">
+                      {p.tx_hash ? (
+                        <a
+                          href={p.explorer_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 underline flex items-center gap-1 font-mono text-[11px]"
+                        >
+                          <span>{p.tx_hash.slice(0, 12)}...</span>
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500 text-[11px]">Pending broadcast</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-emerald-700 dark:text-emerald-400 font-bold">
+                      {formatSpeed(p.speed_metric_ms)}
+                    </td>
+                    <td className="px-5 py-3.5 font-sans">
+                      <StatusBadge status={p.status} />
+                    </td>
+                    <td className="px-5 py-3.5 text-right font-mono text-slate-500 dark:text-slate-400">
+                      {p.completed_at ? formatDateTime(p.completed_at) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

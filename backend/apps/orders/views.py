@@ -134,7 +134,7 @@ class CreateQuoteView(APIView):
             crypto_amount=calc["net_crypto_amount"],
             quote_rate=calc["unit_rate_ngn"],
             network_fee_crypto=calc["network_fee_crypto"],
-            service_fee_ngn=0,
+            service_fee_ngn=calc["service_fee_ngn"],
             status=OrderStatus.QUOTE_LOCKED,
             quote_expires_at=expires_at,
             ip_address=client_ip,

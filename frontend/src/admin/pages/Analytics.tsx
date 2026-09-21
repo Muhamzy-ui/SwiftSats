@@ -29,11 +29,14 @@ export const AnalyticsPage: React.FC = () => {
   const [coinDistribution, setCoinDistribution] = useState<CoinDist[]>([]);
   const [avgOrderSize, setAvgOrderSize] = useState<number>(0);
   const [peakHours, setPeakHours] = useState<Array<{ hour: string; orders: number }>>([]);
+  const [peakWindow, setPeakWindow] = useState<string>('No volume yet');
+  const [dominantAsset, setDominantAsset] = useState<CoinDist | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const isDark = theme === 'dark';
   const greenColor = isDark ? '#00e676' : '#00c853';
-  const redColor = isDark ? '#ff3b5c' : '#e11d48';
+  const blueColor = isDark ? '#38bdf8' : '#0284c7';
+  const mutedBarColor = isDark ? '#1e293b' : '#e2e8f0';
   const gridColor = isDark ? '#1e293b' : '#e2e8f0';
   const axisColor = isDark ? '#64748b' : '#94a3b8';
 
@@ -42,9 +45,19 @@ export const AnalyticsPage: React.FC = () => {
     try {
       const res = await adminApi.getAnalytics();
       if (res.success) {
-        setCoinDistribution(res.coin_distribution);
-        setAvgOrderSize(res.avg_order_size_ngn);
-        setPeakHours(res.peak_hours);
+        setCoinDistribution(res.coin_distribution || []);
+        setAvgOrderSize(res.avg_order_size_ngn || 0);
+        setPeakHours(res.peak_hours || []);
+        if ((res as any).peak_window) {
+          setPeakWindow((res as any).peak_window);
+        }
+        if ((res as any).dominant_asset) {
+          setDominantAsset((res as any).dominant_asset);
+        } else if (res.coin_distribution && res.coin_distribution.length > 0 && res.coin_distribution[0].volume_ngn > 0) {
+          setDominantAsset(res.coin_distribution[0]);
+        } else {
+          setDominantAsset(null);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch analytics', err);
@@ -56,6 +69,8 @@ export const AnalyticsPage: React.FC = () => {
   useEffect(() => {
     fetchAnalytics();
   }, []);
+
+  const maxOrders = Math.max(...peakHours.map((p) => p.orders), 0);
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-full overflow-x-hidden">
@@ -87,7 +102,9 @@ export const AnalyticsPage: React.FC = () => {
             <DollarSign className="w-4 h-4 text-emerald-600 dark:text-[#00e676]" />
           </div>
           <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">{formatNaira(avgOrderSize)}</span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 block mt-1">Per successful transaction</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 block mt-1">
+            {avgOrderSize > 0 ? 'Per successful transaction' : 'No settled transactions yet'}
+          </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-subtle">
@@ -96,9 +113,11 @@ export const AnalyticsPage: React.FC = () => {
             <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
           <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">
-            {coinDistribution[0]?.symbol || 'USDT'} ({coinDistribution[0]?.share_pct || 0}%)
+            {dominantAsset ? `${dominantAsset.name} (${dominantAsset.share_pct}%)` : 'None yet'}
           </span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 block mt-1">Leading total platform turnover</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 block mt-1">
+            {dominantAsset ? 'Leading total platform turnover' : 'Awaiting completed trades'}
+          </span>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-subtle">
@@ -106,8 +125,10 @@ export const AnalyticsPage: React.FC = () => {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Peak Window</span>
             <Clock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
-          <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">14:00 – 20:00</span>
-          <span className="text-xs text-slate-400 dark:text-slate-500 block mt-1">West Africa Time (WAT)</span>
+          <span className="text-2xl font-black font-mono text-slate-900 dark:text-white">{peakWindow}</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 block mt-1">
+            {peakWindow === 'No volume yet' ? 'Velocity calculated upon order creation' : 'West Africa Time (WAT)'}
+          </span>
         </div>
       </div>
 
@@ -121,11 +142,11 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex items-center gap-3 text-xs font-semibold">
             <span className="flex items-center gap-1.5 text-emerald-600 dark:text-[#00e676]">
               <span className="w-2.5 h-2.5 rounded-full bg-[#00c853] dark:bg-[#00e676]" />
-              Peak Velocity (Green)
+              Peak Hour
             </span>
-            <span className="flex items-center gap-1.5 text-rose-600 dark:text-[#ff3b5c]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#e11d48] dark:bg-[#ff3b5c]" />
-              Standard Velocity (Red)
+            <span className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7] dark:bg-[#38bdf8]" />
+              Active Hours
             </span>
           </div>
         </div>
@@ -135,7 +156,7 @@ export const AnalyticsPage: React.FC = () => {
             <BarChart data={peakHours} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.4} vertical={false} />
               <XAxis dataKey="hour" stroke={axisColor} fontSize={10} tickLine={false} />
-              <YAxis stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} />
+              <YAxis stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: isDark ? '#0f172a' : '#ffffff',
@@ -145,11 +166,12 @@ export const AnalyticsPage: React.FC = () => {
                   fontSize: '12px',
                 }}
               />
-              <Bar dataKey="orders" name="Orders Executed" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="orders" name="Orders Placed" radius={[4, 4, 0, 0]}>
                 {peakHours.map((entry, index) => {
-                  const hour = parseInt(entry.hour, 10);
-                  const isPeak = hour >= 14 && hour <= 20;
-                  return <Cell key={`cell-${index}`} fill={isPeak ? greenColor : redColor} />;
+                  const isPeak = maxOrders > 0 && entry.orders === maxOrders;
+                  const hasOrders = entry.orders > 0;
+                  const barFill = isPeak ? greenColor : hasOrders ? blueColor : mutedBarColor;
+                  return <Cell key={`cell-${index}`} fill={barFill} />;
                 })}
               </Bar>
             </BarChart>

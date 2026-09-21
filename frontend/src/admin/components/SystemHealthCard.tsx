@@ -1,11 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Server } from 'lucide-react';
+import { adminApi } from '../../shared/api/admin';
+import { SystemHealthData } from '../../shared/types';
 
 interface SystemHealthCardProps {
   isHealthy?: boolean;
+  healthData?: SystemHealthData | null;
 }
 
-export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ isHealthy = true }) => {
+export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ isHealthy = true, healthData: propHealth }) => {
+  const [health, setHealth] = useState<SystemHealthData | null>(propHealth || null);
+
+  useEffect(() => {
+    if (propHealth) {
+      setHealth(propHealth);
+      return;
+    }
+
+    let isMounted = true;
+    const loadHealth = async () => {
+      try {
+        const data = await adminApi.getSystemHealth();
+        if (isMounted && data) {
+          setHealth(data);
+        }
+      } catch (err) {
+        // Fallback silently if unauthenticated or network error
+      }
+    };
+
+    loadHealth();
+    const timer = setInterval(loadHealth, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [propHealth]);
+
+  const quidaxSvc = health?.services?.find((s) => s.name.toLowerCase().includes('quidax'));
+  const paystackSvc = health?.services?.find((s) => s.name.toLowerCase().includes('paystack'));
+
+  const overallHealthy = isHealthy && (!health || health.services.every((s) => s.status === 'healthy'));
+
   return (
     <div className="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
       <div className="flex items-center justify-between">
@@ -15,7 +51,7 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ isHealthy = 
         </div>
         <span
           className={`w-2 h-2 rounded-full ${
-            isHealthy ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+            overallHealthy ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
           }`}
         />
       </div>
@@ -23,13 +59,18 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ isHealthy = 
       <div className="space-y-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
         <div className="flex justify-between">
           <span>Quidax Gateway:</span>
-          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Online (12ms)</span>
+          <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+            {quidaxSvc ? `${quidaxSvc.status === 'healthy' ? 'Online' : 'Degraded'} (${quidaxSvc.latency_ms}ms)` : 'Checking...'}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>Paystack Nuban:</span>
-          <span className="text-emerald-700 dark:text-emerald-400 font-bold">Active (18ms)</span>
+          <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+            {paystackSvc ? `${paystackSvc.status === 'healthy' ? 'Active' : 'Degraded'} (${paystackSvc.latency_ms}ms)` : 'Checking...'}
+          </span>
         </div>
       </div>
     </div>
   );
 };
+

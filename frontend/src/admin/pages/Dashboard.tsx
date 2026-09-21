@@ -153,8 +153,9 @@ export const DashboardPage: React.FC = () => {
         />
 
         <StatCard
-          title="Total Volume (NGN)"
+          title="Volume Today (NGN)"
           value={formatNaira(stats?.total_volume_today ?? '0')}
+          subtitle={(stats as any)?.total_volume_all_time ? `All-time: ${formatNaira((stats as any).total_volume_all_time)}` : undefined}
           growthPct={stats?.volume_growth_pct}
           icon={<DollarSign className="w-4 h-4 text-emerald-600 dark:text-[#00e676]" />}
         />
@@ -167,9 +168,9 @@ export const DashboardPage: React.FC = () => {
         />
 
         <StatCard
-          title="Spread Revenue (Est.)"
+          title="Est. Revenue Today"
           value={formatNaira(stats?.today_revenue ?? '0')}
-          subtitle={`Avg Speed: ${formatSpeed(stats?.avg_speed_ms)}`}
+          subtitle={(stats as any)?.total_revenue_all_time ? `All-time: ${formatNaira((stats as any).total_revenue_all_time)}` : `Avg Speed: ${formatSpeed(stats?.avg_speed_ms)}`}
           icon={<Percent className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
         />
       </div>
@@ -346,84 +347,92 @@ export const DashboardPage: React.FC = () => {
           </Link>
         </div>
 
-        {/* Mobile View: Clean transactions with circular emblems matching Image 1 */}
-        <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800/80">
-          {recentOrders.map((ord) => {
-            const coinName = ord.coin.split('_')[0];
-            return (
-              <div key={ord.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm border border-slate-700">
-                    {coinName.slice(0, 3)}
+        {recentOrders.length === 0 ? (
+          <div className="py-12 px-4 text-center text-xs text-slate-400 dark:text-slate-500 font-mono">
+            No transactions recorded yet. New customer orders from the buy flow will appear here in real-time.
+          </div>
+        ) : (
+          <>
+            {/* Mobile View: Clean transactions with circular emblems matching Image 1 */}
+            <div className="sm:hidden divide-y divide-slate-100 dark:divide-slate-800/80">
+              {recentOrders.map((ord) => {
+                const coinName = ord.coin.split('_')[0];
+                return (
+                  <div key={ord.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm border border-slate-700">
+                        {coinName.slice(0, 3)}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs text-slate-900 dark:text-white truncate block">
+                          {ord.order_reference}
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
+                          {coinName} ({ord.network}) • {formatDateTime(ord.created_at).split(',')[0]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-bold font-mono text-xs text-[#00c853] dark:text-[#00e676] block">
+                        + {formatNaira(ord.fiat_amount_ngn)}
+                      </span>
+                      <div className="mt-0.5">
+                        <StatusBadge status={ord.status} />
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className="font-bold text-xs text-slate-900 dark:text-white truncate block">
-                      {ord.order_reference}
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
-                      {coinName} ({ord.network}) • {formatDateTime(ord.created_at).split(',')[0]}
-                    </span>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="font-bold font-mono text-xs text-[#00c853] dark:text-[#00e676] block">
-                    + {formatNaira(ord.fiat_amount_ngn)}
-                  </span>
-                  <div className="mt-0.5">
-                    <StatusBadge status={ord.status} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
 
-        {/* Desktop View: Full Enterprise Table */}
-        <div className="hidden sm:block overflow-x-auto w-full">
-          <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
-              <tr>
-                <th className="px-4 sm:px-5 py-3">Order Ref</th>
-                <th className="px-4 sm:px-5 py-3">Asset</th>
-                <th className="px-4 sm:px-5 py-3">Amount (NGN)</th>
-                <th className="px-4 sm:px-5 py-3">Crypto Amount</th>
-                <th className="px-4 sm:px-5 py-3">Status</th>
-                <th className="px-4 sm:px-5 py-3">Speed</th>
-                <th className="px-4 sm:px-5 py-3 text-right">Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-              {recentOrders.map((ord) => (
-                <tr key={ord.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-900 dark:text-white">
-                    <Link to={`/admin/orders?search=${ord.order_reference}`} className="hover:underline text-emerald-600 dark:text-[#00e676]">
-                      {ord.order_reference}
-                    </Link>
-                  </td>
-                  <td className="px-4 sm:px-5 py-3.5 font-mono">
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{ord.coin.split('_')[0]}</span>
-                    <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1 uppercase">({ord.network})</span>
-                  </td>
-                  <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-900 dark:text-white">
-                    {formatNaira(ord.fiat_amount_ngn)}
-                  </td>
-                  <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-700 dark:text-slate-300">
-                    {ord.crypto_amount} {ord.coin.split('_')[0]}
-                  </td>
-                  <td className="px-4 sm:px-5 py-3.5">
-                    <StatusBadge status={ord.status} />
-                  </td>
-                  <td className="px-4 sm:px-5 py-3.5 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                    {formatSpeed(ord.speed_metric_ms)}
-                  </td>
-                  <td className="px-4 sm:px-5 py-3.5 text-right text-slate-400 dark:text-slate-500 font-mono text-[11px]">
-                    {formatDateTime(ord.created_at)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            {/* Desktop View: Full Enterprise Table */}
+            <div className="hidden sm:block overflow-x-auto w-full">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="px-4 sm:px-5 py-3">Order Ref</th>
+                    <th className="px-4 sm:px-5 py-3">Asset</th>
+                    <th className="px-4 sm:px-5 py-3">Amount (NGN)</th>
+                    <th className="px-4 sm:px-5 py-3">Crypto Amount</th>
+                    <th className="px-4 sm:px-5 py-3">Status</th>
+                    <th className="px-4 sm:px-5 py-3">Speed</th>
+                    <th className="px-4 sm:px-5 py-3 text-right">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                  {recentOrders.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-900 dark:text-white">
+                        <Link to={`/admin/orders?search=${ord.order_reference}`} className="hover:underline text-emerald-600 dark:text-[#00e676]">
+                          {ord.order_reference}
+                        </Link>
+                      </td>
+                      <td className="px-4 sm:px-5 py-3.5 font-mono">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">{ord.coin.split('_')[0]}</span>
+                        <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1 uppercase">({ord.network})</span>
+                      </td>
+                      <td className="px-4 sm:px-5 py-3.5 font-mono font-bold text-slate-900 dark:text-white">
+                        {formatNaira(ord.fiat_amount_ngn)}
+                      </td>
+                      <td className="px-4 sm:px-5 py-3.5 font-mono text-slate-700 dark:text-slate-300">
+                        {ord.crypto_amount} {ord.coin.split('_')[0]}
+                      </td>
+                      <td className="px-4 sm:px-5 py-3.5">
+                        <StatusBadge status={ord.status} />
+                      </td>
+                      <td className="px-4 sm:px-5 py-3.5 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                        {formatSpeed(ord.speed_metric_ms)}
+                      </td>
+                      <td className="px-4 sm:px-5 py-3.5 text-right text-slate-400 dark:text-slate-500 font-mono text-[11px]">
+                        {formatDateTime(ord.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
