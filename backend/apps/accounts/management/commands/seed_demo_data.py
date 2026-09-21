@@ -41,6 +41,16 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.SUCCESS(f"Updated Admin: {admin_email}"))
 
-        # 2. Fake orders are no longer auto-generated to keep admin dashboard pure and accurate to live frontend orders.
-        self.stdout.write(self.style.SUCCESS("Admin user ready. Database is configured for real transactions."))
+        # 2. Ensure PlatformSettings is synced with OPay settlement
+        from apps.admin_api.models import PlatformSettings
+        settings_obj = PlatformSettings.get_settings()
+        settings_obj.use_paystack_virtual_accounts = False
+        settings_obj.settlement_bank_name = "OPay"
+        settings_obj.settlement_account_number = "8072410373"
+        settings_obj.settlement_account_name = "Mahmud Bashir Olasunkanmi"
+        settings_obj.save()
+        self.stdout.write(self.style.SUCCESS("PlatformSettings synced to OPay (8072410373 - Mahmud Bashir Olasunkanmi)"))
+
+        # 3. Database ready
+        self.stdout.write(self.style.SUCCESS("Admin user and platform settings ready for real transactions."))
 

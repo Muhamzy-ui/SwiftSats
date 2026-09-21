@@ -28,7 +28,12 @@ export async function request<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const isAdminRoute = endpoint.includes('/admin/') || endpoint.includes('/auth/login/init/') || endpoint.includes('/auth/login/verify-2fa/');
+  const isAdminRoute =
+    endpoint.includes('/admin/') ||
+    endpoint.includes('/auth/profile/') ||
+    endpoint.includes('/auth/logout/') ||
+    endpoint.includes('/auth/login/init/') ||
+    endpoint.includes('/auth/login/verify-2fa/');
   const isCustomerAuthInit = endpoint.includes('/auth/customer/register/') || endpoint.includes('/auth/customer/login/');
 
   let token: string | null = null;
