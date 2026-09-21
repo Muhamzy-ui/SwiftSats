@@ -14,7 +14,4 @@ python manage.py migrate --no-input
 echo "==> Ensuring admin user exists..."
 python manage.py seed_demo_data
 
-echo "==> Purging old demo/test orders from database..."
-python manage.py purge_all_orders
-
 echo "==> Build complete!"
