@@ -14,6 +14,7 @@ class LiveRatesView(APIView):
     Public endpoint returning real-time cryptocurrency rates in NGN.
     Cached with short TTL in Redis.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
@@ -29,6 +30,7 @@ class CalculateQuoteView(APIView):
     """
     Public endpoint calculating estimated crypto received for input Naira amount.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):

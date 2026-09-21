@@ -86,6 +86,7 @@ class CreateQuoteView(APIView):
     Step 1 & 2: Generate a server-locked crypto price quote.
     Valid for 15 minutes (900 seconds) with unique dynamic kobo salt.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -288,6 +289,7 @@ class OrderStatusLookupView(APIView):
     Real-time status lookup endpoint for public users.
     Returns payment details, blockchain tx hash, explorer URL, and speed metric when completed.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, order_reference: str):
@@ -325,6 +327,7 @@ class ValidateWalletPreflightView(APIView):
     """
     Pre-flight wallet validation helper for real-time frontend UI feedback.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -348,6 +351,7 @@ class RecentTelemetryOrdersView(APIView):
     Deprecated public telemetry endpoint.
     Returns empty list to guarantee 100% privacy of customer transactions.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
@@ -363,6 +367,7 @@ class CancelOrderView(APIView):
     Allows a user to cancel an open/unpaid order (QUOTE_LOCKED or AWAITING_PAYMENT).
     Releases the locked quote and virtual account, transitioning the order to CANCELLED.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, order_reference: str):
@@ -424,6 +429,7 @@ class SendEmailOTPView(APIView):
     """
     Sends a 6-digit One-Time Passcode (OTP) to the user's email for private order recovery.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -484,6 +490,7 @@ class VerifyEmailOTPView(APIView):
     """
     Verifies the 6-digit OTP and returns all private orders for that email.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):

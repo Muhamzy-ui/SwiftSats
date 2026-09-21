@@ -38,7 +38,7 @@ export async function request<T>(
         ? localStorage.getItem('swiftsats_admin_token')
         : null;
     } else if (!isCustomerAuthInit) {
-      token = localStorage.getItem('swiftsats_customer_token') || localStorage.getItem('swiftsats_admin_token');
+      token = localStorage.getItem('swiftsats_customer_token');
     }
   }
 

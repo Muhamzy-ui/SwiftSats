@@ -51,6 +51,8 @@ class AdminJWTAuthentication(authentication.BaseAuthentication):
         if not raw_token:
             return None
 
+        is_admin_path = request.path.startswith("/api/v1/admin/") or request.path.startswith("/api/v1/auth/admin/")
+
         try:
             payload = jwt.decode(
                 raw_token,
@@ -59,18 +61,26 @@ class AdminJWTAuthentication(authentication.BaseAuthentication):
                 options={"require": ["exp", "sub", "is_2fa_verified"]},
             )
         except jwt.ExpiredSignatureError:
-            raise exceptions.AuthenticationFailed("Admin session has expired. Please log in again.")
-        except jwt.InvalidTokenError:
-            raise exceptions.AuthenticationFailed("Invalid authentication token.")
+            if is_admin_path:
+                raise exceptions.AuthenticationFailed("Admin session has expired. Please log in again.")
+            return None
+        except (jwt.InvalidTokenError, Exception):
+            if is_admin_path:
+                raise exceptions.AuthenticationFailed("Invalid authentication token.")
+            return None
 
         if not payload.get("is_2fa_verified"):
-            raise exceptions.AuthenticationFailed("2FA verification required.")
+            if is_admin_path:
+                raise exceptions.AuthenticationFailed("2FA verification required.")
+            return None
 
         user_id = payload.get("sub")
         try:
             user = AdminUser.objects.get(id=user_id, is_active=True)
         except AdminUser.DoesNotExist:
-            raise exceptions.AuthenticationFailed("User account not found or inactive.")
+            if is_admin_path:
+                raise exceptions.AuthenticationFailed("User account not found or inactive.")
+            return None
 
         return user, payload
 
@@ -124,10 +134,8 @@ class CustomerJWTAuthentication(authentication.BaseAuthentication):
                 algorithms=["HS256"],
                 options={"require": ["exp", "sub"]},
             )
-        except jwt.ExpiredSignatureError:
-            raise exceptions.AuthenticationFailed("Session has expired. Please log in again.")
-        except jwt.InvalidTokenError:
-            raise exceptions.AuthenticationFailed("Invalid authentication token.")
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, Exception):
+            return None
 
         if payload.get("type") != "customer":
             return None
@@ -136,6 +144,6 @@ class CustomerJWTAuthentication(authentication.BaseAuthentication):
         try:
             customer = Customer.objects.get(id=customer_id, is_active=True)
         except Customer.DoesNotExist:
-            raise exceptions.AuthenticationFailed("Customer account not found or inactive.")
+            return None
 
         return customer, payload
