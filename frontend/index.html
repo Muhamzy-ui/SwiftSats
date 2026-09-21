@@ -33,6 +33,17 @@
             document.documentElement.style.colorScheme = 'light';
           }
         } catch(e) {}
+
+        // Single Page Apps fallback: restore deep URL from 404 handler
+        try {
+          var redirect = sessionStorage.getItem('swiftsats_spa_redirect');
+          if (redirect) {
+            sessionStorage.removeItem('swiftsats_spa_redirect');
+            if (redirect !== (window.location.pathname + window.location.search + window.location.hash)) {
+              window.history.replaceState(null, null, redirect);
+            }
+          }
+        } catch(e) {}
       })();
     </script>
   </head>

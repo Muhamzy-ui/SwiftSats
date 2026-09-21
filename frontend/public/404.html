@@ -4,11 +4,14 @@
     <meta charset="utf-8">
     <title>SwiftSats</title>
     <script>
-      // Single Page Apps fallback: preserve path and query for React Router
-      var path = window.location.pathname;
-      var search = window.location.search;
-      var hash = window.location.hash;
-      window.location.replace('/' + (path.startsWith('/') ? path.substring(1) : path) + search + hash);
+      // Single Page Apps fallback: store destination and redirect to index
+      try {
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        sessionStorage.setItem('swiftsats_spa_redirect', path + search + hash);
+      } catch (e) {}
+      window.location.replace('/');
     </script>
     <meta http-equiv="refresh" content="0;URL='/'">
   </head>
