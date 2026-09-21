@@ -16,24 +16,28 @@ class PlatformSettings(models.Model):
     payout_mode = models.CharField(
         max_length=20,
         choices=PayoutMode.choices,
-        default=PayoutMode.AUTOMATED,
+        default=PayoutMode.MANUAL,
         help_text="24/7 automated instant payout vs manual 1-tap admin approval"
+    )
+    use_paystack_virtual_accounts = models.BooleanField(
+        default=False,
+        help_text="Generate Paystack dynamic accounts vs Direct Merchant Settlement Bank Account"
     )
     # Primary Settlement Account
     settlement_bank_name = models.CharField(
         max_length=64,
-        default="Paystack-Titan / Wema",
-        help_text="Primary virtual bank partner"
+        default="Guaranty Trust Bank",
+        help_text="Primary bank partner"
     )
     settlement_account_name = models.CharField(
         max_length=128,
-        default="SwiftSats Settlement Desk",
+        default="MAHMUD OLASUNKANMI BASHIR",
         help_text="Primary settlement desk account name"
     )
     settlement_account_number = models.CharField(
         max_length=32,
-        default="9938210492",
-        help_text="Primary virtual account number"
+        default="1028627906",
+        help_text="Primary account number"
     )
 
     # Secondary Settlement Account

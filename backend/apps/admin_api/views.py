@@ -616,6 +616,7 @@ class AdminPayoutModeSettingsView(APIView):
         return Response({
             "success": True,
             "payout_mode": settings_obj.payout_mode,
+            "use_paystack_virtual_accounts": getattr(settings_obj, "use_paystack_virtual_accounts", False),
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_name": settings_obj.settlement_account_name,
             "settlement_account_number": settings_obj.settlement_account_number,
@@ -625,6 +626,7 @@ class AdminPayoutModeSettingsView(APIView):
     def post(self, request):
         settings_obj = PlatformSettings.get_settings()
         payout_mode = request.data.get("payout_mode")
+        use_paystack = request.data.get("use_paystack_virtual_accounts")
         bank_name = request.data.get("settlement_bank_name")
         account_name = request.data.get("settlement_account_name")
         account_number = request.data.get("settlement_account_number")
@@ -632,6 +634,9 @@ class AdminPayoutModeSettingsView(APIView):
 
         if payout_mode in [PlatformSettings.PayoutMode.AUTOMATED, PlatformSettings.PayoutMode.MANUAL]:
             settings_obj.payout_mode = payout_mode
+
+        if use_paystack is not None:
+            settings_obj.use_paystack_virtual_accounts = bool(use_paystack)
 
         if bank_name:
             settings_obj.settlement_bank_name = bank_name
@@ -656,6 +661,7 @@ class AdminPayoutModeSettingsView(APIView):
             "success": True,
             "message": "Settings updated successfully.",
             "payout_mode": settings_obj.payout_mode,
+            "use_paystack_virtual_accounts": settings_obj.use_paystack_virtual_accounts,
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_number": settings_obj.settlement_account_number,
             "settlement_account_name": settings_obj.settlement_account_name,

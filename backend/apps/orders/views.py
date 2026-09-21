@@ -191,15 +191,18 @@ class LockAndGeneratePaymentView(APIView):
         wallet_address: str = serializer.validated_data["clean_wallet"]
         user_email: str = customer.email if customer else serializer.validated_data.get("user_email")
 
-        # Check if Paystack live collection is active
+        # Check if Paystack live collection is active or Direct Merchant Account is configured
         paystack_client = PaystackClient()
-        target_bank_name = order.virtual_bank_name
-        target_account_num = order.virtual_account_number
-        target_account_name = order.virtual_account_name
+        platform_settings = PlatformSettings.get_settings()
+        use_paystack = getattr(platform_settings, "use_paystack_virtual_accounts", False)
+
+        target_bank_name = platform_settings.settlement_bank_name or "Guaranty Trust Bank"
+        target_account_num = platform_settings.settlement_account_number or "1028627906"
+        target_account_name = platform_settings.settlement_account_name or "MAHMUD OLASUNKANMI BASHIR"
         target_amount_expected = order.fiat_amount_expected
         paystack_ref = order.paystack_reference
 
-        if paystack_client.is_live:
+        if use_paystack and paystack_client.is_live:
             try:
                 ps_res = paystack_client.generate_virtual_account(
                     order_reference=order.order_reference,
@@ -214,14 +217,14 @@ class LockAndGeneratePaymentView(APIView):
             except Exception as exc:
                 logger.error("Failed to generate Paystack virtual account for %s: %s", order.order_reference, exc)
 
-        # Fallback to deterministic 10-digit virtual account if 0000000000
+        # Fallback to deterministic 10-digit account if missing
         if not target_account_num or target_account_num.strip() in ["0000000000", ""]:
             clean_hash = abs(hash(order.order_reference)) % 100000000
             target_account_num = f"99{clean_hash:08d}"
             if not target_bank_name:
-                target_bank_name = "Paystack-Titan / Wema"
+                target_bank_name = "Guaranty Trust Bank"
             if not target_account_name:
-                target_account_name = "SwiftSats Checkout Desk"
+                target_account_name = "MAHMUD OLASUNKANMI BASHIR"
 
         # Transition Order to AWAITING_PAYMENT
         client_ip = get_client_ip(request)
