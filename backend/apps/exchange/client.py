@@ -276,3 +276,29 @@ class QuidaxClient:
                     "reference": transaction_reference,
                 }
             raise PayoutExecutionError(f"Exchange network error during payout: {exc}")
+
+    def get_withdrawal_status(self, withdrawal_id: str) -> Dict[str, Any]:
+        """
+        Query live withdrawal status and blockchain transaction hash from Quidax.
+        Returns dictionary with id, status ('submitting', 'submitted', 'processing', 'done', 'rejected'),
+        and transaction_hash (txid).
+        """
+        if not self.is_live or not withdrawal_id or str(withdrawal_id).startswith("wd_dev_"):
+            return {
+                "id": withdrawal_id,
+                "status": "done",
+                "transaction_hash": f"0x{secrets.token_hex(32)}",
+            }
+
+        url = f"{self.base_url}/users/me/withdraws/{withdrawal_id}"
+        try:
+            response = self.session.get(url, headers=self._get_headers(), timeout=10)
+            if response.status_code == 200:
+                data = response.json().get("data", {})
+                return data
+            logger.error("Failed to query Quidax withdrawal %s: %s %s", withdrawal_id, response.status_code, response.text)
+            return {}
+        except requests.RequestException as exc:
+            logger.error("Network error querying withdrawal %s: %s", withdrawal_id, exc)
+            return {}
+

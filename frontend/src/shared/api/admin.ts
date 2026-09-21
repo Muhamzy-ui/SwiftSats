@@ -223,8 +223,15 @@ export const adminApi = {
   },
 
   /** 1-Tap manual release of crypto to customer wallet */
-  async releaseOrder(orderReference: string): Promise<{ success: boolean; message: string; tx_hash: string }> {
+  async releaseOrder(orderReference: string): Promise<{ success: boolean; message: string; tx_hash?: string; error?: string; payout_error?: string; status: string }> {
     return request(`/api/v1/admin/orders/${orderReference}/release/`, {
+      method: 'POST',
+    });
+  },
+
+  /** Query Quidax / blockchain to verify if crypto has landed on-chain */
+  async verifyOrderPayout(orderReference: string): Promise<{ success: boolean; status: string; tx_hash?: string; message: string; payout_error?: string }> {
+    return request(`/api/v1/admin/orders/${orderReference}/verify/`, {
       method: 'POST',
     });
   },

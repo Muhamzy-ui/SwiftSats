@@ -9,6 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  AlertCircle,
+  Send,
+  CheckCircle2,
 } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { AdminOrderSummary, AdminOrderDetail } from '../../shared/types';
@@ -39,6 +42,8 @@ export const OrdersPage: React.FC = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orderDetail, setOrderDetail] = useState<AdminOrderDetail | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   const currentStatus = searchParams.get('status') || 'ALL';
   const currentCoin = searchParams.get('coin') || 'ALL';
@@ -99,6 +104,7 @@ export const OrdersPage: React.FC = () => {
 
   const openOrderDetail = async (id: string) => {
     setSelectedOrderId(id);
+    setActionNotice(null);
     setIsLoadingDetail(true);
     try {
       const res = await adminApi.getOrderDetail(id);
@@ -109,6 +115,56 @@ export const OrdersPage: React.FC = () => {
       console.error('Failed to load order detail', err);
     } finally {
       setIsLoadingDetail(false);
+    }
+  };
+
+  const handleReleaseOrder = async (orderRef: string) => {
+    setIsProcessingAction(true);
+    setActionNotice(null);
+    try {
+      const res = await adminApi.releaseOrder(orderRef);
+      if (res.status === 'COMPLETED') {
+        setActionNotice({ type: 'success', message: res.message || 'Crypto successfully delivered on blockchain!' });
+      } else {
+        setActionNotice({ type: 'success', message: res.message || 'Payout submitted to exchange. Payout processing.' });
+      }
+      if (selectedOrderId) {
+        const updated = await adminApi.getOrderDetail(selectedOrderId);
+        if (updated.success) setOrderDetail(updated.order);
+      }
+      fetchOrders();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Release failed.';
+      setActionNotice({ type: 'error', message: msg });
+      if (selectedOrderId) {
+        const updated = await adminApi.getOrderDetail(selectedOrderId);
+        if (updated.success) setOrderDetail(updated.order);
+      }
+      fetchOrders();
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  const handleVerifyOrder = async (orderRef: string) => {
+    setIsProcessingAction(true);
+    setActionNotice(null);
+    try {
+      const res = await adminApi.verifyOrderPayout(orderRef);
+      setActionNotice({
+        type: res.status === 'COMPLETED' ? 'success' : res.status === 'FAILED' ? 'error' : 'success',
+        message: res.message,
+      });
+      if (selectedOrderId) {
+        const updated = await adminApi.getOrderDetail(selectedOrderId);
+        if (updated.success) setOrderDetail(updated.order);
+      }
+      fetchOrders();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Verification query failed.';
+      setActionNotice({ type: 'error', message: msg });
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 
@@ -326,6 +382,38 @@ export const OrdersPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-6 text-xs">
+                {/* Action Feedback Notice */}
+                {actionNotice && (
+                  <div className={`p-3.5 rounded-xl border text-xs font-semibold flex items-center gap-2 ${
+                    actionNotice.type === 'success'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                      : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+                  }`}>
+                    {actionNotice.type === 'success' ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                    )}
+                    <span>{actionNotice.message}</span>
+                  </div>
+                )}
+
+                {/* Stalled / Payout Failure Reason Banner */}
+                {orderDetail.payout_error && (
+                  <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-900 dark:text-rose-300 space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-rose-700 dark:text-rose-400">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Payout Failure Diagnosis</span>
+                    </div>
+                    <p className="font-mono text-[11px] leading-relaxed break-all bg-white/50 dark:bg-black/30 p-2 rounded-lg border border-rose-200/60 dark:border-rose-900/60">
+                      {orderDetail.payout_error}
+                    </p>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block pt-0.5">
+                      This error was reported by Quidax/Blockchain engine. Review Quidax float balance or wallet format.
+                    </span>
+                  </div>
+                )}
+
                 {/* Status & Amounts */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 font-mono">
                   <div>
@@ -341,6 +429,44 @@ export const OrdersPage: React.FC = () => {
                     <span className="font-bold text-emerald-700 dark:text-emerald-400">{orderDetail.crypto_amount} {orderDetail.coin.split('_')[0]}</span>
                   </div>
                 </div>
+
+                {/* Administrative Dispatch Controls */}
+                {orderDetail.status !== 'COMPLETED' && orderDetail.status !== 'CANCELLED' && orderDetail.status !== 'REFUNDED' && (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold block text-slate-900 dark:text-white text-xs">Administrative Dispatch Controls</span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {orderDetail.status === 'PAYMENT_CONFIRMED'
+                            ? 'Naira deposit confirmed. Ready to dispatch cryptocurrency to customer.'
+                            : 'Payout is in progress or stalled. You can retry or verify blockchain status.'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {orderDetail.quidax_payout_id && (
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyOrder(orderDetail.order_reference)}
+                          disabled={isProcessingAction}
+                          className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${isProcessingAction ? 'animate-spin text-emerald-500' : ''}`} />
+                          <span>Verify Blockchain Status</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleReleaseOrder(orderDetail.order_reference)}
+                        disabled={isProcessingAction}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isProcessingAction ? 'Releasing...' : 'Release Crypto to Wallet'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Gateway Details */}
                 <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">

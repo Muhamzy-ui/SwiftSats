@@ -65,53 +65,85 @@ def process_crypto_payout(self, order_id: str):
             order_reference=order.order_reference,
         )
 
-        payout_id = payout_result.get("payout_id")
-        tx_hash = payout_result.get("tx_hash")
+        payout_id = str(payout_result.get("id") or payout_result.get("payout_id") or "")
+        tx_hash = payout_result.get("transaction_hash") or payout_result.get("tx_hash") or ""
+        payout_status = (payout_result.get("status") or "").lower()
 
-        # 3. Calculate speed metric (Payment webhook timestamp to Payout execution)
+        # Update payout ID and initial hash immediately
+        order.quidax_payout_id = payout_id
+        if tx_hash:
+            order.tx_hash = tx_hash
+        order.save(update_fields=["quidax_payout_id", "tx_hash"])
+
+        # If tx_hash not yet assigned, poll Quidax up to 3 times (giving exchange time to broadcast)
+        if not tx_hash and payout_id and payout_service.client.is_live:
+            for _ in range(3):
+                time.sleep(2)
+                status_data = payout_service.client.get_withdrawal_status(payout_id)
+                tx_hash = status_data.get("transaction_hash") or status_data.get("txid") or ""
+                payout_status = (status_data.get("status") or payout_status).lower()
+                if tx_hash or payout_status in ["done", "completed", "rejected", "cancelled"]:
+                    break
+
+        if tx_hash:
+            order.tx_hash = tx_hash
+            order.save(update_fields=["tx_hash"])
+
         now = timezone.now()
         speed_ms = None
         if order.payment_received_at:
             delta = now - order.payment_received_at
             speed_ms = int(delta.total_seconds() * 1000)
 
-        # 4. Transition order to COMPLETED
-        OrderStateMachine.transition_to(
-            order=order,
-            target_state=OrderStatus.COMPLETED,
-            actor=AuditActor.CELERY_WORKER,
-            actor_id=f"celery_task_{self.request.id}",
-            metadata={
-                "payout_id": payout_id,
-                "tx_hash": tx_hash,
-                "speed_metric_ms": speed_ms,
-                "task_duration_seconds": round(time.perf_counter() - t_start, 3),
-            },
-            quidax_payout_id=payout_id,
-            tx_hash=tx_hash,
-            speed_metric_ms=speed_ms,
-        )
-
-        logger.info(
-            "Crypto payout COMPLETED for %s: tx=%s speed=%sms",
-            order.order_reference,
-            tx_hash,
-            speed_ms
-        )
-        return True
+        # ONLY transition to COMPLETED if on-chain tx_hash is confirmed or status is done/completed
+        if tx_hash or payout_status in ["done", "completed"]:
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.COMPLETED,
+                actor=AuditActor.CELERY_WORKER,
+                actor_id=f"celery_task_{self.request.id}",
+                metadata={
+                    "payout_id": payout_id,
+                    "tx_hash": tx_hash,
+                    "quidax_status": payout_status,
+                    "speed_metric_ms": speed_ms,
+                    "task_duration_seconds": round(time.perf_counter() - t_start, 3),
+                },
+                quidax_payout_id=payout_id,
+                tx_hash=tx_hash,
+                speed_metric_ms=speed_ms,
+            )
+            logger.info("Crypto payout COMPLETED for %s: tx=%s speed=%sms", order.order_reference, tx_hash, speed_ms)
+            return True
+        elif payout_status in ["rejected", "cancelled", "failed"]:
+            fail_reason = f"Quidax withdrawal was {payout_status} by exchange."
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.FAILED,
+                actor=AuditActor.CELERY_WORKER,
+                actor_id=f"celery_task_{self.request.id}",
+                metadata={"payout_id": payout_id, "quidax_status": payout_status, "error": fail_reason},
+                payout_error=fail_reason,
+            )
+            logger.error("Crypto payout FAILED for %s: %s", order.order_reference, fail_reason)
+            return False
+        else:
+            # Stays in PAYOUT_PROCESSING awaiting on-chain confirmation
+            logger.info("Crypto payout initiated for %s (id=%s), status=%s. Awaiting blockchain broadcast.", order.order_reference, payout_id, payout_status)
+            return True
 
     except PayoutExecutionError as p_err:
         logger.error("Payout execution error for %s: %s", order.order_reference, p_err)
-        # Transition to FAILED for admin review / retry
+        fail_msg = str(p_err.message) if hasattr(p_err, "message") else str(p_err)
         OrderStateMachine.transition_to(
             order=order,
             target_state=OrderStatus.FAILED,
             actor=AuditActor.CELERY_WORKER,
             actor_id=f"celery_task_{self.request.id}",
-            metadata={"error": str(p_err), "details": p_err.details},
-            payout_error=str(p_err.message),
+            metadata={"error": str(p_err), "details": getattr(p_err, "details", {})},
+            payout_error=fail_msg,
         )
-        raise self.retry(exc=p_err, countdown=5)
+        return False
 
     except Exception as exc:
         logger.exception("Unexpected error in payout task for %s: %s", order.order_reference, exc)

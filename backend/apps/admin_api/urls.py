@@ -14,6 +14,7 @@ from .views import (
     AdminSettingsHealthView,
     AdminPayoutModeSettingsView,
     AdminManualOrderReleaseView,
+    AdminVerifyOrderPayoutView,
     AdminPurgeOrdersView,
     AdminCustomersListView,
 )
@@ -22,8 +23,9 @@ urlpatterns = [
     path("dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
     path("orders/", AdminOrdersListView.as_view(), name="admin-orders-list"),
     path("orders/purge/", AdminPurgeOrdersView.as_view(), name="admin-orders-purge"),
-    path("orders/<str:order_id>/", AdminOrderDetailView.as_view(), name="admin-order-detail"),
     path("orders/<str:order_reference>/release/", AdminManualOrderReleaseView.as_view(), name="admin-order-release"),
+    path("orders/<str:order_reference>/verify/", AdminVerifyOrderPayoutView.as_view(), name="admin-order-verify"),
+    path("orders/<str:order_id>/", AdminOrderDetailView.as_view(), name="admin-order-detail"),
     path("customers/", AdminCustomersListView.as_view(), name="admin-customers-list"),
     path("payment-monitor/", AdminPaymentMonitorView.as_view(), name="admin-payment-monitor"),
     path("payouts/", AdminPayoutsView.as_view(), name="admin-payouts"),

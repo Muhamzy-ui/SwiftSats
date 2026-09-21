@@ -666,6 +666,8 @@ class AdminManualOrderReleaseView(APIView):
     """
     POST /api/v1/admin/orders/<str:order_reference>/release/
     Allows admin to 1-tap approve and release cryptocurrency to customer wallet.
+    Safely captures Quidax errors (e.g. insufficient float) and only writes COMPLETED
+    when blockchain broadcast is verified.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -693,49 +695,188 @@ class AdminManualOrderReleaseView(APIView):
             )
 
         payout_service = PayoutService()
-        payout_result = payout_service.execute_payout(
-            coin=order.coin,
-            amount=order.crypto_amount,
-            destination_address=order.wallet_address,
-            order_reference=order.order_reference,
-        )
+        try:
+            payout_result = payout_service.execute_payout(
+                coin=order.coin,
+                amount=order.crypto_amount,
+                destination_address=order.wallet_address,
+                order_reference=order.order_reference,
+            )
+        except Exception as exc:
+            err_msg = str(exc)
+            logger.error("Manual payout failed for %s: %s", order.order_reference, err_msg)
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.FAILED,
+                actor=AuditActor.ADMIN_USER,
+                actor_id=str(request.user.id),
+                payout_error=err_msg,
+            )
+            send_telegram_alert(
+                f"❌ <b>MANUAL PAYOUT FAILED</b>\n"
+                f"<b>Order:</b> {order.order_reference}\n"
+                f"<b>Error:</b> <code>{err_msg}</code>\n"
+                f"<b>Attempted by:</b> {request.user.email}"
+            )
+            return Response({
+                "success": False,
+                "error": f"Crypto release failed: {err_msg}",
+                "order_reference": order.order_reference,
+                "status": "FAILED",
+                "payout_error": err_msg,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        payout_id = str(payout_result.get("id") or payout_result.get("payout_id") or "")
+        tx_hash = payout_result.get("transaction_hash") or payout_result.get("tx_hash") or ""
+        payout_status = (payout_result.get("status") or "").lower()
+        swap_id = payout_result.get("swap_id") or ""
+
+        order.quidax_payout_id = payout_id
+        if swap_id:
+            order.quidax_swap_id = swap_id
+        if tx_hash:
+            order.tx_hash = tx_hash
+        order.save(update_fields=["quidax_payout_id", "quidax_swap_id", "tx_hash"])
+
+        # Poll Quidax up to 3 times to get blockchain tx_hash
+        if not tx_hash and payout_id and payout_service.client.is_live:
+            for _ in range(3):
+                time.sleep(2)
+                status_data = payout_service.client.get_withdrawal_status(payout_id)
+                tx_hash = status_data.get("transaction_hash") or status_data.get("txid") or ""
+                payout_status = (status_data.get("status") or payout_status).lower()
+                if tx_hash or payout_status in ["done", "completed", "rejected", "cancelled"]:
+                    break
 
         end_time = timezone.now()
         speed_ms = int((end_time - start_time).total_seconds() * 1000)
 
-        tx_hash = payout_result.get("transaction_hash") or payout_result.get("tx_hash") or ""
-        payout_id = payout_result.get("id") or ""
-        swap_id = payout_result.get("swap_id") or ""
+        # Only transition to COMPLETED if on-chain tx_hash is confirmed
+        if tx_hash or payout_status in ["done", "completed"]:
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.COMPLETED,
+                actor=AuditActor.ADMIN_USER,
+                actor_id=str(request.user.id),
+                tx_hash=tx_hash,
+                payout_tx_hash=tx_hash,
+                quidax_payout_id=payout_id,
+                quidax_swap_id=swap_id,
+                completed_at=end_time,
+                speed_metric_ms=speed_ms,
+            )
+            send_telegram_alert(
+                f"✅ <b>MANUAL PAYOUT APPROVED & CONFIRMED!</b>\n"
+                f"<b>Order:</b> {order.order_reference}\n"
+                f"<b>Delivered:</b> {order.crypto_amount} {order.coin}\n"
+                f"<b>Wallet:</b> <code>{order.masked_wallet_address}</code>\n"
+                f"<b>TxHash:</b> <code>{tx_hash[:18]}...</code>\n"
+                f"<b>Approved by:</b> {request.user.email}"
+            )
+            return Response({
+                "success": True,
+                "message": "Crypto successfully confirmed and delivered to customer wallet.",
+                "order_reference": order.order_reference,
+                "tx_hash": tx_hash,
+                "status": "COMPLETED",
+            })
+        elif payout_status in ["rejected", "cancelled", "failed"]:
+            err_msg = f"Quidax withdrawal {payout_status} by exchange."
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.FAILED,
+                actor=AuditActor.ADMIN_USER,
+                actor_id=str(request.user.id),
+                payout_error=err_msg,
+            )
+            return Response({
+                "success": False,
+                "error": err_msg,
+                "order_reference": order.order_reference,
+                "status": "FAILED",
+                "payout_error": err_msg,
+            }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Remains in PAYOUT_PROCESSING
+            return Response({
+                "success": True,
+                "message": "Withdrawal submitted to Quidax. Payout is currently broadcasting on the blockchain.",
+                "order_reference": order.order_reference,
+                "status": "PAYOUT_PROCESSING",
+                "quidax_payout_id": payout_id,
+            })
 
-        OrderStateMachine.transition_to(
-            order=order,
-            target_state=OrderStatus.COMPLETED,
-            actor=AuditActor.ADMIN_USER,
-            actor_id=str(request.user.id),
-            tx_hash=tx_hash,
-            payout_tx_hash=tx_hash,
-            quidax_payout_id=payout_id,
-            quidax_swap_id=swap_id,
-            completed_at=end_time,
-            speed_metric_ms=speed_ms,
-        )
 
-        send_telegram_alert(
-            f"✅ <b>MANUAL PAYOUT APPROVED & SENT!</b>\n"
-            f"<b>Order:</b> {order.order_reference}\n"
-            f"<b>Delivered:</b> {order.crypto_amount} {order.coin}\n"
-            f"<b>Wallet:</b> <code>{order.masked_wallet_address}</code>\n"
-            f"<b>TxHash:</b> <code>{tx_hash[:18]}...</code>\n"
-            f"<b>Approved by:</b> {request.user.email}"
-        )
+class AdminVerifyOrderPayoutView(APIView):
+    """
+    POST /api/v1/admin/orders/<str:order_reference>/verify/
+    Directly queries Quidax to verify whether the withdrawal has landed on-chain.
+    Updates order to COMPLETED once tx_hash is confirmed.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
-        return Response({
-            "success": True,
-            "message": "Crypto successfully released to customer wallet.",
-            "order_reference": order.order_reference,
-            "tx_hash": tx_hash,
-            "status": order.status,
-        })
+    def post(self, request, order_reference):
+        order = Order.objects.filter(order_reference=order_reference).first()
+        if not order:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not order.quidax_payout_id:
+            return Response({
+                "success": False,
+                "message": "No Quidax payout ID on this order. Withdrawal has not yet been initiated.",
+                "status": order.status,
+                "payout_error": order.payout_error,
+            })
+
+        payout_service = PayoutService()
+        status_data = payout_service.client.get_withdrawal_status(order.quidax_payout_id)
+        payout_status = (status_data.get("status") or "").lower()
+        tx_hash = status_data.get("transaction_hash") or status_data.get("txid") or ""
+
+        if tx_hash:
+            order.tx_hash = tx_hash
+            order.save(update_fields=["tx_hash"])
+
+        if (tx_hash or payout_status in ["done", "completed"]) and order.status != OrderStatus.COMPLETED:
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.COMPLETED,
+                actor=AuditActor.ADMIN_USER,
+                actor_id=str(request.user.id),
+                tx_hash=tx_hash,
+                completed_at=timezone.now(),
+            )
+            return Response({
+                "success": True,
+                "status": "COMPLETED",
+                "tx_hash": tx_hash,
+                "message": "Withdrawal verified! Crypto confirmed on blockchain.",
+            })
+        elif payout_status in ["rejected", "cancelled", "failed"]:
+            err_msg = f"Quidax reports withdrawal {payout_status}."
+            if order.status != OrderStatus.FAILED:
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.FAILED,
+                    actor=AuditActor.ADMIN_USER,
+                    actor_id=str(request.user.id),
+                    payout_error=err_msg,
+                )
+            return Response({
+                "success": False,
+                "status": "FAILED",
+                "payout_error": err_msg,
+                "message": err_msg,
+            })
+        else:
+            return Response({
+                "success": True,
+                "status": order.status,
+                "quidax_status": payout_status or "broadcasting",
+                "tx_hash": tx_hash or order.tx_hash,
+                "message": f"Withdrawal is still processing on exchange. Status: {payout_status or 'broadcasting'}",
+            })
+
 
 
 class AdminPurgeOrdersView(APIView):
