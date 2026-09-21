@@ -27,6 +27,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   const [symbol] = selectedRate.coin.split('_');
   const coinPriceUsd = parseFloat(selectedRate.price_usd || '1.00');
   const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1372.20');
+  const minUsd = parseFloat(selectedRate.min_amount_usd || '1.00');
 
   // Active numeric dollar value
   const dollarAmount = useMemo(() => {
@@ -203,8 +204,8 @@ export const AmountStep: React.FC<AmountStepProps> = ({
         })}
       </div>
 
-      {/* Live Quote Breakdown Card - Exactly as requested */}
-      {calculations && dollarAmount >= 5 ? (
+      {/* Live Quote Breakdown Card - Dynamic minUsd */}
+      {calculations && dollarAmount >= minUsd ? (
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#0e131d] border border-slate-200/90 dark:border-white/[0.08] shadow-sm space-y-2.5 text-xs font-medium animate-in fade-in-50 duration-150">
           {/* 1. You receive */}
           <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-white/[0.06]">
@@ -265,8 +266,8 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       ) : (
         <div className="p-4 rounded-2xl bg-white dark:bg-[#0e131d] border border-slate-200/80 dark:border-white/[0.06] text-center">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-            {dollarAmount > 0 && dollarAmount < 5
-              ? 'Minimum order amount is $5.00 USD'
+            {dollarAmount > 0 && dollarAmount < minUsd
+              ? `Minimum order amount is $${minUsd.toFixed(2)} USD`
               : 'Enter an amount above to see your live breakdown.'}
           </span>
         </div>
@@ -283,7 +284,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       <button
         type="button"
         onClick={handleProceed}
-        disabled={isLocking || dollarAmount < 5}
+        disabled={isLocking || dollarAmount < minUsd}
         className="w-full py-3.5 rounded-xl bg-[#00c853] hover:bg-[#00b046] dark:bg-[#00e676] dark:hover:bg-[#00c853] active:scale-[0.99] disabled:opacity-40 text-white dark:text-slate-950 font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
       >
         <span>{isLocking ? 'Generating Quote...' : 'Continue to Destination Wallet'}</span>
