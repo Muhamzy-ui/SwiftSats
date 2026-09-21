@@ -196,9 +196,9 @@ class LockAndGeneratePaymentView(APIView):
         platform_settings = PlatformSettings.get_settings()
         use_paystack = getattr(platform_settings, "use_paystack_virtual_accounts", False)
 
-        target_bank_name = platform_settings.settlement_bank_name or "Guaranty Trust Bank"
-        target_account_num = platform_settings.settlement_account_number or "1028627906"
-        target_account_name = platform_settings.settlement_account_name or "MAHMUD OLASUNKANMI BASHIR"
+        target_bank_name = platform_settings.settlement_bank_name or "OPay"
+        target_account_num = platform_settings.settlement_account_number or "8072410373"
+        target_account_name = platform_settings.settlement_account_name or "Mahmud Bashir Olasunkanmi"
         target_amount_expected = order.fiat_amount_expected
         paystack_ref = order.paystack_reference
 
@@ -224,9 +224,9 @@ class LockAndGeneratePaymentView(APIView):
             clean_hash = abs(hash(order.order_reference)) % 100000000
             target_account_num = f"99{clean_hash:08d}"
             if not target_bank_name:
-                target_bank_name = "Guaranty Trust Bank"
+                target_bank_name = "OPay"
             if not target_account_name:
-                target_account_name = "MAHMUD OLASUNKANMI BASHIR"
+                target_account_name = "Mahmud Bashir Olasunkanmi"
 
         # Transition Order to AWAITING_PAYMENT
         client_ip = get_client_ip(request)

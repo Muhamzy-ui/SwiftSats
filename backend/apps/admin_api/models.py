@@ -20,23 +20,23 @@ class PlatformSettings(models.Model):
         help_text="24/7 automated instant payout vs manual 1-tap admin approval"
     )
     use_paystack_virtual_accounts = models.BooleanField(
-        default=True,
+        default=False,
         help_text="Generate Paystack dynamic accounts vs Direct Merchant Settlement Bank Account"
     )
     # Primary Settlement Account
     settlement_bank_name = models.CharField(
         max_length=64,
-        default="Guaranty Trust Bank",
+        default="OPay",
         help_text="Primary bank partner"
     )
     settlement_account_name = models.CharField(
         max_length=128,
-        default="MAHMUD OLASUNKANMI BASHIR",
+        default="Mahmud Bashir Olasunkanmi",
         help_text="Primary settlement desk account name"
     )
     settlement_account_number = models.CharField(
         max_length=32,
-        default="1028627906",
+        default="8072410373",
         help_text="Primary account number"
     )
 
