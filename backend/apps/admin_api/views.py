@@ -4,12 +4,17 @@ Provides rich analytics, live monitoring funnel, order management, dispute resol
 and live system health checks matching the HRIMS aesthetic structure.
 """
 import csv
+import logging
+import uuid
+import html
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List
 import io
 import time
 import requests
+
+logger = logging.getLogger(__name__)
 
 from django.db.models import Count, Sum, Avg, Q
 from django.utils import timezone
@@ -238,7 +243,18 @@ class AdminOrderDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, order_id: str):
-        order = Order.objects.filter(Q(id=order_id) | Q(order_reference=order_id)).first()
+        is_uuid = False
+        try:
+            uuid.UUID(str(order_id))
+            is_uuid = True
+        except (ValueError, TypeError, AttributeError):
+            is_uuid = False
+
+        if is_uuid:
+            order = Order.objects.filter(Q(id=order_id) | Q(order_reference=order_id)).first()
+        else:
+            order = Order.objects.filter(order_reference=order_id).first()
+
         if not order:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -751,27 +767,42 @@ class AdminManualOrderReleaseView(APIView):
                 order_reference=order.order_reference,
             )
         except Exception as exc:
-            err_msg = str(exc)
-            logger.error("Manual payout failed for %s: %s", order.order_reference, err_msg)
-            OrderStateMachine.transition_to(
-                order=order,
-                target_state=OrderStatus.FAILED,
-                actor=AuditActor.ADMIN,
-                actor_id=str(request.user.id),
-                payout_error=err_msg,
-            )
-            send_telegram_alert(
-                f"❌ <b>MANUAL PAYOUT FAILED</b>\n"
-                f"<b>Order:</b> {order.order_reference}\n"
-                f"<b>Error:</b> <code>{err_msg}</code>\n"
-                f"<b>Attempted by:</b> {request.user.email}"
-            )
+            raw_err = str(exc)
+            clean_err = raw_err
+            if "140017" in raw_err or "disabled for you" in raw_err.lower():
+                clean_err = "Quidax API: Crypto withdrawals are currently disabled on your Quidax exchange account (requires 2FA or Tier-2 clearance on Quidax). Please use the 'Manual Dispatch / TxHash' button to dispatch directly, or enable API withdrawals in Quidax."
+            elif "insufficient" in raw_err.lower() or "balance" in raw_err.lower():
+                clean_err = f"Quidax API: Insufficient float balance in Quidax wallet for {order.coin}. Please use 'Manual Dispatch / TxHash' to mark completed, or deposit funds to Quidax."
+
+            logger.error("Manual payout failed for %s: %s", order.order_reference, raw_err)
+            try:
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.FAILED,
+                    actor=AuditActor.ADMIN,
+                    actor_id=str(request.user.id),
+                    payout_error=clean_err,
+                )
+            except Exception as trans_err:
+                logger.warning("Order state transition to FAILED failed: %s", trans_err)
+
+            try:
+                admin_email = getattr(request.user, "email", "admin")
+                send_telegram_alert(
+                    f"❌ <b>MANUAL PAYOUT FAILED</b>\n"
+                    f"<b>Order:</b> {order.order_reference}\n"
+                    f"<b>Error:</b> <code>{html.escape(clean_err[:200])}</code>\n"
+                    f"<b>Attempted by:</b> {html.escape(str(admin_email))}"
+                )
+            except Exception as tel_err:
+                logger.warning("Telegram alert failed: %s", tel_err)
+
             return Response({
                 "success": False,
-                "error": f"Crypto release failed: {err_msg}",
+                "error": clean_err,
                 "order_reference": order.order_reference,
                 "status": "FAILED",
-                "payout_error": err_msg,
+                "payout_error": clean_err,
             }, status=status.HTTP_400_BAD_REQUEST)
 
         payout_id = str(payout_result.get("id") or payout_result.get("payout_id") or "")
