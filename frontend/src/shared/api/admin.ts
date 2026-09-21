@@ -222,10 +222,11 @@ export const adminApi = {
     });
   },
 
-  /** 1-Tap manual release of crypto to customer wallet */
-  async releaseOrder(orderReference: string): Promise<{ success: boolean; message: string; tx_hash?: string; error?: string; payout_error?: string; status: string }> {
+  /** 1-Tap manual release of crypto to customer wallet (or manual tx_hash dispatch) */
+  async releaseOrder(orderReference: string, txHash?: string): Promise<{ success: boolean; message: string; tx_hash?: string; error?: string; payout_error?: string; status: string }> {
     return request(`/api/v1/admin/orders/${orderReference}/release/`, {
       method: 'POST',
+      body: txHash ? JSON.stringify({ tx_hash: txHash }) : undefined,
     });
   },
 

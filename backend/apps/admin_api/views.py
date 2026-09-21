@@ -685,18 +685,60 @@ class AdminManualOrderReleaseView(APIView):
         if order.status == OrderStatus.COMPLETED:
             return Response({"error": "Order is already completed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        start_time = timezone.now()
-        if order.status != OrderStatus.PAYOUT_PROCESSING:
+        # 1. Manual Dispatch Support: Admin directly supplies external TxHash
+        manual_tx_hash = (request.data.get("tx_hash") or "").strip()
+        if manual_tx_hash:
+            if order.status == OrderStatus.FAILED:
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.PAYOUT_PROCESSING,
+                    actor=AuditActor.ADMIN,
+                    actor_id=str(request.user.id),
+                )
+            elif order.status not in [OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PAYOUT_PROCESSING, OrderStatus.COMPLETED]:
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.PAYMENT_CONFIRMED,
+                    actor=AuditActor.ADMIN,
+                    actor_id=str(request.user.id),
+                )
             OrderStateMachine.transition_to(
                 order=order,
-                target_state=OrderStatus.PAYMENT_CONFIRMED,
-                actor=AuditActor.ADMIN_USER,
+                target_state=OrderStatus.COMPLETED,
+                actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
+                tx_hash=manual_tx_hash,
+                payout_tx_hash=manual_tx_hash,
+                completed_at=timezone.now(),
             )
+            return Response({
+                "success": True,
+                "message": f"Order successfully marked as completed with blockchain hash: {manual_tx_hash[:18]}...",
+                "order_reference": order.order_reference,
+                "tx_hash": manual_tx_hash,
+                "status": "COMPLETED",
+            })
+
+        start_time = timezone.now()
+        if order.status == OrderStatus.FAILED:
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.PAYOUT_PROCESSING,
-                actor=AuditActor.ADMIN_USER,
+                actor=AuditActor.ADMIN,
+                actor_id=str(request.user.id),
+            )
+        elif order.status != OrderStatus.PAYOUT_PROCESSING:
+            if order.status != OrderStatus.PAYMENT_CONFIRMED:
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.PAYMENT_CONFIRMED,
+                    actor=AuditActor.ADMIN,
+                    actor_id=str(request.user.id),
+                )
+            OrderStateMachine.transition_to(
+                order=order,
+                target_state=OrderStatus.PAYOUT_PROCESSING,
+                actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
             )
 
@@ -714,7 +756,7 @@ class AdminManualOrderReleaseView(APIView):
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.FAILED,
-                actor=AuditActor.ADMIN_USER,
+                actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
                 payout_error=err_msg,
             )
@@ -762,7 +804,7 @@ class AdminManualOrderReleaseView(APIView):
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.COMPLETED,
-                actor=AuditActor.ADMIN_USER,
+                actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
                 tx_hash=tx_hash,
                 payout_tx_hash=tx_hash,
@@ -791,7 +833,7 @@ class AdminManualOrderReleaseView(APIView):
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.FAILED,
-                actor=AuditActor.ADMIN_USER,
+                actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
                 payout_error=err_msg,
             )
@@ -847,7 +889,7 @@ class AdminVerifyOrderPayoutView(APIView):
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.COMPLETED,
-                actor=AuditActor.ADMIN_USER,
+                actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
                 tx_hash=tx_hash,
                 completed_at=timezone.now(),
@@ -864,7 +906,7 @@ class AdminVerifyOrderPayoutView(APIView):
                 OrderStateMachine.transition_to(
                     order=order,
                     target_state=OrderStatus.FAILED,
-                    actor=AuditActor.ADMIN_USER,
+                    actor=AuditActor.ADMIN,
                     actor_id=str(request.user.id),
                     payout_error=err_msg,
                 )

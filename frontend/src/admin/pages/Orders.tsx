@@ -44,6 +44,8 @@ export const OrdersPage: React.FC = () => {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [manualTxHash, setManualTxHash] = useState('');
+  const [showManualDispatch, setShowManualDispatch] = useState(false);
 
   const currentStatus = searchParams.get('status') || 'ALL';
   const currentCoin = searchParams.get('coin') || 'ALL';
@@ -93,10 +95,10 @@ export const OrdersPage: React.FC = () => {
 
   const handleSearchChange = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget;
-    const input = form.elements.namedItem('search') as HTMLInputElement;
+    const formData = new FormData(e.currentTarget);
+    const q = (formData.get('search') as string || '').trim();
     const next = new URLSearchParams(searchParams);
-    if (input.value.trim()) next.set('search', input.value.trim());
+    if (q) next.set('search', q);
     else next.delete('search');
     next.set('page', '1');
     setSearchParams(next);
@@ -105,6 +107,8 @@ export const OrdersPage: React.FC = () => {
   const openOrderDetail = async (id: string) => {
     setSelectedOrderId(id);
     setActionNotice(null);
+    setManualTxHash('');
+    setShowManualDispatch(false);
     setIsLoadingDetail(true);
     try {
       const res = await adminApi.getOrderDetail(id);
@@ -118,11 +122,11 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
-  const handleReleaseOrder = async (orderRef: string) => {
+  const handleReleaseOrder = async (orderRef: string, txHash?: string) => {
     setIsProcessingAction(true);
     setActionNotice(null);
     try {
-      const res = await adminApi.releaseOrder(orderRef);
+      const res = await adminApi.releaseOrder(orderRef, txHash);
       if (res.status === 'COMPLETED') {
         setActionNotice({ type: 'success', message: res.message || 'Crypto successfully delivered on blockchain!' });
       } else {
@@ -432,7 +436,7 @@ export const OrdersPage: React.FC = () => {
 
                 {/* Administrative Dispatch Controls */}
                 {orderDetail.status !== 'COMPLETED' && orderDetail.status !== 'CANCELLED' && orderDetail.status !== 'REFUNDED' && (
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-bold block text-slate-900 dark:text-white text-xs">Administrative Dispatch Controls</span>
@@ -462,9 +466,41 @@ export const OrdersPage: React.FC = () => {
                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors"
                       >
                         <Send className="w-3.5 h-3.5" />
-                        <span>{isProcessingAction ? 'Releasing...' : 'Release Crypto to Wallet'}</span>
+                        <span>{isProcessingAction ? 'Releasing...' : 'Release Crypto via Quidax'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowManualDispatch(!showManualDispatch)}
+                        className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <span>{showManualDispatch ? 'Hide Manual' : 'Manual Dispatch / TxHash'}</span>
                       </button>
                     </div>
+
+                    {showManualDispatch && (
+                      <div className="pt-2.5 border-t border-slate-200 dark:border-slate-700/60 space-y-2 animate-in fade-in">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
+                          External Blockchain TxHash (Sent via Binance / TrustWallet / External App):
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Enter 0x... or Tron TxID (or leave empty to mark dispatched)"
+                            value={manualTxHash}
+                            onChange={(e) => setManualTxHash(e.target.value)}
+                            className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono focus:outline-hidden focus:ring-1 focus:ring-emerald-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleReleaseOrder(orderDetail.order_reference, manualTxHash.trim() || `MANUAL-${Date.now()}`)}
+                            disabled={isProcessingAction}
+                            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors whitespace-nowrap shadow-xs"
+                          >
+                            Mark Completed
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

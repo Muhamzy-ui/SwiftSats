@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, ExternalLink, Zap, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Copy, Check, ExternalLink, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { OrderLockedResponse, OrderDetail } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { formatNaira, formatSpeed } from '../../../shared/utils/formatters';
@@ -14,9 +14,10 @@ interface PayStepProps {
 export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [currentOrder, setCurrentOrder] = useState<OrderDetail>(orderData.order);
-  const [isSimulating, setIsSimulating] = useState(false);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptSubmitted, setReceiptSubmitted] = useState(false);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
+  const [paymentConfirmedByUser, setPaymentConfirmedByUser] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -179,36 +180,18 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
     }
   };
 
-  const handleSimulatePayment = async () => {
-    setIsSimulating(true);
+  const handleIHavePaid = async () => {
+    setIsConfirmingPayment(true);
     try {
-      // Simulate Nomba webhook transfer
-      const expectedAmount = parseFloat(payment_instructions.amount_ngn);
-      const response = await fetch('/api/v1/payments/webhook/nomba/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_type: 'payment_success',
-          data: {
-            amount: expectedAmount,
-            transaction_reference: `NMB_SIM_${Date.now()}`,
-            sender_name: 'Simulated Customer',
-            status: 'SUCCESS',
-          },
-        }),
-      });
-
-      if (response.ok) {
-        const refreshed = await ordersApi.lookupOrder(orderRef);
-        if (refreshed.success) {
-          setCurrentOrder(refreshed.order);
-          onSuccess(refreshed.order);
-        }
+      const res = await ordersApi.confirmPayment(orderRef);
+      if (res.success || res.status) {
+        setPaymentConfirmedByUser(true);
+        setCurrentOrder((prev) => ({ ...prev, status: 'VERIFYING' }));
       }
     } catch (err) {
-      console.error('Simulation failed', err);
+      console.error('Failed to notify payment', err);
     } finally {
-      setIsSimulating(false);
+      setIsConfirmingPayment(false);
     }
   };
 
@@ -517,18 +500,43 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
         </button>
       </div>
 
-      {/* Dev Simulation Button */}
-      <div className="pt-1">
+      {/* Primary Action: I Have Sent The Money */}
+      <div className="pt-2">
         <button
           type="button"
-          onClick={handleSimulatePayment}
-          disabled={isSimulating}
-          className="w-full py-3 rounded-2xl bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-500/20 text-[#00e676] font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
+          onClick={handleIHavePaid}
+          disabled={isConfirmingPayment || paymentConfirmedByUser || isVerifying}
+          className={`w-full py-4 rounded-2xl font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2 active:scale-98 ${
+            paymentConfirmedByUser || isVerifying
+              ? 'bg-emerald-950/40 border border-emerald-500/40 text-emerald-400 cursor-default'
+              : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/25 ring-2 ring-emerald-400/20'
+          }`}
         >
-          <Zap className="w-3.5 h-3.5" />
-          <span>{isSimulating ? 'Simulating Nomba Transfer...' : '⚡ Simulate Nomba Bank Transfer'}</span>
+          {isConfirmingPayment ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Notifying Settlement Desk...</span>
+            </>
+          ) : paymentConfirmedByUser || isVerifying ? (
+            <>
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>Payment Notified — Verifying Transfer...</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>I Have Made This Transfer</span>
+            </>
+          )}
         </button>
       </div>
+
+      {(paymentConfirmedByUser || isVerifying) && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 text-center flex items-center justify-center gap-2 animate-in fade-in">
+          <Clock className="w-4 h-4 text-emerald-500 shrink-0 animate-pulse" />
+          <span>We are confirming your credit. Once verified, crypto will be dispatched to your wallet automatically.</span>
+        </div>
+      )}
 
       {/* Cancel Order Action */}
       <div className="pt-2 text-center">

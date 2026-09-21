@@ -85,7 +85,21 @@ export const ordersApi = {
     formData.append('order_reference', orderReference);
     formData.append('receipt_file', file);
 
-    const res = await fetch('/api/v1/payments/submit-receipt/', {
+    const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+    const res = await fetch(`${API_BASE_URL}/api/v1/payments/submit-receipt/`, {
+      method: 'POST',
+      body: formData,
+    });
+    return res.json();
+  },
+
+  /** 1-Tap notify: I have made this bank transfer */
+  async confirmPayment(orderReference: string): Promise<{ success: boolean; message: string; status: string }> {
+    const formData = new FormData();
+    formData.append('order_reference', orderReference);
+
+    const API_BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+    const res = await fetch(`${API_BASE_URL}/api/v1/payments/submit-receipt/`, {
       method: 'POST',
       body: formData,
     });
