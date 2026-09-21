@@ -122,14 +122,17 @@ class PaystackClient:
                 res_data = response.json()
                 if res_data.get("status"):
                     data = res_data.get("data", {})
+                    paystack_kobo = data.get("amount", amount_kobo)
+                    paystack_naira = Decimal(str(paystack_kobo)) / Decimal("100.00")
                     bank_info = data.get("bank", {})
+                    bank_raw = bank_info.get("name", "Paystack-Titan")
                     return {
                         "success": True,
                         "paystack_reference": data.get("reference"),
                         "account_number": data.get("account_number"),
-                        "bank_name": bank_info.get("name", "Paystack-Titan"),
+                        "bank_name": bank_raw,
                         "account_name": data.get("account_name", "PAYSTACK CHECKOUT"),
-                        "amount_ngn": str(clean_naira),
+                        "amount_ngn": str(paystack_naira),
                         "expires_at": data.get("account_expires_at"),
                         "customer_code": None,
                     }

@@ -214,6 +214,8 @@ class LockAndGeneratePaymentView(APIView):
                     target_account_num = ps_res.get("account_number")
                     target_account_name = ps_res.get("account_name")
                     paystack_ref = ps_res.get("paystack_reference")
+                    if ps_res.get("amount_ngn"):
+                        target_amount_expected = Decimal(str(ps_res.get("amount_ngn")))
             except Exception as exc:
                 logger.error("Failed to generate Paystack virtual account for %s: %s", order.order_reference, exc)
 
@@ -245,6 +247,8 @@ class LockAndGeneratePaymentView(APIView):
             virtual_account_number=target_account_num,
             virtual_bank_name=target_bank_name,
             virtual_account_name=target_account_name,
+            fiat_amount_expected=target_amount_expected,
+            paystack_reference=paystack_ref,
         )
 
         if paystack_ref and paystack_ref != updated_order.paystack_reference:

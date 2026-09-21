@@ -20,7 +20,7 @@ class PlatformSettings(models.Model):
         help_text="24/7 automated instant payout vs manual 1-tap admin approval"
     )
     use_paystack_virtual_accounts = models.BooleanField(
-        default=False,
+        default=True,
         help_text="Generate Paystack dynamic accounts vs Direct Merchant Settlement Bank Account"
     )
     # Primary Settlement Account

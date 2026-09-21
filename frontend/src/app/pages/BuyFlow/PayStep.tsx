@@ -370,7 +370,11 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
           </span>
           <button
             type="button"
-            onClick={() => copyToClipboard(Math.round(parseFloat(payment_instructions.amount_ngn || '0')).toString(), 'amount')}
+            onClick={() => {
+              const val = parseFloat(payment_instructions.amount_ngn || '0');
+              const strVal = val % 1 === 0 ? val.toFixed(0) : val.toFixed(2);
+              copyToClipboard(strVal, 'amount');
+            }}
             className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-[#00c853] hover:bg-[#00b048] dark:bg-[#00e676] dark:hover:bg-[#00c853] text-slate-950 font-black text-xs transition-all shadow-sm shadow-emerald-500/25 active:scale-95 flex items-center gap-1.5 shrink-0"
             title="Copy exact amount for bank transfer"
           >
@@ -390,7 +394,7 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
 
         <div className="flex items-center justify-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
           <ShieldAlert className="w-3.5 h-3.5" />
-          <span>You MUST pay the exact kobo amount shown above</span>
+          <span>You MUST pay the exact amount shown above</span>
         </div>
       </div>
 
@@ -421,9 +425,16 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
         <div className="space-y-2.5 text-xs">
           <div className="flex justify-between items-center py-1">
             <span className="text-slate-400">Destination Bank</span>
-            <span className="font-bold text-white text-sm">
-              {payment_instructions.bank_name || 'Paystack-Titan / Wema'}
-            </span>
+            <div className="text-right">
+              <span className="font-bold text-white text-sm block">
+                {payment_instructions.bank_name || 'Paystack-Titan / Wema'}
+              </span>
+              {(payment_instructions.bank_name || '').toLowerCase().includes('titan') && (
+                <span className="text-[10px] text-amber-400 font-medium block">
+                  (Search "Titan Trust Bank" in Kuda/OPay)
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-between items-center py-1 border-t border-slate-800">
