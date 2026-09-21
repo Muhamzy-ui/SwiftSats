@@ -235,4 +235,23 @@ export const adminApi = {
       method: 'POST',
     });
   },
+
+  /** Fetch registered customer accounts and statistics */
+  async getCustomers(search?: string): Promise<{ success: boolean; total_count: number; customers: AdminCustomer[] }> {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return request(`/api/v1/admin/customers/${query}`);
+  },
 };
+
+export interface AdminCustomer {
+  id: string;
+  email: string;
+  full_name: string;
+  phone: string;
+  is_active: boolean;
+  is_email_verified: boolean;
+  total_orders: number;
+  completed_orders: number;
+  total_spent_ngn: number;
+  created_at: string;
+}

@@ -767,3 +767,51 @@ class AdminPurgeOrdersView(APIView):
         })
 
 
+class AdminCustomersListView(APIView):
+    """
+    GET /api/v1/admin/customers/
+    List registered customers with transaction aggregates and contact info.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.accounts.models import Customer
+        from django.db.models import Count, Sum, Q
+
+        qs = Customer.objects.annotate(
+            total_orders=Count("orders"),
+            completed_orders=Count("orders", filter=Q(orders__status=OrderStatus.COMPLETED)),
+            total_spent_ngn=Sum("orders__fiat_amount_ngn", filter=Q(orders__status=OrderStatus.COMPLETED)),
+        ).order_by("-created_at")
+
+        search = request.GET.get("search", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(email__icontains=search) |
+                Q(full_name__icontains=search) |
+                Q(phone__icontains=search)
+            )
+
+        data = []
+        for c in qs[:200]:
+            data.append({
+                "id": str(c.id),
+                "email": c.email,
+                "full_name": c.full_name,
+                "phone": c.phone,
+                "is_active": c.is_active,
+                "is_email_verified": c.is_email_verified,
+                "total_orders": c.total_orders,
+                "completed_orders": c.completed_orders,
+                "total_spent_ngn": float(c.total_spent_ngn or 0),
+                "created_at": c.created_at.isoformat(),
+            })
+
+        return Response({
+            "success": True,
+            "total_count": qs.count(),
+            "customers": data,
+        })
+
+
+

@@ -10,6 +10,7 @@ import { DisputesPage } from './pages/Disputes';
 import { AnalyticsPage } from './pages/Analytics';
 import { ReportsPage } from './pages/Reports';
 import { SettingsPage } from './pages/Settings';
+import { UsersPage } from './pages/Users';
 
 export const AdminRoutes: React.FC = () => {
   return (
@@ -18,6 +19,8 @@ export const AdminRoutes: React.FC = () => {
       <Route element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="orders" element={<OrdersPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="customers" element={<UsersPage />} />
         <Route path="payments" element={<PaymentMonitorPage />} />
         <Route path="payouts" element={<PayoutsPage />} />
         <Route path="disputes" element={<DisputesPage />} />
