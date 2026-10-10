@@ -29,15 +29,23 @@ logger = logging.getLogger(__name__)
 
 def verify_nomba_signature(payload_bytes: bytes, signature_header: Optional[str]) -> bool:
     """
-    Verify HMAC SHA-512 signature from Nomba if secret is configured.
+    Verify HMAC SHA-512 or SHA-256 signature from Nomba if secret is configured.
     """
     secret = os.getenv("NOMBA_WEBHOOK_SECRET", "")
     if not secret or not signature_header:
-        # If secret is not configured in local/dev environment, allow connection
+        # If secret is not configured in environment, allow connection safely
         return True
 
-    expected = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha512).hexdigest()
-    return hmac.compare_digest(expected, signature_header)
+    sig_clean = signature_header.strip().lower()
+    expected_sha512 = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha512).hexdigest().lower()
+    if hmac.compare_digest(expected_sha512, sig_clean):
+        return True
+
+    expected_sha256 = hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest().lower()
+    if hmac.compare_digest(expected_sha256, sig_clean):
+        return True
+
+    return False
 
 
 class NombaWebhookView(APIView):
@@ -51,7 +59,12 @@ class NombaWebhookView(APIView):
 
     def post(self, request):
         raw_body = request.body
-        signature = request.META.get("HTTP_X_NOMBA_SIGNATURE") or request.META.get("HTTP_NOMBA_SIGNATURE")
+        signature = (
+            request.META.get("HTTP_X_NOMBA_SIGNATURE")
+            or request.META.get("HTTP_NOMBA_SIGNATURE")
+            or request.META.get("HTTP_SIGNATURE")
+            or request.META.get("HTTP_X_SIGNATURE")
+        )
 
         if not verify_nomba_signature(raw_body, signature):
             logger.warning("Rejected Nomba webhook: Invalid HMAC signature")
@@ -197,39 +210,56 @@ class NombaWebhookView(APIView):
             end_payout_time = timezone.now()
             speed_ms = int((end_payout_time - start_payout_time).total_seconds() * 1000)
 
+            payout_status = (payout_result.get("status") or "").lower()
             tx_hash = payout_result.get("transaction_hash") or payout_result.get("tx_hash") or ""
             payout_id = payout_result.get("id") or ""
             swap_id = payout_result.get("swap_id") or ""
 
-            OrderStateMachine.transition_to(
-                order=matching_order,
-                target_state=OrderStatus.COMPLETED,
-                actor=AuditActor.SYSTEM_WEBHOOK,
-                tx_hash=tx_hash,
-                payout_tx_hash=tx_hash,
-                quidax_payout_id=payout_id,
-                quidax_swap_id=swap_id,
-                completed_at=end_payout_time,
-                speed_metric_ms=speed_ms,
-            )
+            if tx_hash and payout_status in ["completed", "done"]:
+                OrderStateMachine.transition_to(
+                    order=matching_order,
+                    target_state=OrderStatus.COMPLETED,
+                    actor=AuditActor.SYSTEM_WEBHOOK,
+                    tx_hash=tx_hash,
+                    payout_tx_hash=tx_hash,
+                    quidax_payout_id=payout_id,
+                    quidax_swap_id=swap_id,
+                    completed_at=end_payout_time,
+                    speed_metric_ms=speed_ms,
+                )
 
-            send_telegram_alert(
-                f"🎉 <b>24/7 NOMBA AUTOMATED SALE COMPLETED!</b>\n"
-                f"<b>Order:</b> {matching_order.order_reference}\n"
-                f"<b>Received:</b> ₦{paid_amount:,.2f} (Nomba)\n"
-                f"<b>Delivered:</b> {matching_order.crypto_amount} {matching_order.coin}\n"
-                f"<b>Wallet:</b> <code>{matching_order.masked_wallet_address}</code>\n"
-                f"<b>TxHash:</b> <code>{tx_hash[:18]}...</code>\n"
-                f"<b>Velocity:</b> {speed_ms} ms\n"
-                f"<b>Status:</b> 100% AUTOMATED SUCCESS ✅"
-            )
+                send_telegram_alert(
+                    f"🎉 <b>24/7 NOMBA AUTOMATED SALE COMPLETED!</b>\n"
+                    f"<b>Order:</b> {matching_order.order_reference}\n"
+                    f"<b>Received:</b> ₦{paid_amount:,.2f} (Nomba)\n"
+                    f"<b>Delivered:</b> {matching_order.crypto_amount} {matching_order.coin}\n"
+                    f"<b>Wallet:</b> <code>{matching_order.masked_wallet_address}</code>\n"
+                    f"<b>TxHash:</b> <code>{tx_hash[:18]}...</code>\n"
+                    f"<b>Velocity:</b> {speed_ms} ms\n"
+                    f"<b>Status:</b> 100% AUTOMATED SUCCESS ✅"
+                )
 
-            return Response({
-                "status": "automated_success",
-                "order_reference": matching_order.order_reference,
-                "tx_hash": tx_hash,
-                "speed_ms": speed_ms,
-            }, status=status.HTTP_200_OK)
+                return Response({
+                    "status": "automated_success",
+                    "order_reference": matching_order.order_reference,
+                    "tx_hash": tx_hash,
+                    "speed_ms": speed_ms,
+                }, status=status.HTTP_200_OK)
+            else:
+                send_telegram_alert(
+                    f"🔔 <b>PAYMENT CONFIRMED VIA NOMBA!</b>\n"
+                    f"<b>Order:</b> {matching_order.order_reference}\n"
+                    f"<b>Received:</b> ₦{paid_amount:,.2f} (Nomba)\n"
+                    f"<b>Deliver:</b> {matching_order.crypto_amount} {matching_order.coin}\n"
+                    f"<b>Customer Wallet:</b> <code>{matching_order.wallet_address}</code>\n"
+                    f"<b>Status:</b> Awaiting 1-Tap Admin Approval or Hot Wallet funding."
+                )
+
+                return Response({
+                    "status": "awaiting_manual_approval",
+                    "order_reference": matching_order.order_reference,
+                    "message": "Payment verified. Ready for 1-Tap Admin Approval.",
+                }, status=status.HTTP_200_OK)
 
 
 class SubmitReceiptProofView(APIView):

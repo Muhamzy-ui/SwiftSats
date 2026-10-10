@@ -701,9 +701,13 @@ class AdminManualOrderReleaseView(APIView):
         if order.status == OrderStatus.COMPLETED:
             return Response({"error": "Order is already completed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Manual Dispatch Support: Admin directly supplies external TxHash
+        # 1. Manual Dispatch / 1-Tap Manual Approval Mode
+        platform_settings = PlatformSettings.get_settings()
         manual_tx_hash = (request.data.get("tx_hash") or "").strip()
-        if manual_tx_hash:
+        is_manual_mode = platform_settings.payout_mode == PlatformSettings.PayoutMode.MANUAL
+
+        if manual_tx_hash or is_manual_mode:
+            actual_tx = manual_tx_hash or f"MANUAL-{timezone.now().strftime('%Y%m%d%H%M%S')}"
             if order.status == OrderStatus.FAILED:
                 OrderStateMachine.transition_to(
                     order=order,
@@ -723,15 +727,15 @@ class AdminManualOrderReleaseView(APIView):
                 target_state=OrderStatus.COMPLETED,
                 actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
-                tx_hash=manual_tx_hash,
-                payout_tx_hash=manual_tx_hash,
+                tx_hash=actual_tx,
+                payout_tx_hash=actual_tx,
                 completed_at=timezone.now(),
             )
             return Response({
                 "success": True,
-                "message": f"Order successfully marked as completed with blockchain hash: {manual_tx_hash[:18]}...",
+                "message": f"Order successfully approved and completed ({actual_tx})",
                 "order_reference": order.order_reference,
-                "tx_hash": manual_tx_hash,
+                "tx_hash": actual_tx,
                 "status": "COMPLETED",
             })
 
@@ -817,8 +821,8 @@ class AdminManualOrderReleaseView(APIView):
             order.tx_hash = tx_hash
         order.save(update_fields=["quidax_payout_id", "quidax_swap_id", "tx_hash"])
 
-        # Poll Quidax up to 3 times to get blockchain tx_hash
-        if not tx_hash and payout_id and payout_service.client.is_live:
+        # Poll exchange up to 3 times to get blockchain tx_hash if client is live
+        if not tx_hash and payout_id and payout_service.client and getattr(payout_service.client, "is_live", False):
             for _ in range(3):
                 time.sleep(2)
                 status_data = payout_service.client.get_withdrawal_status(payout_id)
@@ -826,6 +830,10 @@ class AdminManualOrderReleaseView(APIView):
                 payout_status = (status_data.get("status") or payout_status).lower()
                 if tx_hash or payout_status in ["done", "completed", "rejected", "cancelled"]:
                     break
+
+        if not tx_hash and payout_status == "awaiting_manual_approval":
+            tx_hash = f"MANUAL-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+            payout_status = "completed"
 
         end_time = timezone.now()
         speed_ms = int((end_time - start_time).total_seconds() * 1000)

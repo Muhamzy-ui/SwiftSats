@@ -412,6 +412,11 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
               <span className="font-bold text-white text-sm block">
                 {payment_instructions.bank_name || 'Paystack-Titan / Wema'}
               </span>
+              {(payment_instructions.bank_name || '').toLowerCase().includes('nomba') && (
+                <span className="text-[10px] text-amber-400 font-medium block">
+                  (Search "Nomba" or "Nombank" in your bank/OPay app)
+                </span>
+              )}
               {(payment_instructions.bank_name || '').toLowerCase().includes('titan') && (
                 <span className="text-[10px] text-amber-400 font-medium block">
                   (Search "Titan Trust Bank" in Kuda/OPay)

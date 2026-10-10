@@ -75,8 +75,8 @@ def process_crypto_payout(self, order_id: str):
             order.tx_hash = tx_hash
         order.save(update_fields=["quidax_payout_id", "tx_hash"])
 
-        # If tx_hash not yet assigned, poll Quidax up to 3 times (giving exchange time to broadcast)
-        if not tx_hash and payout_id and payout_service.client.is_live:
+        # If tx_hash not yet assigned, poll exchange up to 3 times if client is configured
+        if not tx_hash and payout_id and payout_service.client and getattr(payout_service.client, "is_live", False):
             for _ in range(3):
                 time.sleep(2)
                 status_data = payout_service.client.get_withdrawal_status(payout_id)
@@ -95,8 +95,8 @@ def process_crypto_payout(self, order_id: str):
             delta = now - order.payment_received_at
             speed_ms = int(delta.total_seconds() * 1000)
 
-        # ONLY transition to COMPLETED if on-chain tx_hash is confirmed or status is done/completed
-        if tx_hash or payout_status in ["done", "completed"]:
+        # ONLY transition to COMPLETED if on-chain tx_hash is confirmed and status is done/completed
+        if tx_hash and payout_status in ["done", "completed"]:
             OrderStateMachine.transition_to(
                 order=order,
                 target_state=OrderStatus.COMPLETED,

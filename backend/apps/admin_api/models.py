@@ -26,40 +26,40 @@ class PlatformSettings(models.Model):
     # Primary Settlement Account
     settlement_bank_name = models.CharField(
         max_length=64,
-        default="OPay",
+        default="Nomba Microfinance Bank",
         help_text="Primary bank partner"
     )
     settlement_account_name = models.CharField(
         max_length=128,
-        default="Mahmud Bashir Olasunkanmi",
+        default="Mbovibe Systems/swiftsats",
         help_text="Primary settlement desk account name"
     )
     settlement_account_number = models.CharField(
         max_length=32,
-        default="8072410373",
+        default="1623796514",
         help_text="Primary account number"
     )
 
     # Secondary Settlement Account
     settlement_bank_name_2 = models.CharField(
         max_length=64,
-        default="Paystack-Titan / Providus",
+        default="Nomba Microfinance Bank",
         help_text="Secondary virtual bank partner"
     )
     settlement_account_name_2 = models.CharField(
         max_length=128,
-        default="SwiftSats Checkout Desk",
+        default="Mbovibe Systems/swiftsats",
         help_text="Secondary settlement desk account name"
     )
     settlement_account_number_2 = models.CharField(
         max_length=32,
-        default="8029314810",
+        default="1623796514",
         help_text="Secondary virtual account number"
     )
 
     rotate_accounts = models.BooleanField(
-        default=True,
-        help_text="Automatically alternate between Moniepoint and Nomba for each incoming order"
+        default=False,
+        help_text="Automatically alternate between settlement accounts for each incoming order"
     )
     rotation_counter = models.IntegerField(
         default=0,

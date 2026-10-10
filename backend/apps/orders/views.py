@@ -25,6 +25,7 @@ from apps.accounts.authentication import CustomerJWTAuthentication
 from core.constants import OrderStatus, AuditActor, COIN_METADATA
 from core.validators import validate_wallet_for_coin
 from core.utils import get_client_ip
+from core.telegram import send_telegram_alert
 from django.core.mail import send_mail
 from django.core.cache import cache
 import logging
@@ -196,9 +197,9 @@ class LockAndGeneratePaymentView(APIView):
         platform_settings = PlatformSettings.get_settings()
         use_paystack = getattr(platform_settings, "use_paystack_virtual_accounts", False)
 
-        target_bank_name = platform_settings.settlement_bank_name or "OPay"
-        target_account_num = platform_settings.settlement_account_number or "8072410373"
-        target_account_name = platform_settings.settlement_account_name or "Mahmud Bashir Olasunkanmi"
+        target_bank_name = platform_settings.settlement_bank_name or "Nomba Microfinance Bank"
+        target_account_num = platform_settings.settlement_account_number or "1623796514"
+        target_account_name = platform_settings.settlement_account_name or "Mbovibe Systems/swiftsats"
         target_amount_expected = order.fiat_amount_expected
         paystack_ref = order.paystack_reference
 
@@ -219,14 +220,11 @@ class LockAndGeneratePaymentView(APIView):
             except Exception as exc:
                 logger.error("Failed to generate Paystack virtual account for %s: %s", order.order_reference, exc)
 
-        # Fallback to deterministic 10-digit account if missing
+        # Fallback to deterministic account if missing
         if not target_account_num or target_account_num.strip() in ["0000000000", ""]:
-            clean_hash = abs(hash(order.order_reference)) % 100000000
-            target_account_num = f"99{clean_hash:08d}"
-            if not target_bank_name:
-                target_bank_name = "OPay"
-            if not target_account_name:
-                target_account_name = "Mahmud Bashir Olasunkanmi"
+            target_account_num = "1623796514"
+            target_bank_name = "Nomba Microfinance Bank"
+            target_account_name = "Mbovibe Systems/swiftsats"
 
         # Transition Order to AWAITING_PAYMENT
         client_ip = get_client_ip(request)
@@ -263,6 +261,19 @@ class LockAndGeneratePaymentView(APIView):
 
         # Send instant receipt and tracking email to user
         send_order_confirmation_email(updated_order)
+
+        # Instant alert to Admin Telegram
+        try:
+            send_telegram_alert(
+                f"🛒 <b>NEW ORDER INITIATED</b>\n"
+                f"<b>Order:</b> <code>{updated_order.order_reference}</code>\n"
+                f"<b>Amount:</b> ₦{updated_order.fiat_amount_expected:,.2f} ({updated_order.crypto_amount} {updated_order.coin})\n"
+                f"<b>Destination:</b> <code>{updated_order.wallet_address}</code>\n"
+                f"<b>Deposit Bank:</b> {updated_order.virtual_bank_name} - <code>{updated_order.virtual_account_number}</code>\n"
+                f"<b>Status:</b> Awaiting Transfer"
+            )
+        except Exception as e:
+            logger.warning("Telegram order notification failed: %s", e)
 
         return Response({
             "success": True,

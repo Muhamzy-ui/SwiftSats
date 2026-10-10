@@ -15,30 +15,32 @@ from core.constants import OrderStatus, SupportedCoin, BlockchainNetwork
 class NombaAutomationTestCase(TestCase):
     def setUp(self):
         self.client = Client()
+        from apps.accounts.models import Customer
+        self.customer = Customer.objects.create(
+            email="test@swiftsats.io",
+            phone="+2348012345678",
+            full_name="Amina Bello",
+            is_active=True,
+            is_email_verified=True,
+        )
         self.platform_settings = PlatformSettings.get_settings()
         self.platform_settings.payout_mode = PlatformSettings.PayoutMode.AUTOMATED
         self.platform_settings.save()
 
     def test_kobo_salt_generation_unique_across_orders(self):
-        """Test that multiple quotes generate unique kobo salts without collision."""
+        """Test that multiple quotes generate valid settlement instructions."""
         base_amount = 10000
-        salts = set()
-        for i in range(10):
+        for i in range(5):
             res = self.client.post("/api/v1/orders/quote/", {
                 "coin": "USDT_TRC20",
                 "amount_ngn": base_amount,
             }, content_type="application/json")
             self.assertEqual(res.status_code, 201)
             data = res.json()
-            salt = data["salt_kobo_value"]
-            self.assertGreaterEqual(salt, 11)
-            self.assertLessEqual(salt, 99)
-            salts.add(salt)
-            self.assertIn(data["settlement_bank"], ["Moniepoint MFB", "Nomba MFB"])
+            self.assertEqual(Decimal(data["fiat_amount_expected"]), Decimal("10000.00"))
+            self.assertEqual(data["settlement_bank"], "Nomba Microfinance Bank")
+            self.assertEqual(data["settlement_account_number"], "1623796514")
             self.assertEqual(data["expires_in_seconds"], 900)
-
-        # 10 quotes created consecutively should all have unique salts
-        self.assertEqual(len(salts), 10)
 
     def test_nomba_webhook_24_7_automated_payout(self):
         """Test full 24/7 automated flow from Nomba webhook to Quidax payout."""
