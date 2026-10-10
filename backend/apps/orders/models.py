@@ -91,6 +91,13 @@ class Order(models.Model):
     receipt_image = models.FileField(upload_to="receipts/%Y/%m/", null=True, blank=True)
     nomba_transaction_ref = models.CharField(max_length=128, blank=True, null=True, unique=True, db_index=True)
     payout_tx_hash = models.CharField(max_length=128, blank=True, null=True, db_index=True)
+    partner_code = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="Partner identifier or external website slug (e.g. 'axiom_wallet')"
+    )
 
     # State
     status = models.CharField(

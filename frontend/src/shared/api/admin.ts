@@ -249,6 +249,33 @@ export const adminApi = {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     return request(`/api/v1/admin/customers/${query}`);
   },
+
+  /** Fetch linked websites / partner integrations & live financial statistics */
+  async getPartners(): Promise<AdminPartnersResponse> {
+    return request('/api/v1/admin/partners/');
+  },
+
+  /** Register a new linked website integration */
+  async createPartner(data: { name: string; code?: string; website_url?: string; notes?: string }): Promise<{ success: boolean; message: string; partner: AdminPartner }> {
+    return request('/api/v1/admin/partners/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** 1-Tap activate / deactivate partner integration */
+  async togglePartner(code: string): Promise<{ success: boolean; message: string; code: string; is_active: boolean }> {
+    return request(`/api/v1/admin/partners/${code}/toggle/`, {
+      method: 'POST',
+    });
+  },
+
+  /** Remove linked website integration */
+  async deletePartner(code: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/v1/admin/partners/${code}/`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 export interface AdminCustomer {
@@ -262,4 +289,42 @@ export interface AdminCustomer {
   completed_orders: number;
   total_spent_ngn: number;
   created_at: string;
+}
+
+export interface AdminPartner {
+  id: number;
+  name: string;
+  code: string;
+  is_active: boolean;
+  website_url?: string;
+  commission_rate_pct: number;
+  notes?: string;
+  total_orders: number;
+  completed_orders: number;
+  total_volume_ngn: number;
+  total_profit_ngn: number;
+  conversion_rate_pct: number;
+  deep_link_base: string;
+  deep_link_usdt: string;
+  created_at: string;
+}
+
+export interface AdminPartnersResponse {
+  success: boolean;
+  summary: {
+    total_partners: number;
+    active_partners: number;
+    total_volume_ngn: number;
+    total_profit_ngn: number;
+    total_orders: number;
+  };
+  chart_data: Array<{
+    name: string;
+    code: string;
+    volume: number;
+    profit: number;
+    is_active: boolean;
+  }>;
+  partners: AdminPartner[];
+  recent_orders: any[];
 }

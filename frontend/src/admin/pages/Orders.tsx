@@ -283,7 +283,12 @@ export const OrdersPage: React.FC = () => {
               {orders.map((ord) => (
                 <tr key={ord.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                   <td className="px-5 py-3.5 font-bold text-slate-900 dark:text-white">
-                    {ord.order_reference}
+                    <div>{ord.order_reference}</div>
+                    {ord.partner_code && (
+                      <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-sm text-[9px] font-sans font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        via {ord.partner_code.toUpperCase()}
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-3.5">
                     <span className="font-bold text-slate-800 dark:text-slate-200 font-sans">{ord.coin.split('_')[0]}</span>

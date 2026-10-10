@@ -244,6 +244,12 @@ export const BuyWizard: React.FC = () => {
   const [quote, setQuote] = useState<QuoteCreatedResponse | null>(null);
   const [orderLocked, setOrderLocked] = useState<OrderLockedResponse | null>(null);
 
+  // Partner Deep-Link onramp state
+  const [partnerSource, setPartnerSource] = useState<string | null>(null);
+  const [initialWallet, setInitialWallet] = useState<string>('');
+  const [initialAmount, setInitialAmount] = useState<string>('');
+  const [initialEmail, setInitialEmail] = useState<string>('');
+
   useEffect(() => {
     const fetchRates = async () => {
       try {
@@ -256,6 +262,40 @@ export const BuyWizard: React.FC = () => {
       }
     };
     fetchRates();
+
+    // 1. Check for incoming URL Deep-Link parameters (from Axiom Wallet or partner websites)
+    const params = new URLSearchParams(window.location.search);
+    const sourceParam = params.get('source') || params.get('partner') || params.get('ref');
+    const coinParam = params.get('coin') || params.get('crypto') || params.get('asset');
+    const walletParam = params.get('wallet') || params.get('address') || params.get('dest');
+    const amountParam = params.get('amount') || params.get('ngn') || params.get('usd');
+    const emailParam = params.get('email');
+
+    if (sourceParam) setPartnerSource(sourceParam.trim().toLowerCase());
+    if (walletParam) setInitialWallet(walletParam.trim());
+    if (amountParam) setInitialAmount(amountParam.trim());
+    if (emailParam) setInitialEmail(emailParam.trim());
+
+    let resolvedCoin: CoinCode | null = null;
+    if (coinParam) {
+      const clean = coinParam.trim().toUpperCase();
+      if (clean === 'USDT' || clean === 'USDT_BEP20' || clean === 'BSC' || clean === 'BEP20') {
+        resolvedCoin = 'USDT_BEP20';
+      } else if (clean === 'USDT_TRC20' || clean === 'TRC20') {
+        resolvedCoin = 'USDT_TRC20';
+      } else if (clean === 'BTC' || clean === 'BITCOIN') {
+        resolvedCoin = 'BTC';
+      } else if (clean === 'ETH' || clean === 'ETHEREUM') {
+        resolvedCoin = 'ETH';
+      } else if (clean === 'SOL' || clean === 'SOLANA') {
+        resolvedCoin = 'SOL';
+      } else if (clean === 'USDC') {
+        resolvedCoin = 'USDC';
+      } else if (clean === 'BNB') {
+        resolvedCoin = 'BNB';
+      }
+      if (resolvedCoin) setSelectedCoin(resolvedCoin);
+    }
 
     // If user has an open order awaiting payment, auto-resume directly on Step 4 (PAY)
     const openOrder = getOpenOrder();
@@ -278,6 +318,9 @@ export const BuyWizard: React.FC = () => {
           setStep('PAY');
         }
       }).catch(() => {});
+    } else if (resolvedCoin || sourceParam) {
+      // Deep linked directly from external website: Skip coin selection & jump straight to Amount!
+      setStep('AMOUNT');
     }
   }, []);
 
@@ -345,6 +388,21 @@ export const BuyWizard: React.FC = () => {
         </span>
       </div>
 
+      {/* Partner Link Attribution Header */}
+      {partnerSource && (
+        <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-2.5 rounded-xl flex items-center justify-between text-xs animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Connected with {partnerSource.toUpperCase()}</span>
+          </div>
+          {initialWallet && (
+            <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800">
+              Wallet: {initialWallet.slice(0, 6)}...{initialWallet.slice(-4)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Dynamic Step Views */}
       {step === 'COIN' && (
         <CoinStep
@@ -358,6 +416,8 @@ export const BuyWizard: React.FC = () => {
       {step === 'AMOUNT' && selectedRate && (
         <AmountStep
           selectedRate={selectedRate}
+          initialAmount={initialAmount}
+          partnerCode={partnerSource || undefined}
           onQuoteCreated={(q) => {
             storeRecentOrder({
               order_reference: q.order_reference,
@@ -377,6 +437,9 @@ export const BuyWizard: React.FC = () => {
       {step === 'WALLET' && quote && (
         <WalletStep
           quote={quote}
+          initialWalletAddress={initialWallet}
+          initialEmail={initialEmail}
+          partnerCode={partnerSource || undefined}
           onOrderLocked={(ord) => {
             storeRecentOrder({
               order_reference: ord.order.order_reference,

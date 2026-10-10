@@ -110,6 +110,38 @@ class CreateQuoteView(APIView):
         fiat_amount_expected = clean_fiat
         salt_kobo = 0
 
+        # Check partner attribution / integration
+        partner_param = (
+            request.data.get("partner_code")
+            or request.data.get("source")
+            or request.data.get("partner")
+            or request.data.get("ref")
+            or ""
+        ).strip().lower()
+
+        partner_code_val = None
+        if partner_param:
+            from apps.admin_api.models import PartnerIntegration
+            partner_obj = PartnerIntegration.objects.filter(code=partner_param).first()
+            if partner_obj:
+                if not partner_obj.is_active:
+                    return Response({
+                        "success": False,
+                        "error": {
+                            "code": "PARTNER_INACTIVE",
+                            "message": f"This partner integration ('{partner_obj.name}') is currently deactivated by the administrator.",
+                        }
+                    }, status=status.HTTP_403_FORBIDDEN)
+                partner_code_val = partner_obj.code
+            else:
+                # Auto-register partner
+                auto_partner = PartnerIntegration.objects.create(
+                    name=partner_param.replace("_", " ").title(),
+                    code=partner_param,
+                    is_active=True,
+                )
+                partner_code_val = auto_partner.code
+
         client_ip = get_client_ip(request)
         platform_settings = PlatformSettings.get_settings()
         assigned_acc = platform_settings.get_next_settlement_account()
@@ -128,6 +160,7 @@ class CreateQuoteView(APIView):
             status=OrderStatus.QUOTE_LOCKED,
             quote_expires_at=expires_at,
             ip_address=client_ip,
+            partner_code=partner_code_val,
             wallet_address="PENDING_WALLET_SUBMISSION",
             virtual_bank_name=assigned_acc["bank_name"],
             virtual_account_name=assigned_acc["account_name"],
@@ -137,6 +170,7 @@ class CreateQuoteView(APIView):
         return Response({
             "success": True,
             "order_reference": order.order_reference,
+            "partner_code": partner_code_val,
             "coin": coin,
             "network": calc["network"],
             "fiat_amount_ngn": str(amount_ngn),
@@ -167,15 +201,30 @@ class LockAndGeneratePaymentView(APIView):
         serializer = LockQuoteAndSubmitWalletSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Enforce that users cannot complete order without signing up
+        order: Order = serializer.validated_data["order_instance"]
+        wallet_address: str = serializer.validated_data["clean_wallet"]
+
+        # Support partner guest on-ramping or authenticated customer
         customer = getattr(request, "user", None)
+        user_email_input = serializer.validated_data.get("user_email")
         if not customer or not getattr(customer, "is_authenticated", False):
-            user_email_input = serializer.validated_data.get("user_email")
             if user_email_input:
                 from apps.accounts.models import Customer
                 customer = Customer.objects.filter(email__iexact=user_email_input.strip()).first()
+                if not customer and order.partner_code:
+                    customer = Customer.objects.create(
+                        email=user_email_input.strip(),
+                        full_name=serializer.validated_data.get("user_full_name") or f"Guest ({order.partner_code})",
+                    )
+            elif order.partner_code:
+                from apps.accounts.models import Customer
+                guest_email = f"guest_{order.order_reference.lower()}@swiftsats.internal"
+                customer, _ = Customer.objects.get_or_create(
+                    email=guest_email,
+                    defaults={"full_name": f"Partner OnRamp ({order.partner_code})"}
+                )
 
-        if not customer or not getattr(customer, "is_authenticated", False):
+        if not customer or not getattr(customer, "is_authenticated", False) and not order.partner_code:
             return Response(
                 {
                     "success": False,
@@ -188,9 +237,7 @@ class LockAndGeneratePaymentView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        order: Order = serializer.validated_data["order_instance"]
-        wallet_address: str = serializer.validated_data["clean_wallet"]
-        user_email: str = customer.email if customer else serializer.validated_data.get("user_email")
+        user_email = customer.email if customer else (serializer.validated_data.get("user_email") or f"guest@{order.partner_code}.app")
 
         # Check if Paystack live collection is active or Direct Merchant Account is configured
         paystack_client = PaystackClient()
@@ -264,8 +311,9 @@ class LockAndGeneratePaymentView(APIView):
 
         # Instant alert to Admin Telegram
         try:
+            partner_tag = f" (via {updated_order.partner_code.upper()})" if updated_order.partner_code else ""
             send_telegram_alert(
-                f"🛒 <b>NEW ORDER INITIATED</b>\n"
+                f"🛒 <b>NEW ORDER INITIATED{partner_tag}</b>\n"
                 f"<b>Order:</b> <code>{updated_order.order_reference}</code>\n"
                 f"<b>Amount:</b> ₦{updated_order.fiat_amount_expected:,.2f} ({updated_order.crypto_amount} {updated_order.coin})\n"
                 f"<b>Destination:</b> <code>{updated_order.wallet_address}</code>\n"

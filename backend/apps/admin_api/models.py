@@ -109,3 +109,27 @@ class PlatformSettings(models.Model):
                 "account_number": self.settlement_account_number_2,
                 "account_name": self.settlement_account_name_2,
             }
+
+
+class PartnerIntegration(models.Model):
+    """
+    Linked Website / App Integration (e.g. Axiom Wallet, external partner sites).
+    Controls deep-linking activation, tracking, and revenue attribution.
+    """
+    name = models.CharField(max_length=128, help_text="Human-friendly name of the linked website or app")
+    code = models.SlugField(max_length=64, unique=True, db_index=True, help_text="Unique slug/identifier (e.g. 'axiom_wallet')")
+    is_active = models.BooleanField(default=True, help_text="Toggle to activate or deactivate this partner's link")
+    website_url = models.URLField(blank=True, null=True, help_text="URL of the partner website")
+    commission_rate_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Partner commission rate % (if any)")
+    notes = models.TextField(blank=True, null=True, help_text="Internal notes or contact info")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "partner_integrations"
+        ordering = ["-created_at"]
+        verbose_name = "Partner Integration"
+        verbose_name_plural = "Partner Integrations"
+
+    def __str__(self):
+        return f"{self.name} ({self.code}) - {'ACTIVE' if self.is_active else 'INACTIVE'}"

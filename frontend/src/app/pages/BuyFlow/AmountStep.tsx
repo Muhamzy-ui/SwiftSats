@@ -7,6 +7,8 @@ import { formatNaira } from '../../../shared/utils/formatters';
 
 interface AmountStepProps {
   selectedRate: LiveRate;
+  initialAmount?: string;
+  partnerCode?: string;
   onQuoteCreated: (quote: QuoteCreatedResponse) => void;
   onBack: () => void;
 }
@@ -15,18 +17,33 @@ const PRESET_DOLLAR_VALUES = [2, 3, 5, 10, 20, 50, 100, 200, 500, 1000];
 
 export const AmountStep: React.FC<AmountStepProps> = ({
   selectedRate,
+  initialAmount,
+  partnerCode,
   onQuoteCreated,
   onBack,
 }) => {
+  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1372.20');
+  
+  // Calculate starting dollar value from optional URL parameter
+  const getInitialDollar = () => {
+    if (!initialAmount) return '2';
+    const num = parseFloat(initialAmount);
+    if (isNaN(num)) return '2';
+    // If value looks like Naira (e.g. >= 500), convert to USD equivalent
+    if (num >= 500) {
+      return (num / ratePerDollar).toFixed(2);
+    }
+    return String(num);
+  };
+
   const [currencyMode, setCurrencyMode] = useState<'USD' | 'CRYPTO'>('USD');
-  const [dollarInput, setDollarInput] = useState<string>('2');
+  const [dollarInput, setDollarInput] = useState<string>(getInitialDollar());
   const [cryptoInput, setCryptoInput] = useState<string>('');
   const [isLocking, setIsLocking] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [symbol] = selectedRate.coin.split('_');
   const coinPriceUsd = parseFloat(selectedRate.price_usd || '1.00');
-  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1372.20');
   const minUsd = parseFloat(selectedRate.min_amount_usd || '1.00');
 
   // Active numeric dollar value
@@ -97,7 +114,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
 
     try {
       const nairaAmount = Math.round(calculations.totalNgnToPay);
-      const quote = await ordersApi.createQuote(selectedRate.coin as CoinCode, nairaAmount);
+      const quote = await ordersApi.createQuote(selectedRate.coin as CoinCode, nairaAmount, partnerCode);
       onQuoteCreated(quote);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to lock rate with exchange.');

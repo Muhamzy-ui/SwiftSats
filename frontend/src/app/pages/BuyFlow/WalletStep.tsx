@@ -25,18 +25,24 @@ import { useAuth } from '../../../shared/context/AuthContext';
 
 interface WalletStepProps {
   quote: QuoteCreatedResponse;
+  initialWalletAddress?: string;
+  initialEmail?: string;
+  partnerCode?: string;
   onOrderLocked: (order: OrderLockedResponse) => void;
   onBack: () => void;
 }
 
 export const WalletStep: React.FC<WalletStepProps> = ({
   quote,
+  initialWalletAddress,
+  initialEmail,
+  partnerCode,
   onOrderLocked,
   onBack,
 }) => {
   const { user, isAuthenticated, login, register } = useAuth();
 
-  const [walletAddress, setWalletAddress] = useState('');
+  const [walletAddress, setWalletAddress] = useState(initialWalletAddress || '');
   const [validationError, setValidationError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -45,7 +51,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
   // Auth gate state for unregistered buyers
   const [authMode, setAuthMode] = useState<'REGISTER' | 'LOGIN'>('REGISTER');
   const [authFullName, setAuthFullName] = useState('');
-  const [authEmail, setAuthEmail] = useState('');
+  const [authEmail, setAuthEmail] = useState(initialEmail || '');
   const [authPhone, setAuthPhone] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authConfirmPassword, setAuthConfirmPassword] = useState('');
@@ -106,38 +112,43 @@ export const WalletStep: React.FC<WalletStepProps> = ({
     if (!isAuthenticated) {
       const cleanEmail = authEmail.trim().toLowerCase();
       if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-        setAuthError('Please provide a valid email address to create your account.');
+        setAuthError('Please provide a valid email address to receive your payment receipt.');
         return;
       }
 
-      if (!authPassword || authPassword.length < 6) {
-        setAuthError('Password must be at least 6 characters.');
-        return;
-      }
-
-      if (authMode === 'REGISTER' && authPassword !== authConfirmPassword) {
-        setAuthError('Passwords do not match. Please verify.');
-        return;
-      }
-
-      setIsValidating(true);
-
-      try {
-        if (authMode === 'REGISTER') {
-          await register({
-            email: cleanEmail,
-            password: authPassword,
-            full_name: authFullName.trim(),
-            phone: authPhone.trim(),
-          });
-        } else {
-          await login(cleanEmail, authPassword);
-        }
+      // If user comes from a linked partner integration and omitted password, allow seamless on-ramp
+      if (partnerCode && !authPassword) {
         activeEmail = cleanEmail;
-      } catch (err: any) {
-        setAuthError(err.message || 'Authentication failed. Please check your credentials.');
-        setIsValidating(false);
-        return;
+      } else {
+        if (!authPassword || authPassword.length < 6) {
+          setAuthError('Password must be at least 6 characters.');
+          return;
+        }
+
+        if (authMode === 'REGISTER' && authPassword !== authConfirmPassword) {
+          setAuthError('Passwords do not match. Please verify.');
+          return;
+        }
+
+        setIsValidating(true);
+
+        try {
+          if (authMode === 'REGISTER') {
+            await register({
+              email: cleanEmail,
+              password: authPassword,
+              full_name: authFullName.trim(),
+              phone: authPhone.trim(),
+            });
+          } else {
+            await login(cleanEmail, authPassword);
+          }
+          activeEmail = cleanEmail;
+        } catch (err: any) {
+          setAuthError(err.message || 'Authentication failed. Please check your credentials.');
+          setIsValidating(false);
+          return;
+        }
       }
     }
 
@@ -147,7 +158,8 @@ export const WalletStep: React.FC<WalletStepProps> = ({
       const order = await ordersApi.lockAndCreateOrder(
         quote.order_reference,
         walletAddress,
-        activeEmail
+        activeEmail,
+        partnerCode
       );
       onOrderLocked(order);
     } catch (err: any) {

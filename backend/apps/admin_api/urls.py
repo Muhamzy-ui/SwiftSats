@@ -17,6 +17,9 @@ from .views import (
     AdminVerifyOrderPayoutView,
     AdminPurgeOrdersView,
     AdminCustomersListView,
+    AdminPartnersListView,
+    AdminPartnerToggleView,
+    AdminPartnerDetailView,
 )
 
 urlpatterns = [
@@ -27,6 +30,9 @@ urlpatterns = [
     path("orders/<str:order_reference>/verify/", AdminVerifyOrderPayoutView.as_view(), name="admin-order-verify"),
     path("orders/<str:order_id>/", AdminOrderDetailView.as_view(), name="admin-order-detail"),
     path("customers/", AdminCustomersListView.as_view(), name="admin-customers-list"),
+    path("partners/", AdminPartnersListView.as_view(), name="admin-partners-list"),
+    path("partners/<str:code>/toggle/", AdminPartnerToggleView.as_view(), name="admin-partner-toggle"),
+    path("partners/<str:code>/", AdminPartnerDetailView.as_view(), name="admin-partner-detail"),
     path("payment-monitor/", AdminPaymentMonitorView.as_view(), name="admin-payment-monitor"),
     path("payouts/", AdminPayoutsView.as_view(), name="admin-payouts"),
     path("disputes/", AdminDisputesView.as_view(), name="admin-disputes-list"),

@@ -178,6 +178,7 @@ export interface AdminOrderSummary {
   quote_rate: string;
   wallet_address: string;
   masked_wallet: string;
+  partner_code?: string | null;
   status: OrderStatus;
   virtual_bank_name: string | null;
   virtual_account_number: string | null;

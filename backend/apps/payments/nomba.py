@@ -228,9 +228,10 @@ class NombaWebhookView(APIView):
                     speed_metric_ms=speed_ms,
                 )
 
+                partner_str = f"\n<b>Source:</b> {matching_order.partner_code.upper()}" if matching_order.partner_code else ""
                 send_telegram_alert(
                     f"🎉 <b>24/7 NOMBA AUTOMATED SALE COMPLETED!</b>\n"
-                    f"<b>Order:</b> {matching_order.order_reference}\n"
+                    f"<b>Order:</b> {matching_order.order_reference}{partner_str}\n"
                     f"<b>Received:</b> ₦{paid_amount:,.2f} (Nomba)\n"
                     f"<b>Delivered:</b> {matching_order.crypto_amount} {matching_order.coin}\n"
                     f"<b>Wallet:</b> <code>{matching_order.masked_wallet_address}</code>\n"

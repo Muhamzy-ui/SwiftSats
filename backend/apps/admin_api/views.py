@@ -1042,4 +1042,192 @@ class AdminCustomersListView(APIView):
         })
 
 
+class AdminPartnersListView(APIView):
+    """
+    GET /api/v1/admin/partners/
+    Returns list of all linked websites / partner integrations with live financial metrics:
+    total volume, gross profit, orders count, conversion rate, and active toggle status.
+
+    POST /api/v1/admin/partners/
+    Create a new linked website integration.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from .models import PartnerIntegration
+        from apps.orders.models import Order
+        from django.db.models import Sum, Count, Q
+        from decimal import Decimal
+
+        partners = PartnerIntegration.objects.all().order_by("-created_at")
+
+        # Automatically ensure Axiom Wallet exists as default linked partner if none exists yet
+        if not partners.exists():
+            default_axiom = PartnerIntegration.objects.create(
+                name="Axiom Wallet",
+                code="axiom",
+                is_active=True,
+                website_url="https://axiomwallet.app",
+                commission_rate_pct=Decimal("0.00"),
+                notes="Built-in default integration for Axiom Wallet crypto on-ramp"
+            )
+            partners = PartnerIntegration.objects.filter(id=default_axiom.id)
+
+        partners_data = []
+        total_all_volume = Decimal("0.00")
+        total_all_profit = Decimal("0.00")
+        total_all_orders = 0
+
+        for p in partners:
+            partner_orders = Order.objects.filter(partner_code=p.code)
+            completed_orders = partner_orders.filter(status=OrderStatus.COMPLETED)
+
+            vol = completed_orders.aggregate(v=Sum("fiat_amount_ngn"))["v"] or Decimal("0.00")
+            profit = completed_orders.aggregate(f=Sum("service_fee_ngn"))["f"] or Decimal("0.00")
+            order_count = partner_orders.count()
+            completed_count = completed_orders.count()
+            conversion_rate = round((completed_count / order_count * 100), 1) if order_count > 0 else 0.0
+
+            total_all_volume += vol
+            total_all_profit += profit
+            total_all_orders += order_count
+
+            partners_data.append({
+                "id": p.id,
+                "name": p.name,
+                "code": p.code,
+                "is_active": p.is_active,
+                "website_url": p.website_url or "",
+                "commission_rate_pct": float(p.commission_rate_pct),
+                "notes": p.notes or "",
+                "total_orders": order_count,
+                "completed_orders": completed_count,
+                "total_volume_ngn": float(vol),
+                "total_profit_ngn": float(profit),
+                "conversion_rate_pct": conversion_rate,
+                "deep_link_base": f"https://swiftsats.onrender.com/?source={p.code}",
+                "deep_link_usdt": f"https://swiftsats.onrender.com/?source={p.code}&coin=USDT_BEP20",
+                "created_at": p.created_at.isoformat(),
+            })
+
+        # Chart breakdown data
+        chart_breakdown = [
+            {
+                "name": p["name"],
+                "code": p["code"],
+                "volume": p["total_volume_ngn"],
+                "profit": p["total_profit_ngn"],
+                "is_active": p["is_active"]
+            }
+            for p in partners_data
+        ]
+
+        # Recent partner orders
+        recent_orders = Order.objects.filter(partner_code__isnull=False).exclude(partner_code="").order_by("-created_at")[:15]
+        from .serializers import AdminOrderListSerializer
+
+        return Response({
+            "success": True,
+            "summary": {
+                "total_partners": partners.count(),
+                "active_partners": partners.filter(is_active=True).count(),
+                "total_volume_ngn": float(total_all_volume),
+                "total_profit_ngn": float(total_all_profit),
+                "total_orders": total_all_orders,
+            },
+            "chart_data": chart_breakdown,
+            "partners": partners_data,
+            "recent_orders": AdminOrderListSerializer(recent_orders, many=True).data,
+        })
+
+    def post(self, request):
+        from .models import PartnerIntegration
+        from django.utils.text import slugify
+
+        name = (request.data.get("name") or "").strip()
+        code = (request.data.get("code") or "").strip().lower()
+        website_url = (request.data.get("website_url") or "").strip()
+        commission_rate = request.data.get("commission_rate_pct", 0)
+        notes = (request.data.get("notes") or "").strip()
+
+        if not name:
+            return Response({"error": "Partner name is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not code:
+            code = slugify(name).replace("-", "_")
+
+        if PartnerIntegration.objects.filter(code=code).exists():
+            return Response({"error": f"A partner with code '{code}' already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+        partner = PartnerIntegration.objects.create(
+            name=name,
+            code=code,
+            is_active=True,
+            website_url=website_url or None,
+            commission_rate_pct=commission_rate or 0,
+            notes=notes or None,
+        )
+
+        return Response({
+            "success": True,
+            "message": f"Partner '{partner.name}' successfully integrated.",
+            "partner": {
+                "id": partner.id,
+                "name": partner.name,
+                "code": partner.code,
+                "is_active": partner.is_active,
+                "deep_link_base": f"https://swiftsats.onrender.com/?source={partner.code}",
+            }
+        }, status=status.HTTP_201_CREATED)
+
+
+class AdminPartnerToggleView(APIView):
+    """
+    POST /api/v1/admin/partners/<str:code>/toggle/
+    1-Tap Activate or Deactivate linked website / integration.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code: str):
+        from .models import PartnerIntegration
+
+        partner = PartnerIntegration.objects.filter(code=code.strip().lower()).first()
+        if not partner:
+            return Response({"error": "Partner not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        partner.is_active = not partner.is_active
+        partner.save(update_fields=["is_active"])
+
+        state_str = "ACTIVATED" if partner.is_active else "DEACTIVATED"
+        logger.info("Admin %s toggled partner %s to %s", request.user.email, partner.code, state_str)
+
+        return Response({
+            "success": True,
+            "message": f"Integration '{partner.name}' is now {state_str}.",
+            "code": partner.code,
+            "is_active": partner.is_active,
+        })
+
+
+class AdminPartnerDetailView(APIView):
+    """
+    DELETE /api/v1/admin/partners/<str:code>/
+    Remove partner integration.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, code: str):
+        from .models import PartnerIntegration
+
+        partner = PartnerIntegration.objects.filter(code=code.strip().lower()).first()
+        if not partner:
+            return Response({"error": "Partner not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        partner.delete()
+        return Response({
+            "success": True,
+            "message": f"Partner '{code}' removed.",
+        })
+
+
 

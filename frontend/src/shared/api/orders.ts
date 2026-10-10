@@ -22,15 +22,24 @@ export const ordersApi = {
   },
 
   /** Generate locked price quote */
-  async createQuote(coin: CoinCode, amountNgn: number): Promise<QuoteCreatedResponse> {
+  async createQuote(coin: CoinCode, amountNgn: number, partnerCode?: string): Promise<QuoteCreatedResponse> {
     return request<QuoteCreatedResponse>('/api/v1/orders/quote/', {
       method: 'POST',
-      body: JSON.stringify({ coin, amount_ngn: amountNgn }),
+      body: JSON.stringify({
+        coin,
+        amount_ngn: amountNgn,
+        partner_code: partnerCode || undefined,
+      }),
     });
   },
 
-  /** Lock quote, submit wallet, and obtain one-time Paystack virtual account */
-  async lockAndPay(orderReference: string, walletAddress: string, userEmail?: string): Promise<{
+  /** Lock quote, submit wallet, and obtain one-time settlement account */
+  async lockAndPay(
+    orderReference: string,
+    walletAddress: string,
+    userEmail?: string,
+    partnerCode?: string
+  ): Promise<{
     success: boolean;
     order: OrderPublic;
     payment_instructions: PaymentInstructions;
@@ -45,13 +54,14 @@ export const ordersApi = {
         order_reference: orderReference,
         wallet_address: walletAddress,
         user_email: userEmail || undefined,
+        partner_code: partnerCode || undefined,
       }),
     });
   },
 
   /** Alias for lockAndPay */
-  async lockAndCreateOrder(orderReference: string, walletAddress: string, userEmail?: string) {
-    return this.lockAndPay(orderReference, walletAddress, userEmail);
+  async lockAndCreateOrder(orderReference: string, walletAddress: string, userEmail?: string, partnerCode?: string) {
+    return this.lockAndPay(orderReference, walletAddress, userEmail, partnerCode);
   },
 
   /** Alias for getOrderStatus */

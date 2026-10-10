@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   Layers,
+  Link2,
   Activity,
   Send,
   ShieldAlert,
@@ -33,6 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isHealthy = true, onNavigate, 
   const navItems = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { to: '/admin/orders', label: 'Orders Pipeline', icon: Layers },
+    { to: '/admin/integrations', label: 'Linked Websites', icon: Link2 },
     { to: '/admin/users', label: 'Users & Customers', icon: Users },
     { to: '/admin/payments', label: 'Payment Monitor', icon: Activity },
     { to: '/admin/payouts', label: 'Payouts Log', icon: Send },
