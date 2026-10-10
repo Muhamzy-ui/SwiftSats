@@ -246,6 +246,8 @@ export const BuyWizard: React.FC = () => {
 
   // Partner Deep-Link onramp state
   const [partnerSource, setPartnerSource] = useState<string | null>(null);
+  const [partnerOrderId, setPartnerOrderId] = useState<string | null>(null);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
   const [initialWallet, setInitialWallet] = useState<string>('');
   const [initialAmount, setInitialAmount] = useState<string>('');
   const [initialEmail, setInitialEmail] = useState<string>('');
@@ -265,13 +267,20 @@ export const BuyWizard: React.FC = () => {
 
     // 1. Check for incoming URL Deep-Link parameters (from Axiom Wallet or partner websites)
     const params = new URLSearchParams(window.location.search);
-    const sourceParam = params.get('source') || params.get('partner') || params.get('ref');
+    const orderIdParam = params.get('order_id') || params.get('orderId');
+    let sourceParam = params.get('source') || params.get('partner') || params.get('ref');
+    if (!sourceParam && orderIdParam?.toUpperCase().startsWith('AXM')) {
+      sourceParam = 'axiom';
+    }
     const coinParam = params.get('coin') || params.get('crypto') || params.get('asset');
     const walletParam = params.get('wallet') || params.get('address') || params.get('dest');
     const amountParam = params.get('amount') || params.get('ngn') || params.get('usd');
     const emailParam = params.get('email');
+    const returnUrlParam = params.get('return_url') || params.get('returnUrl') || params.get('redirect_url');
 
     if (sourceParam) setPartnerSource(sourceParam.trim().toLowerCase());
+    if (orderIdParam) setPartnerOrderId(orderIdParam.trim());
+    if (returnUrlParam) setReturnUrl(returnUrlParam.trim());
     if (walletParam) setInitialWallet(walletParam.trim());
     if (amountParam) setInitialAmount(amountParam.trim());
     if (emailParam) setInitialEmail(emailParam.trim());
@@ -459,6 +468,9 @@ export const BuyWizard: React.FC = () => {
       {step === 'PAY' && orderLocked && (
         <PayStep
           orderData={orderLocked}
+          returnUrl={returnUrl || undefined}
+          partnerOrderId={partnerOrderId || undefined}
+          partnerSource={partnerSource || undefined}
           onSuccess={(comp) => {
             updateStoredOrderStatus(
               comp.order_reference,

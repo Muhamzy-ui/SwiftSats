@@ -37,6 +37,7 @@ export const AppRoutes: React.FC = () => {
                 <Routes>
                   <Route index element={<Home />} />
                   <Route path="buy" element={<Home />} />
+                  <Route path="checkout" element={<Home />} />
                   <Route path="pay" element={<PayPage />} />
                   <Route path="pay/:reference" element={<PayPage />} />
                   <Route path="track" element={<OrderStatusPage />} />

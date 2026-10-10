@@ -7,11 +7,21 @@ import { cancelStoredOrder } from '../../../shared/utils/orderStorage';
 
 interface PayStepProps {
   orderData: OrderLockedResponse;
+  returnUrl?: string;
+  partnerOrderId?: string;
+  partnerSource?: string;
   onSuccess: (completedOrder: OrderDetail) => void;
   onCancel?: () => void;
 }
 
-export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel }) => {
+export const PayStep: React.FC<PayStepProps> = ({
+  orderData,
+  returnUrl,
+  partnerOrderId,
+  partnerSource,
+  onSuccess,
+  onCancel,
+}) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [currentOrder, setCurrentOrder] = useState<OrderDetail>(orderData.order);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
@@ -198,6 +208,23 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
   const isCompleted = currentOrder.status === 'COMPLETED';
   const isVerifying = currentOrder.status === 'VERIFYING' || receiptSubmitted;
 
+  const resolvedReturnUrl = React.useMemo(() => {
+    if (!returnUrl) return null;
+    const separator = returnUrl.includes('?') ? '&' : '?';
+    const cleanCoin = currentOrder.coin.split('_')[0];
+    const targetOrderId = partnerOrderId || orderRef;
+    return `${returnUrl}${separator}payment=success&orderId=${encodeURIComponent(targetOrderId)}&order_id=${encodeURIComponent(targetOrderId)}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
+  }, [returnUrl, partnerOrderId, orderRef, currentOrder]);
+
+  useEffect(() => {
+    if (isCompleted && resolvedReturnUrl) {
+      const timer = setTimeout(() => {
+        window.location.href = resolvedReturnUrl;
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCompleted, resolvedReturnUrl]);
+
   if (isCompleted) {
     return (
       <div className="text-center space-y-6 py-6 animate-in zoom-in-95 duration-300">
@@ -242,13 +269,28 @@ export const PayStep: React.FC<PayStepProps> = ({ orderData, onSuccess, onCancel
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => (window.location.href = '/')}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all"
-        >
-          Make Another Purchase
-        </button>
+        {resolvedReturnUrl ? (
+          <div className="space-y-2 pt-2">
+            <a
+              href={resolvedReturnUrl}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+            >
+              <span>Return to {partnerSource ? partnerSource.toUpperCase() : 'Wallet'}</span>
+              <ExternalLink className="w-4 h-4" />
+            </a>
+            <p className="text-[11px] text-slate-400">
+              Redirecting back to {partnerSource ? partnerSource.toUpperCase() : 'your wallet'} automatically in 4s...
+            </p>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => (window.location.href = '/')}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all"
+          >
+            Make Another Purchase
+          </button>
+        )}
       </div>
     );
   }

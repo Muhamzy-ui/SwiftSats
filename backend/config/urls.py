@@ -26,6 +26,7 @@ urlpatterns = [
     path("health/", health_check_view, name="health-check"),
 
     # Public APIs
+    path("api/orders/", include("apps.orders.urls")),
     path("api/v1/orders/", include("apps.orders.urls")),
     path("api/v1/payments/", include("apps.payments.urls")),
     path("api/v1/exchange/", include("apps.exchange.urls")),

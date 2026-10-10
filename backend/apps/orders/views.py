@@ -373,6 +373,13 @@ class OrderStatusLookupView(APIView):
 
         return Response({
             "success": True,
+            "status": order.status,
+            "order_id": order.order_reference,
+            "order_reference": order.order_reference,
+            "crypto_amount": str(order.crypto_amount),
+            "coin": order.coin,
+            "fiat_amount_ngn": str(order.fiat_amount_ngn),
+            "tx_hash": order.tx_hash,
             "order": PublicOrderDetailSerializer(order).data,
         })
 
