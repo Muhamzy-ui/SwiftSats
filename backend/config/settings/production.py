@@ -12,12 +12,28 @@ from .base import *  # noqa: F403, F401
 
 DEBUG = False
 
-# Host configuration: Always ensure Render domains and wildcards are allowed
-ALLOWED_HOSTS = list(set(env.list("DJANGO_ALLOWED_HOSTS", default=["*"]) + ["*", ".onrender.com", "swiftsats.onrender.com", "localhost", "127.0.0.1"]))
+# Host configuration: Always ensure Render domains, custom domains, and wildcards are allowed
+ALLOWED_HOSTS = list(set(
+    env.list("DJANGO_ALLOWED_HOSTS", default=["*"]) + [
+        "*",
+        ".onrender.com",
+        "swiftsats.onrender.com",
+        "swiftsats.app",
+        "www.swiftsats.app",
+        "axiomwallets.io",
+        "www.axiomwallets.io",
+        "localhost",
+        "127.0.0.1",
+    ]
+))
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.onrender.com",
     "https://swiftsats.onrender.com",
+    "https://www.swiftsats.app",
+    "https://swiftsats.app",
+    "https://www.axiomwallets.io",
+    "https://axiomwallets.io",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]

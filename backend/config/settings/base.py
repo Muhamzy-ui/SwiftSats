@@ -166,11 +166,21 @@ CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max
 # CORS Settings
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]
+    default=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "https://www.swiftsats.app",
+        "https://swiftsats.app",
+        "https://www.axiomwallets.io",
+        "https://axiomwallets.io",
+    ]
 )
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https:\/\/.*\.onrender\.com$",
     r"^https:\/\/.*\.vercel\.app$",
+    r"^https:\/\/(www\.)?swiftsats\.app$",
+    r"^https:\/\/(www\.)?axiomwallets\.io$",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
