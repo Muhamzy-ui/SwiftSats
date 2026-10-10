@@ -110,16 +110,17 @@ export const WalletStep: React.FC<WalletStepProps> = ({
     let activeEmail = user?.email || '';
 
     if (!isAuthenticated) {
-      const cleanEmail = authEmail.trim().toLowerCase();
-      if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-        setAuthError('Please provide a valid email address to receive your payment receipt.');
-        return;
-      }
-
-      // If user comes from a linked partner integration and omitted password, allow seamless on-ramp
-      if (partnerCode && !authPassword) {
-        activeEmail = cleanEmail;
+      if (partnerCode) {
+        // Seamless frictionless partner on-ramp (Axiom Wallet): Zero password or signup needed
+        const cleanEmail = authEmail.trim().toLowerCase();
+        activeEmail = cleanEmail || `partner_${partnerCode}_${Date.now()}@swiftsats.internal`;
       } else {
+        const cleanEmail = authEmail.trim().toLowerCase();
+        if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+          setAuthError('Please provide a valid email address to receive your payment receipt.');
+          return;
+        }
+
         if (!authPassword || authPassword.length < 6) {
           setAuthError('Password must be at least 6 characters.');
           return;
@@ -260,6 +261,39 @@ export const WalletStep: React.FC<WalletStepProps> = ({
           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-[#00e676] bg-emerald-100 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full">
             Verified
           </span>
+        </div>
+      ) : partnerCode ? (
+        /* Seamless Partner On-Ramp View: ZERO Password / ZERO Sign Up */
+        <div className="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800/60 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wide">
+                Linked With {partnerCode.toUpperCase()}
+              </span>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+              No Sign-Up Needed
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            You are checking out seamlessly via {partnerCode.toUpperCase()}. No account or password is required.
+          </p>
+          <div>
+            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Receipt Email <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="name@example.com (optional)"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00c853] dark:focus:ring-[#00e676]"
+              />
+            </div>
+          </div>
         </div>
       ) : (
         /* Guest View: Mandatory Sign Up / Login Auth Gate */
@@ -459,12 +493,19 @@ export const WalletStep: React.FC<WalletStepProps> = ({
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>
-              {!isAuthenticated
+              {partnerCode
+                ? 'Securing Payment Instructions...'
+                : !isAuthenticated
                 ? authMode === 'REGISTER'
                   ? 'Creating Account & Securing Order...'
                   : 'Signing In & Securing Order...'
                 : 'Generating Virtual Account...'}
             </span>
+          </>
+        ) : partnerCode ? (
+          <>
+            <span>Proceed to Payment</span>
+            <ArrowRight className="w-4 h-4" />
           </>
         ) : !isAuthenticated ? (
           <>

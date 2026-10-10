@@ -315,7 +315,9 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       </button>
 
       <p className="text-[11px] text-center text-slate-400 dark:text-slate-500">
-        🔒 Non-custodial checkout • You will be prompted to sign up or sign in to finalize your order.
+        {partnerCode
+          ? `🔒 Seamless On-Ramp for ${partnerCode.toUpperCase()} • Direct bank transfer settlement`
+          : '🔒 Non-custodial checkout • You will be prompted to sign up or sign in to finalize your order.'}
       </p>
     </div>
   );
