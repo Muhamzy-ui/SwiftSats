@@ -12,7 +12,7 @@ from core.constants import SupportedCoin, COIN_METADATA, BASE_USD_TO_NGN_RATE, S
 
 logger = logging.getLogger(__name__)
 
-RATE_CACHE_TTL_SECONDS = 45
+RATE_CACHE_TTL_SECONDS = 300
 
 
 class RateService:

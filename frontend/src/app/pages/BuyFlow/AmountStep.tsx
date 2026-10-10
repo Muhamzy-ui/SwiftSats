@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, Loader2 } from 'lucide-react';
 import { LiveRate, QuoteCreatedResponse, CoinCode } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { getCoinLogo } from '../../../shared/components/CryptoLogos';
@@ -304,7 +304,14 @@ export const AmountStep: React.FC<AmountStepProps> = ({
         disabled={isLocking || dollarAmount < minUsd}
         className="w-full py-3.5 rounded-xl bg-[#00c853] hover:bg-[#00b046] dark:bg-[#00e676] dark:hover:bg-[#00c853] active:scale-[0.99] disabled:opacity-40 text-white dark:text-slate-950 font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
       >
-        <span>{isLocking ? 'Generating Quote...' : 'Continue to Destination Wallet'}</span>
+        {isLocking ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Locking Rate & Proceeding...</span>
+          </>
+        ) : (
+          <span>Continue to Destination Wallet</span>
+        )}
       </button>
 
       <p className="text-[11px] text-center text-slate-400 dark:text-slate-500">

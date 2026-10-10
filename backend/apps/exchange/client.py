@@ -88,8 +88,8 @@ class QuidaxClient:
         if self.is_live:
             try:
                 url = f"{self.base_url}/markets/tickers"
-                # Use 6.0s timeout to allow Quidax API to respond without prematurely failing
-                response = requests.get(url, headers=self._get_headers(), timeout=6.0)
+                # Fast 1.5s timeout: keeps UI snappy, falls back smoothly if remote exchange lags
+                response = requests.get(url, headers=self._get_headers(), timeout=1.5)
                 if response.status_code == 200:
                     data = response.json().get("data", {})
                     # 1. Determine real-time USD/NGN benchmark from Quidax USDT/NGN
@@ -121,7 +121,7 @@ class QuidaxClient:
             except Exception as exc:
                 logger.warning("Quidax batch ticker fetch failed (%s), using reference rates", exc)
 
-        cache.set(cache_key, tickers, timeout=60)
+        cache.set(cache_key, tickers, timeout=300)
         return tickers
 
     def get_live_rate_for_coin(self, coin: str) -> Decimal:
