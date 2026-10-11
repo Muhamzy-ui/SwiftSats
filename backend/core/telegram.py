@@ -21,6 +21,19 @@ def send_telegram_alert(message: str, reply_markup: Optional[Dict[str, Any]] = N
     token = os.getenv("TELEGRAM_BOT_TOKEN", TELEGRAM_BOT_TOKEN)
     chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", TELEGRAM_ADMIN_CHAT_ID)
 
+    try:
+        from apps.admin_api.models import PlatformSettings
+        ps = PlatformSettings.get_settings()
+        if ps:
+            if not ps.telegram_alerts_enabled:
+                return False
+            if ps.telegram_bot_token:
+                token = ps.telegram_bot_token
+            if ps.telegram_admin_chat_id:
+                chat_id = ps.telegram_admin_chat_id
+    except Exception:
+        pass
+
     if not token or not chat_id:
         logger.info("[TELEGRAM NOTIFICATION] (Bot token/Chat ID not set - logging locally):\n%s", message)
         return False

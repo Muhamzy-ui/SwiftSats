@@ -165,7 +165,10 @@ export interface TrendChartPoint {
   date: string;
   orders: number;
   volume: number;
-  completed_volume: number;
+  completed_orders?: number;
+  completed_volume?: number;
+  total_orders?: number;
+  total_volume?: number;
 }
 
 export interface AdminOrderSummary {

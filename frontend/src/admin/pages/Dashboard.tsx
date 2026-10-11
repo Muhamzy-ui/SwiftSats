@@ -27,6 +27,7 @@ export const DashboardPage: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<AdminOrderSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
+  const [metricScope, setMetricScope] = useState<'completed' | 'all'>('completed');
 
   // Chart high-contrast colors (Neon Green and Electric Red/Crimson - NEVER dark or black)
   const isDark = theme === 'dark';
@@ -34,6 +35,14 @@ export const DashboardPage: React.FC = () => {
   const redColor = isDark ? '#ff3b5c' : '#e11d48';
   const gridColor = isDark ? '#1e293b' : '#e2e8f0';
   const axisColor = isDark ? '#64748b' : '#94a3b8';
+
+  const activeChartData = React.useMemo(() => {
+    return chartData.map((d) => ({
+      ...d,
+      chart_orders: metricScope === 'completed' ? (d.completed_orders ?? d.orders) : (d.total_orders ?? d.orders),
+      chart_volume: metricScope === 'completed' ? (d.completed_volume ?? d.volume) : (d.total_volume ?? d.volume),
+    }));
+  }, [chartData, metricScope]);
 
   const [isTogglingMode, setIsTogglingMode] = useState(false);
 
@@ -181,17 +190,26 @@ export const DashboardPage: React.FC = () => {
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                Orders & Volume Flow (7 Days)
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                  Orders & Volume Flow (7 Days)
+                </h2>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  metricScope === 'completed'
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-[#00e676]'
+                    : 'bg-rose-500/15 text-rose-600 dark:text-[#ff3b5c]'
+                }`}>
+                  {metricScope === 'completed' ? 'Completed Sales' : 'All Quotes'}
+                </span>
+              </div>
               <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                Daily turnover (Green) vs order velocity (Red)
+                Daily turnover (Green) vs order velocity (Red) • {metricScope === 'completed' ? 'Settled transactions' : 'All checkout attempts'}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {/* Legend with Green and Red Indicators */}
-              <div className="flex items-center gap-3 text-xs font-semibold">
+              <div className="flex items-center gap-3 text-xs font-semibold mr-1">
                 <span className="flex items-center gap-1.5 text-rose-600 dark:text-[#ff3b5c]">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#e11d48] dark:bg-[#ff3b5c]" />
                   Orders
@@ -200,6 +218,34 @@ export const DashboardPage: React.FC = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#00c853] dark:bg-[#00e676]" />
                   Volume (₦)
                 </span>
+              </div>
+
+              {/* Scope Switcher: Completed vs All */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setMetricScope('completed')}
+                  className={`px-2 py-1 rounded-md transition-all ${
+                    metricScope === 'completed'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-[#00e676] font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                  }`}
+                  title="Completed paid sales matching the stat cards"
+                >
+                  Completed
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMetricScope('all')}
+                  className={`px-2 py-1 rounded-md transition-all ${
+                    metricScope === 'all'
+                      ? 'bg-rose-500/20 text-rose-600 dark:text-[#ff3b5c] font-bold shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                  }`}
+                  title="All initiated checkout quotes including draft attempts"
+                >
+                  All Quotes
+                </button>
               </div>
 
               {/* View Switcher: Line vs Candle/Bar */}
@@ -237,7 +283,7 @@ export const DashboardPage: React.FC = () => {
           <div className="h-64 sm:h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               {chartMode === 'line' ? (
-                <LineChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <LineChart data={activeChartData} margin={{ top: 15, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} vertical={false} />
                   <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
                   <YAxis
@@ -247,7 +293,7 @@ export const DashboardPage: React.FC = () => {
                     tickLine={false}
                     axisLine={false}
                     allowDecimals={false}
-                    domain={[0, (dataMax: number) => Math.max(dataMax, 5)]}
+                    domain={[0, (dataMax: number) => Math.max(Math.ceil((dataMax || 5) * 1.35), 5)]}
                   />
                   <YAxis
                     yAxisId="right"
@@ -256,7 +302,7 @@ export const DashboardPage: React.FC = () => {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    domain={[0, (dataMax: number) => Math.max(dataMax, 50000)]}
+                    domain={[0, (dataMax: number) => Math.max(Math.ceil(((dataMax || 50000) * 1.25) / 10000) * 10000, 50000)]}
                     tickFormatter={(val: number) => {
                       if (!val || val === 0) return '₦0';
                       if (val >= 1000000) return `₦${(val / 1000000).toFixed(1)}M`;
@@ -275,14 +321,16 @@ export const DashboardPage: React.FC = () => {
                     }}
                     formatter={(val: unknown, name: unknown) => [
                       name === 'Volume (₦)' ? formatNaira(Number(val) || 0) : `${Number(val) || 0} Orders`,
-                      String(name),
+                      metricScope === 'completed'
+                        ? (name === 'Volume (₦)' ? 'Completed Volume (₦)' : 'Completed Orders')
+                        : (name === 'Volume (₦)' ? 'All Quotes Volume (₦)' : 'All Created Orders'),
                     ]}
                   />
                   {/* RED / CRIMSON LINE FOR ORDERS */}
                   <Line
                     yAxisId="left"
                     type="monotone"
-                    dataKey="orders"
+                    dataKey="chart_orders"
                     name="Orders"
                     stroke={redColor}
                     strokeWidth={3}
@@ -293,7 +341,7 @@ export const DashboardPage: React.FC = () => {
                   <Line
                     yAxisId="right"
                     type="monotone"
-                    dataKey="volume"
+                    dataKey="chart_volume"
                     name="Volume (₦)"
                     stroke={greenColor}
                     strokeWidth={3}
@@ -302,7 +350,7 @@ export const DashboardPage: React.FC = () => {
                   />
                 </LineChart>
               ) : (
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <BarChart data={activeChartData} margin={{ top: 15, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} vertical={false} />
                   <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
                   <YAxis
@@ -312,7 +360,7 @@ export const DashboardPage: React.FC = () => {
                     tickLine={false}
                     axisLine={false}
                     allowDecimals={false}
-                    domain={[0, (dataMax: number) => Math.max(dataMax, 5)]}
+                    domain={[0, (dataMax: number) => Math.max(Math.ceil((dataMax || 5) * 1.35), 5)]}
                   />
                   <YAxis
                     yAxisId="right"
@@ -321,7 +369,7 @@ export const DashboardPage: React.FC = () => {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    domain={[0, (dataMax: number) => Math.max(dataMax, 50000)]}
+                    domain={[0, (dataMax: number) => Math.max(Math.ceil(((dataMax || 50000) * 1.25) / 10000) * 10000, 50000)]}
                     tickFormatter={(val: number) => {
                       if (!val || val === 0) return '₦0';
                       if (val >= 1000000) return `₦${(val / 1000000).toFixed(1)}M`;
@@ -339,13 +387,15 @@ export const DashboardPage: React.FC = () => {
                     }}
                     formatter={(val: unknown, name: unknown) => [
                       name === 'Volume (₦)' ? formatNaira(Number(val) || 0) : `${Number(val) || 0} Orders`,
-                      String(name),
+                      metricScope === 'completed'
+                        ? (name === 'Volume (₦)' ? 'Completed Volume (₦)' : 'Completed Orders')
+                        : (name === 'Volume (₦)' ? 'All Quotes Volume (₦)' : 'All Created Orders'),
                     ]}
                   />
                   {/* RED BARS/CANDLES FOR ORDERS */}
-                  <Bar yAxisId="left" dataKey="orders" name="Orders" fill={redColor} radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="chart_orders" name="Orders" fill={redColor} radius={[4, 4, 0, 0]} />
                   {/* GREEN BARS/CANDLES FOR VOLUME */}
-                  <Bar yAxisId="right" dataKey="volume" name="Volume (₦)" fill={greenColor} radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="chart_volume" name="Volume (₦)" fill={greenColor} radius={[4, 4, 0, 0]} />
                 </BarChart>
               )}
             </ResponsiveContainer>

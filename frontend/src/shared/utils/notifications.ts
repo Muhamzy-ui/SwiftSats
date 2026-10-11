@@ -158,12 +158,12 @@ export const requestPushPermission = async (): Promise<boolean> => {
 /**
  * Show native OS notification (Lock screen on iPhone / Desktop banner)
  */
-export const showSystemNotification = (
+export const showSystemNotification = async (
   title: string,
   body: string,
   tag?: string,
   onClickUrl?: string
-): void => {
+): Promise<void> => {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return;
   }
@@ -172,9 +172,31 @@ export const showSystemNotification = (
   }
 
   try {
+    // 1. Mobile & PWA: Use Service Worker registration for persistent lockscreen banners
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration && registration.showNotification) {
+          await registration.showNotification(title, {
+            body,
+            icon: '/logo192.png',
+            badge: '/apple-touch-icon.png',
+            vibrate: [250, 100, 250, 100, 250],
+            tag: tag || 'swiftsats-alert',
+            renotify: true,
+            data: { url: onClickUrl || '/admin/orders' },
+          } as any);
+          return;
+        }
+      } catch (swErr) {
+        console.warn('SW showNotification warning:', swErr);
+      }
+    }
+
+    // 2. Desktop Fallback: Standard Notification constructor
     const notif = new Notification(title, {
       body,
-      icon: '/apple-touch-icon.png',
+      icon: '/logo192.png',
       badge: '/apple-touch-icon.png',
       tag: tag || 'swiftsats-alert',
     });

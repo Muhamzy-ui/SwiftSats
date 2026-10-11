@@ -70,6 +70,18 @@ class PlatformSettings(models.Model):
         default=True,
         help_text="Dispatch instant alerts to Telegram bot"
     )
+    telegram_bot_token = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Telegram Bot API Token (from @BotFather)"
+    )
+    telegram_admin_chat_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Telegram Admin Chat/Channel ID (from @userinfobot)"
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

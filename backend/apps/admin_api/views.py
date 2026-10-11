@@ -112,14 +112,19 @@ class AdminDashboardView(APIView):
             day_dt = today_start - timedelta(days=i)
             next_day_dt = day_dt + timedelta(days=1)
             day_qs = Order.objects.filter(created_at__gte=day_dt, created_at__lt=next_day_dt)
-            day_count = day_qs.count()
-            day_vol = float(day_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
-            completed_vol = float(day_qs.filter(status=OrderStatus.COMPLETED).aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+            completed_qs = day_qs.filter(status=OrderStatus.COMPLETED)
+            completed_count = completed_qs.count()
+            completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+            total_count = day_qs.count()
+            total_vol = float(day_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
             daily_trends.append({
                 "date": day_dt.strftime("%b %d"),
-                "orders": day_count,
-                "volume": day_vol,
+                "orders": completed_count,
+                "volume": completed_vol,
+                "completed_orders": completed_count,
                 "completed_volume": completed_vol,
+                "total_orders": total_count,
+                "total_volume": total_vol,
             })
 
         # 3. Overall Success Rate (Actual completed vs finished orders)
@@ -629,6 +634,7 @@ class AdminPayoutModeSettingsView(APIView):
 
     def get(self, request):
         settings_obj = PlatformSettings.get_settings()
+        import os
         return Response({
             "success": True,
             "payout_mode": settings_obj.payout_mode,
@@ -637,6 +643,8 @@ class AdminPayoutModeSettingsView(APIView):
             "settlement_account_name": settings_obj.settlement_account_name,
             "settlement_account_number": settings_obj.settlement_account_number,
             "telegram_alerts_enabled": settings_obj.telegram_alerts_enabled,
+            "telegram_bot_token": settings_obj.telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""),
+            "telegram_admin_chat_id": settings_obj.telegram_admin_chat_id or os.getenv("TELEGRAM_ADMIN_CHAT_ID", ""),
         })
 
     def post(self, request):
@@ -647,6 +655,8 @@ class AdminPayoutModeSettingsView(APIView):
         account_name = request.data.get("settlement_account_name")
         account_number = request.data.get("settlement_account_number")
         telegram_enabled = request.data.get("telegram_alerts_enabled")
+        telegram_bot_token = request.data.get("telegram_bot_token")
+        telegram_admin_chat_id = request.data.get("telegram_admin_chat_id")
 
         if payout_mode in [PlatformSettings.PayoutMode.AUTOMATED, PlatformSettings.PayoutMode.MANUAL]:
             settings_obj.payout_mode = payout_mode
@@ -662,6 +672,10 @@ class AdminPayoutModeSettingsView(APIView):
             settings_obj.settlement_account_number = account_number
         if telegram_enabled is not None:
             settings_obj.telegram_alerts_enabled = bool(telegram_enabled)
+        if telegram_bot_token is not None:
+            settings_obj.telegram_bot_token = str(telegram_bot_token).strip()
+        if telegram_admin_chat_id is not None:
+            settings_obj.telegram_admin_chat_id = str(telegram_admin_chat_id).strip()
 
         settings_obj.save()
 
@@ -670,8 +684,10 @@ class AdminPayoutModeSettingsView(APIView):
             f"<b>Payout Mode:</b> {settings_obj.payout_mode}\n"
             f"<b>Settlement Bank:</b> {settings_obj.settlement_bank_name}\n"
             f"<b>Settlement Acct:</b> {settings_obj.settlement_account_number}\n"
+            f"<b>Telegram Alerts:</b> {'Active ✅' if settings_obj.telegram_alerts_enabled else 'Disabled ❌'}\n"
             f"<b>Updated by:</b> {request.user.email}"
         )
+
 
         return Response({
             "success": True,
@@ -681,7 +697,34 @@ class AdminPayoutModeSettingsView(APIView):
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_number": settings_obj.settlement_account_number,
             "settlement_account_name": settings_obj.settlement_account_name,
+            "telegram_alerts_enabled": settings_obj.telegram_alerts_enabled,
+            "telegram_bot_token": settings_obj.telegram_bot_token,
+            "telegram_admin_chat_id": settings_obj.telegram_admin_chat_id,
         })
+
+
+class AdminTestTelegramAlertView(APIView):
+    """
+    POST /api/v1/admin/settings/test-telegram/
+    Sends an immediate test push ping to the configured Telegram bot.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        success = send_telegram_alert(
+            f"⚡ <b>SWIFTSATS PHONE NOTIFICATION TEST</b>\n\n"
+            f"🔔 Your lockscreen & background alerts are working perfectly!\n"
+            f"👤 Admin: <code>{request.user.email}</code>\n"
+            f"⏰ Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
+            f"You will receive instant alerts here whenever a customer pays, an order is created, or a payout is released."
+        )
+        if success:
+            return Response({"success": True, "message": "Test notification delivered to your phone!"})
+        else:
+            return Response(
+                {"success": False, "error": "Failed to send alert. Please verify your Telegram Bot Token and Chat ID in settings."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class AdminManualOrderReleaseView(APIView):
