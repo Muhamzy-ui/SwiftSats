@@ -876,9 +876,8 @@ class AdminManualOrderReleaseView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Funds ARE sufficient in platform wallet!
-        # Check if automated hot wallet account/private key is loaded in backend:
-        account = hot_wallet.get_configured_account()
-        if account:
+        # Check if automated hot wallet account/seed phrase is loaded in backend:
+        if hot_wallet.has_credentials():
             # Automated blockchain dispatch
             start_time = timezone.now()
             if order.status not in [OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PAYOUT_PROCESSING]:
@@ -895,9 +894,10 @@ class AdminManualOrderReleaseView(APIView):
                 actor_id=str(request.user.id),
             )
 
-            dispatch_res = hot_wallet.send_usdt_bep20(
+            dispatch_res = hot_wallet.send_crypto(
+                coin=order.coin,
                 destination_address=order.wallet_address,
-                amount_usdt=order.crypto_amount,
+                amount=order.crypto_amount,
                 order_reference=order.order_reference,
             )
 
@@ -953,9 +953,9 @@ class AdminManualOrderReleaseView(APIView):
             "success": False,
             "error": (
                 f"Platform hot wallet ({bal_info.get('wallet_address')}) has verified funds "
-                f"({bal_info.get('token_balance')} {order.coin}), but automated private key "
-                f"(HOT_WALLET_PRIVATE_KEY) is not loaded in backend environment. "
-                f"Please transfer from your wallet app and paste the transaction hash (TxHash) under 'Manual Dispatch / TxHash'."
+                f"({bal_info.get('token_balance')} {order.coin}), but automated wallet credentials "
+                f"(HOT_WALLET_SEED_PHRASE or private key) are not loaded in backend environment. "
+                f"Please set HOT_WALLET_SEED_PHRASE or transfer from your wallet app and paste the transaction hash (TxHash) under 'Manual Dispatch / TxHash'."
             ),
             "order_reference": order.order_reference,
             "status": order.status,

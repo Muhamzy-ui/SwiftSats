@@ -1,6 +1,6 @@
 """
 Crypto Payout Execution Service for SwiftSats.
-Dispatches blockchain payouts via Self-Custody Hot Wallet (BEP-20)
+Dispatches blockchain payouts via Self-Custody Hot Wallet across all chains (BEP-20, TRC-20, Solana, Bitcoin)
 with graceful fallback to 1-Tap Manual Admin Approval.
 Zero dependency on Quidax exchange account.
 """
@@ -53,19 +53,10 @@ class PayoutService:
                 "payout_channel": "MOCK_TEST",
             }
 
-        # 1. Automated BEP-20 / EVM Hot Wallet Dispatch
-        is_bep20 = (
-            coin == SupportedCoin.USDT_BEP20
-            or network.upper() in ["BEP20", "BSC"]
-            or destination_address.strip().startswith("0x")
-        )
+        # 1. Automated Multi-Blockchain Hot Wallet Dispatch (BEP-20, TRC-20, SOL, BTC, etc.)
+        has_hot_wallet = self.hot_wallet.has_credentials()
 
-        has_hot_wallet = bool(
-            os.getenv("HOT_WALLET_PRIVATE_KEY", "").strip()
-            or os.getenv("HOT_WALLET_SEED_PHRASE", "").strip()
-        )
-
-        if is_bep20 and has_hot_wallet:
+        if has_hot_wallet:
             # Pre-flight on-chain balance verification
             is_suff, reason, _ = self.hot_wallet.check_sufficient_funds(coin, amount, network)
             if not is_suff:
@@ -83,12 +74,13 @@ class PayoutService:
                 }
 
             logger.info(
-                "Attempting automated BEP-20 hot wallet dispatch for %s: %s %s -> %s",
+                "Attempting automated multi-blockchain hot wallet dispatch for %s: %s %s -> %s",
                 order_reference, amount, coin, destination_address
             )
-            hw_res = self.hot_wallet.send_usdt_bep20(
+            hw_res = self.hot_wallet.send_crypto(
+                coin=coin,
                 destination_address=destination_address,
-                amount_usdt=amount,
+                amount=amount,
                 order_reference=order_reference,
             )
 
@@ -99,8 +91,8 @@ class PayoutService:
                     "transaction_hash": tx_hash,
                     "tx_hash": tx_hash,
                     "status": "completed",
-                    "explorer_url": hw_res.get("explorer_url", f"https://bscscan.com/tx/{tx_hash}"),
-                    "payout_channel": "HOT_WALLET_BEP20",
+                    "explorer_url": hw_res.get("explorer_url", ""),
+                    "payout_channel": hw_res.get("payout_channel", f"HOT_WALLET_{coin}"),
                 }
             else:
                 logger.warning(
