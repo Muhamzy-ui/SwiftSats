@@ -269,7 +269,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wide">
-                Linked With {partnerCode.toUpperCase()}
+                Direct Express Checkout
               </span>
             </div>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
@@ -277,7 +277,7 @@ export const WalletStep: React.FC<WalletStepProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-600 dark:text-slate-400">
-            You are checking out seamlessly via {partnerCode.toUpperCase()}. No account or password is required.
+            Destination wallet pre-configured. Enter an optional email below to receive your payment receipt.
           </p>
           <div>
             <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">

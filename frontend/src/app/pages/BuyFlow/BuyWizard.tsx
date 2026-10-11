@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { CoinStep } from './CoinStep';
 import { AmountStep } from './AmountStep';
 import { WalletStep } from './WalletStep';
@@ -251,6 +252,7 @@ export const BuyWizard: React.FC = () => {
   const [initialWallet, setInitialWallet] = useState<string>('');
   const [initialAmount, setInitialAmount] = useState<string>('');
   const [initialEmail, setInitialEmail] = useState<string>('');
+  const [isAutoLocking, setIsAutoLocking] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchRates = async () => {
@@ -285,25 +287,73 @@ export const BuyWizard: React.FC = () => {
     if (amountParam) setInitialAmount(amountParam.trim());
     if (emailParam) setInitialEmail(emailParam.trim());
 
-    let resolvedCoin: CoinCode | null = null;
+    let targetCoin: CoinCode = 'USDT_BEP20';
     if (coinParam) {
       const clean = coinParam.trim().toUpperCase();
       if (clean === 'USDT' || clean === 'USDT_BEP20' || clean === 'BSC' || clean === 'BEP20') {
-        resolvedCoin = 'USDT_BEP20';
+        targetCoin = 'USDT_BEP20';
       } else if (clean === 'USDT_TRC20' || clean === 'TRC20') {
-        resolvedCoin = 'USDT_TRC20';
+        targetCoin = 'USDT_TRC20';
       } else if (clean === 'BTC' || clean === 'BITCOIN') {
-        resolvedCoin = 'BTC';
+        targetCoin = 'BTC';
       } else if (clean === 'ETH' || clean === 'ETHEREUM') {
-        resolvedCoin = 'ETH';
+        targetCoin = 'ETH';
       } else if (clean === 'SOL' || clean === 'SOLANA') {
-        resolvedCoin = 'SOL';
+        targetCoin = 'SOL';
       } else if (clean === 'USDC') {
-        resolvedCoin = 'USDC';
+        targetCoin = 'USDC';
       } else if (clean === 'BNB') {
-        resolvedCoin = 'BNB';
+        targetCoin = 'BNB';
       }
-      if (resolvedCoin) setSelectedCoin(resolvedCoin);
+      setSelectedCoin(targetCoin);
+    }
+
+    // AUTO-JUMP DIRECTLY TO PAGE 4 (PAYSTEP):
+    // If incoming request has both wallet AND amount (from Axiom Wallet),
+    // automatically generate the quote, lock the order, and land right on Nomba payment instructions!
+    if (walletParam && amountParam) {
+      const rawAmt = parseFloat(amountParam.trim());
+      const isUsd = params.get('currency')?.toUpperCase() === 'USD' || (rawAmt > 0 && rawAmt <= 1000 && !params.get('currency'));
+      const targetNgn = isUsd ? Math.round(rawAmt * 1372.20) : Math.round(rawAmt);
+
+      setIsAutoLocking(true);
+      (async () => {
+        try {
+          const q = await ordersApi.createQuote(targetCoin, targetNgn, sourceParam || 'axiom');
+          storeRecentOrder({
+            order_reference: q.order_reference,
+            coin: q.coin,
+            amount_ngn: q.fiat_amount_ngn,
+            crypto_amount: q.crypto_amount,
+            status: 'QUOTE_LOCKED',
+            timestamp: Date.now(),
+          });
+          setQuote(q);
+
+          const ord = await ordersApi.lockAndCreateOrder(
+            q.order_reference,
+            walletParam.trim(),
+            emailParam?.trim() || `axiom_${orderIdParam || Date.now()}@axiomwallets.io`,
+            sourceParam || 'axiom'
+          );
+          storeRecentOrder({
+            order_reference: ord.order.order_reference,
+            coin: ord.order.coin,
+            amount_ngn: ord.order.fiat_amount_expected || ord.order.fiat_amount_ngn,
+            crypto_amount: ord.order.crypto_amount,
+            status: ord.order.status || 'AWAITING_PAYMENT',
+            timestamp: Date.now(),
+          });
+          setOrderLocked(ord);
+          setStep('PAY'); // <--- LAND DIRECTLY ON PAGE 4 (PAY)!
+        } catch (err: any) {
+          console.warn('Auto on-ramp lock error, falling back to Amount step:', err);
+          setStep('AMOUNT');
+        } finally {
+          setIsAutoLocking(false);
+        }
+      })();
+      return;
     }
 
     // If user has an open order awaiting payment, auto-resume directly on Step 4 (PAY)
@@ -327,13 +377,31 @@ export const BuyWizard: React.FC = () => {
           setStep('PAY');
         }
       }).catch(() => {});
-    } else if (resolvedCoin || sourceParam) {
-      // Deep linked directly from external website: Skip coin selection & jump straight to Amount!
+    } else if (coinParam || sourceParam) {
+      // Deep linked directly from external website without all params: Skip coin selection & jump straight to Amount!
       setStep('AMOUNT');
     }
   }, []);
 
   const selectedRate = rates.find((r) => r.coin === selectedCoin) || rates[0];
+
+  if (isAutoLocking) {
+    return (
+      <div className="w-full max-w-lg mx-auto bg-white dark:bg-[#0c1017] border border-slate-200/90 dark:border-white/[0.08] rounded-2xl p-8 text-center space-y-4 shadow-xl animate-in fade-in duration-200">
+        <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[#00c853] dark:text-[#00e676] flex items-center justify-center mx-auto">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            Securing Payment Instructions...
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Locking exchange rate and generating your bank transfer details.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-lg mx-auto bg-white dark:bg-[#0c1017] border border-slate-200/90 dark:border-white/[0.08] rounded-2xl p-4 sm:p-5 space-y-4 shadow-[0_8px_20px_rgba(0,0,0,0.04)] dark:shadow-2xl transition-all duration-200 relative">
@@ -396,21 +464,6 @@ export const BuyWizard: React.FC = () => {
           <span>Live Rates</span>
         </span>
       </div>
-
-      {/* Partner Link Attribution Header */}
-      {partnerSource && (
-        <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-2.5 rounded-xl flex items-center justify-between text-xs animate-in fade-in">
-          <div className="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Connected with {partnerSource.toUpperCase()}</span>
-          </div>
-          {initialWallet && (
-            <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-800">
-              Wallet: {initialWallet.slice(0, 6)}...{initialWallet.slice(-4)}
-            </span>
-          )}
-        </div>
-      )}
 
       {/* Dynamic Step Views */}
       {step === 'COIN' && (
