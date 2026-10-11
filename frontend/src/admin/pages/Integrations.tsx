@@ -388,7 +388,7 @@ export const IntegrationsPage: React.FC = () => {
           </label>
           <input
             type="text"
-            placeholder="0x... or leave dynamic: e.g. 0x36b25000587762425F2682d721A57eD7d74671F0"
+            placeholder="0x... or leave dynamic: e.g. 0xe99E64B6BeFDC68341775d5508FA51DE4e7309e2"
             value={customWallet}
             onChange={(e) => setCustomWallet(e.target.value)}
             className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono text-slate-800 dark:text-white focus:outline-hidden"

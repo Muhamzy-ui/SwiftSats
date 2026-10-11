@@ -745,7 +745,7 @@ class AdminHotWalletBalanceView(APIView):
             "is_configured": bal_info.get("is_configured", False),
             "has_private_key": bool(account),
             "coin": coin,
-            "network": "BNB Smart Chain (BEP-20)",
+            "network": bal_info.get("network", "BNB Smart Chain (BEP-20)"),
         })
 
 

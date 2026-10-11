@@ -23,7 +23,7 @@ ALLOWED_HOSTS = list(set(env.list("DJANGO_ALLOWED_HOSTS", default=["*"]) + ["*",
 # Hot Wallet Blockchain Dispatch Settings
 HOT_WALLET_SEED_PHRASE = env.str("HOT_WALLET_SEED_PHRASE", default="")
 HOT_WALLET_PRIVATE_KEY = env.str("HOT_WALLET_PRIVATE_KEY", default="")
-HOT_WALLET_ADDRESS = env.str("HOT_WALLET_ADDRESS", default="0x36b25000587762425F2682d721A57eD7d74671F0")
+HOT_WALLET_ADDRESS = env.str("HOT_WALLET_ADDRESS", default="0xe99E64B6BeFDC68341775d5508FA51DE4e7309e2")
 
 # Application definition
 DJANGO_APPS = [

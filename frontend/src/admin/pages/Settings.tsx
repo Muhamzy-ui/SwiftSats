@@ -20,7 +20,7 @@ export const SettingsPage: React.FC = () => {
 
   // Platform Hot Wallet & On-Chain Float
   const [selectedCoin, setSelectedCoin] = useState('USDT_BEP20');
-  const [hotWalletAddress, setHotWalletAddress] = useState('0x36b25000587762425F2682d721A57eD7d74671F0');
+  const [hotWalletAddress, setHotWalletAddress] = useState('');
   const [payoutMode, setPayoutMode] = useState<'AUTOMATED' | 'MANUAL'>('MANUAL');
   const [isTogglingPayoutMode, setIsTogglingPayoutMode] = useState(false);
   const [isSavingWallet, setIsSavingWallet] = useState(false);
@@ -82,13 +82,15 @@ export const SettingsPage: React.FC = () => {
         setTelegramEnabled(s.telegram_alerts_enabled);
         setBotToken(s.telegram_bot_token || '');
         setChatId(s.telegram_admin_chat_id || '');
-        const targetAddr = s.hot_wallet_address || '0x36b25000587762425F2682d721A57eD7d74671F0';
-        setHotWalletAddress(targetAddr);
-        fetchWalletBalance(targetAddr);
+        const targetAddr = s.hot_wallet_address || '';
+        if (targetAddr) {
+          setHotWalletAddress(targetAddr);
+        }
+        fetchWalletBalance(selectedCoin, targetAddr || undefined);
       }
     } catch (e) {
       console.warn('Could not load platform settings', e);
-      fetchWalletBalance('0x36b25000587762425F2682d721A57eD7d74671F0');
+      fetchWalletBalance(selectedCoin);
     }
   };
 
@@ -100,7 +102,7 @@ export const SettingsPage: React.FC = () => {
         hot_wallet_address: hotWalletAddress.trim(),
       });
       setWalletStatusMsg({ type: 'success', text: 'Platform hot wallet address updated successfully!' });
-      fetchWalletBalance(hotWalletAddress.trim());
+      fetchWalletBalance(selectedCoin, hotWalletAddress.trim());
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to update hot wallet address.';
       setWalletStatusMsg({ type: 'error', text: msg });
@@ -357,7 +359,7 @@ export const SettingsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => fetchWalletBalance()}
+            onClick={() => fetchWalletBalance(selectedCoin, hotWalletAddress.trim() || undefined)}
             disabled={isCheckingBalance}
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 self-start sm:self-auto cursor-pointer"
           >
@@ -489,7 +491,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="e.g. 0x36b25000587762425F2682d721A57eD7d74671F0"
+              placeholder="e.g. 0xe99E64B6BeFDC68341775d5508FA51DE4e7309e2"
               value={hotWalletAddress}
               onChange={(e) => setHotWalletAddress(e.target.value)}
               className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
