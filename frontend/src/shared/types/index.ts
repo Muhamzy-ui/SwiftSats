@@ -112,6 +112,7 @@ export interface OrderPublic {
   tx_hash: string | null;
   explorer_url: string;
   speed_metric_ms: number | null;
+  partner_code?: string;
   created_at: string;
   completed_at: string | null;
 }

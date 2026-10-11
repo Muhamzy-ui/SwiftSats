@@ -242,22 +242,47 @@ export const PayStep: React.FC<PayStepProps> = ({
   const isCompleted = currentOrder.status === 'COMPLETED';
   const isVerifying = currentOrder.status === 'VERIFYING' || receiptSubmitted;
 
+  const isAxiomUser = Boolean(
+    partnerSource === 'axiom' ||
+    (partnerOrderId && partnerOrderId.toUpperCase().startsWith('AXM')) ||
+    currentOrder.partner_code === 'axiom'
+  );
+
   const resolvedReturnUrl = React.useMemo(() => {
-    if (!returnUrl) return null;
-    const separator = returnUrl.includes('?') ? '&' : '?';
+    let effectiveReturn = returnUrl;
+    if (isAxiomUser) {
+      if (!effectiveReturn) {
+        effectiveReturn = 'https://www.axiomwallets.io/#deposit';
+      } else if (effectiveReturn.includes('#wallet')) {
+        effectiveReturn = effectiveReturn.replace('#wallet', '#deposit');
+      }
+    }
+
+    if (!effectiveReturn) return null;
+
     const cleanCoin = currentOrder.coin.split('_')[0];
     const targetOrderId = partnerOrderId || orderRef;
-    return `${returnUrl}${separator}payment=success&orderId=${encodeURIComponent(targetOrderId)}&order_id=${encodeURIComponent(targetOrderId)}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
-  }, [returnUrl, partnerOrderId, orderRef, currentOrder]);
+    const params = `payment=success&orderId=${encodeURIComponent(targetOrderId)}&order_id=${encodeURIComponent(targetOrderId)}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
+
+    if (effectiveReturn.includes('#')) {
+      const [base, hash] = effectiveReturn.split('#');
+      const baseSep = base.includes('?') ? '&' : '?';
+      return `${base}${baseSep}${params}#${hash}`;
+    }
+
+    const separator = effectiveReturn.includes('?') ? '&' : '?';
+    return `${effectiveReturn}${separator}${params}`;
+  }, [returnUrl, isAxiomUser, partnerOrderId, orderRef, currentOrder]);
 
   useEffect(() => {
     if (isCompleted && resolvedReturnUrl) {
+      const delay = isAxiomUser ? 600 : 3500;
       const timer = setTimeout(() => {
         window.location.href = resolvedReturnUrl;
-      }, 4000);
+      }, delay);
       return () => clearTimeout(timer);
     }
-  }, [isCompleted, resolvedReturnUrl]);
+  }, [isCompleted, resolvedReturnUrl, isAxiomUser]);
 
   if (isCompleted) {
     return (
@@ -271,7 +296,7 @@ export const PayStep: React.FC<PayStepProps> = ({
             Crypto Delivered!
           </h2>
           <p className="text-xs text-slate-400">
-            Payment verified and blockchain payout dispatched automatically via Quidax
+            Payment verified and blockchain payout confirmed on-chain
           </p>
         </div>
 
@@ -309,11 +334,13 @@ export const PayStep: React.FC<PayStepProps> = ({
               href={resolvedReturnUrl}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
             >
-              <span>Return to {partnerSource ? partnerSource.toUpperCase() : 'Wallet'}</span>
+              <span>{isAxiomUser ? 'Return to Axiom Deposit Page' : `Return to ${partnerSource ? partnerSource.toUpperCase() : 'Wallet'}`}</span>
               <ExternalLink className="w-4 h-4" />
             </a>
             <p className="text-[11px] text-slate-400">
-              Redirecting back to {partnerSource ? partnerSource.toUpperCase() : 'your wallet'} automatically in 4s...
+              {isAxiomUser
+                ? 'Redirecting immediately to your Axiom deposit page...'
+                : `Redirecting back to ${partnerSource ? partnerSource.toUpperCase() : 'your wallet'} automatically in 3s...`}
             </p>
           </div>
         ) : (
