@@ -8,12 +8,17 @@ from django.http import JsonResponse
 
 def health_check_view(request):
     """
-    Health check endpoint for Render/uptime monitors.
+    Health check endpoint for Render/uptime monitors and wallet status diagnostics.
     """
+    from apps.exchange.hotwallet import HotWalletService
+    hw = HotWalletService()
+    has_creds = hw.has_credentials()
     return JsonResponse({
         "status": "healthy",
         "service": "SwiftSats Backend API",
-        "version": "1.0.2-prod"
+        "version": "1.0.3-hotwallet",
+        "hot_wallet_configured": has_creds,
+        "dispatch_address": hw.get_dispatch_address("USDT_BEP20") if has_creds else "",
     })
 
 
