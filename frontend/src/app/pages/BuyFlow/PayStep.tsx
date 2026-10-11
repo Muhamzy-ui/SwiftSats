@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, ExternalLink, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Copy, Check, ExternalLink, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Bell } from 'lucide-react';
 import { OrderLockedResponse, OrderDetail } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { formatNaira, formatSpeed } from '../../../shared/utils/formatters';
 import { cancelStoredOrder } from '../../../shared/utils/orderStorage';
+import { sound, triggerHaptic, showSystemNotification, requestPushPermission } from '../../../shared/utils/notifications';
 
 interface PayStepProps {
   orderData: OrderLockedResponse;
@@ -87,7 +88,11 @@ export const PayStep: React.FC<PayStepProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Poll order status every 2.5s
+  const [alertsActive, setAlertsActive] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+  });
+
+  // Poll order status every 2.5s with real-time audio & push notifications
   useEffect(() => {
     if (currentOrder.status === 'COMPLETED') {
       onSuccess(currentOrder);
@@ -98,6 +103,29 @@ export const PayStep: React.FC<PayStepProps> = ({
       try {
         const res = await ordersApi.lookupOrder(orderRef);
         if (res.success && res.order) {
+          const prevStatus = currentOrder.status;
+          const nextStatus = res.order.status;
+
+          if (prevStatus !== nextStatus) {
+            if (nextStatus === 'VERIFYING' || nextStatus === 'PAYMENT_CONFIRMED' || nextStatus === 'PAYOUT_PROCESSING') {
+              sound.playPaymentReceived();
+              triggerHaptic([200, 100, 200]);
+              showSystemNotification(
+                '✅ Bank Transfer Detected!',
+                `Payment confirmed! Processing crypto delivery for ${orderRef}...`,
+                orderRef
+              );
+            } else if (nextStatus === 'COMPLETED') {
+              sound.playCryptoDelivered();
+              triggerHaptic([300, 100, 300, 100, 500]);
+              showSystemNotification(
+                '🎉 Crypto Delivered!',
+                `${res.order.crypto_amount} ${res.order.coin.split('_')[0]} has been sent to your wallet!`,
+                orderRef
+              );
+            }
+          }
+
           setCurrentOrder(res.order);
           if (res.order.status === 'COMPLETED') {
             onSuccess(res.order);
@@ -517,12 +545,24 @@ export const PayStep: React.FC<PayStepProps> = ({
           <span className="text-[10px] font-mono text-amber-400">Verifying</span>
         </div>
       ) : (
-        <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-emerald-300 font-semibold">
-            <span className="w-2 h-2 rounded-full bg-[#00e676] animate-ping" />
-            <span>Listening for bank transfer in real-time...</span>
+        <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs gap-2">
+          <div className="flex items-center gap-2 text-emerald-300 font-semibold min-w-0">
+            <span className="w-2 h-2 rounded-full bg-[#00e676] animate-ping shrink-0" />
+            <span className="truncate">Listening for bank transfer in real-time...</span>
           </div>
-          <span className="text-[10px] font-mono text-[#00e676]">24/7 Live</span>
+          <button
+            type="button"
+            onClick={async () => {
+              sound.playNewOrder();
+              const granted = await requestPushPermission();
+              setAlertsActive(granted);
+            }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 hover:border-emerald-500/50 text-[10px] font-bold text-slate-300 hover:text-white transition-all shrink-0"
+            title="Enable lock-screen and sound notifications"
+          >
+            <Bell className={`w-3 h-3 ${alertsActive ? 'text-[#00e676]' : 'text-slate-400'}`} />
+            <span>{alertsActive ? 'Alerts ON' : 'Sound Alerts'}</span>
+          </button>
         </div>
       )}
 

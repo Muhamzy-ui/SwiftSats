@@ -14,6 +14,7 @@ import {
   LogOut,
   AlertCircle,
   Lock,
+  Volume2,
 } from 'lucide-react';
 import { ordersApi } from '../../shared/api/orders';
 import { OrderPublic } from '../../shared/types';
@@ -21,6 +22,7 @@ import { StatusBadge } from '../../shared/components/StatusBadge';
 import { formatNaira, formatDateTime, formatSpeed } from '../../shared/utils/formatters';
 import { getCoinLogo } from '../../shared/components/CryptoLogos';
 import { getStoredRecentOrders, getOpenOrder, LocalTrackedOrder } from '../../shared/utils/orderStorage';
+import { sound, triggerHaptic, showSystemNotification, requestPushPermission } from '../../shared/utils/notifications';
 
 export const OrderStatusPage: React.FC = () => {
   const { reference } = useParams<{ reference: string }>();
@@ -47,6 +49,62 @@ export const OrderStatusPage: React.FC = () => {
   const [userOrders, setUserOrders] = useState<Partial<OrderPublic>[]>([]);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccessMsg, setOtpSuccessMsg] = useState<string | null>(null);
+
+  const [alertsActive, setAlertsActive] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+  });
+
+  const toggleSoundAlerts = async () => {
+    sound.playPaymentReceived();
+    triggerHaptic([100, 50, 100]);
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission !== 'granted') {
+      const granted = await requestPushPermission();
+      setAlertsActive(granted);
+    } else {
+      setAlertsActive(true);
+    }
+  };
+
+  // Real-time live status listener with Web Audio API chimes & OS push notifications
+  useEffect(() => {
+    if (!order) return;
+    if (['COMPLETED', 'FAILED', 'REFUNDED', 'CANCELLED'].includes(order.status)) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await ordersApi.lookupOrder(order.order_reference);
+        if (res.success && res.order) {
+          const prevStatus = order.status;
+          const nextStatus = res.order.status;
+
+          if (prevStatus !== nextStatus) {
+            if (nextStatus === 'VERIFYING' || nextStatus === 'PAYMENT_CONFIRMED' || nextStatus === 'PAYOUT_PROCESSING') {
+              sound.playPaymentReceived();
+              triggerHaptic([200, 100, 200]);
+              showSystemNotification(
+                '💰 Bank Transfer Detected!',
+                `Payment confirmed for ${order.order_reference}! Releasing crypto...`,
+                order.order_reference
+              );
+            } else if (nextStatus === 'COMPLETED') {
+              sound.playCryptoDelivered();
+              triggerHaptic([300, 100, 300, 100, 500]);
+              showSystemNotification(
+                '🎉 Crypto Delivered!',
+                `${res.order.crypto_amount} ${res.order.coin.split('_')[0]} has arrived in your wallet!`,
+                order.order_reference
+              );
+            }
+            setOrder(res.order);
+          }
+        }
+      } catch (err) {
+        // silent polling catch
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [order]);
 
   const fetchOrder = async (ref: string) => {
     if (!ref.trim()) return;
@@ -422,6 +480,19 @@ export const OrderStatusPage: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleSoundAlerts}
+                className={`p-1.5 rounded-lg border transition-all flex items-center gap-1.5 text-xs font-bold ${
+                  alertsActive
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-500/40 text-[#00c853] dark:text-[#00e676]'
+                    : 'bg-slate-100 dark:bg-slate-800 border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Toggle Real-Time Sound & Push Alerts"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Sound Alerts</span>
+              </button>
               <StatusBadge status={order.status} />
               <button
                 type="button"
