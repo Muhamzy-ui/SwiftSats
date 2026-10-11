@@ -78,10 +78,57 @@ class HotWalletService:
             self.rpc_url = "https://bsc-dataseed.binance.org/"
             self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
 
-    def get_dispatch_address(self) -> str:
+    def get_dispatch_address(self, coin: str = "USDT_BEP20", network: Optional[str] = None) -> str:
         """
-        Resolve platform dispatch wallet address from account, settings, or environment.
+        Resolve platform dispatch wallet address for any cryptocurrency and blockchain network.
+        Supports EVM (BEP-20 / ERC-20), Tron (TRC-20), Bitcoin, and Solana.
         """
+        coin_upper = (coin or "").upper()
+        net_upper = (network or "").upper()
+
+        # 1. TRON (TRC-20 USDT / TRX)
+        if "TRC" in coin_upper or "TRON" in net_upper or coin_upper in ["TRX", "USDT_TRC20"]:
+            env_tron = os.getenv("HOT_WALLET_ADDRESS_TRON", "").strip()
+            if env_tron:
+                return env_tron
+            try:
+                from apps.admin_api.models import PlatformSettings
+                ps = PlatformSettings.get_settings()
+                if ps and getattr(ps, "hot_wallet_address_tron", None):
+                    return ps.hot_wallet_address_tron.strip()
+            except Exception:
+                pass
+            return "TRwHndDNkm2vpE6SiszKjowv6aKaKD7RZT"
+
+        # 2. BITCOIN (BTC)
+        if "BTC" in coin_upper or "BITCOIN" in net_upper:
+            env_btc = os.getenv("HOT_WALLET_ADDRESS_BITCOIN", "").strip()
+            if env_btc:
+                return env_btc
+            try:
+                from apps.admin_api.models import PlatformSettings
+                ps = PlatformSettings.get_settings()
+                if ps and getattr(ps, "hot_wallet_address_bitcoin", None):
+                    return ps.hot_wallet_address_bitcoin.strip()
+            except Exception:
+                pass
+            return "bc1qv4vq3xzpszeflkqnpvzsx37juu65lwd974fd9e"
+
+        # 3. SOLANA (SOL / SPL)
+        if "SOL" in coin_upper or "SOLANA" in net_upper:
+            env_sol = os.getenv("HOT_WALLET_ADDRESS_SOLANA", "").strip()
+            if env_sol:
+                return env_sol
+            try:
+                from apps.admin_api.models import PlatformSettings
+                ps = PlatformSettings.get_settings()
+                if ps and getattr(ps, "hot_wallet_address_solana", None):
+                    return ps.hot_wallet_address_solana.strip()
+            except Exception:
+                pass
+            return "4F7JuhSiALdZNwDi14x7mVa3T8Pie9QmgBGUPDk32jWC"
+
+        # 4. EVM / BSC / ETHEREUM / BASE / POLYGON
         account = self.get_configured_account()
         if account:
             return account.address
@@ -98,15 +145,15 @@ class HotWalletService:
         if env_addr:
             return env_addr
 
-        # Fallback to primary vault address if defined
         return "0x36b25000587762425F2682d721A57eD7d74671F0"
 
     def get_wallet_balance(self, coin: str = "USDT_BEP20", address: Optional[str] = None) -> Dict[str, Any]:
         """
         Query real-time on-chain token balance and native gas balance for the platform wallet.
+        Supports BSC (BEP-20), Tron (TRC-20), Bitcoin, and Solana.
         """
         import requests
-        target_addr = (address or self.get_dispatch_address()).strip()
+        target_addr = (address or self.get_dispatch_address(coin=coin)).strip()
         if not target_addr:
             return {
                 "wallet_address": "",
@@ -116,10 +163,11 @@ class HotWalletService:
                 "has_gas": False,
                 "is_configured": False,
                 "coin": coin,
+                "network": "Unknown",
             }
 
-        # 1. TRON (TRC-20)
-        if target_addr.startswith("T") or "TRC" in coin.upper():
+        # 1. TRON (TRC-20 / TRX)
+        if target_addr.startswith("T") or "TRC" in coin.upper() or coin.upper() == "TRX":
             try:
                 r = requests.get(f"https://api.trongrid.io/v1/accounts/{target_addr}", timeout=4.0)
                 if r.status_code == 200:
@@ -128,10 +176,11 @@ class HotWalletService:
                         d = items[0]
                         trx_sun = d.get("balance", 0)
                         trx_bal = Decimal(str(trx_sun)) / Decimal(10**6)
-                        token_bal = Decimal("0.00")
-                        for t_entry in d.get("trc20", []):
-                            if "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" in t_entry:
-                                token_bal = Decimal(str(t_entry["TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"])) / Decimal(10**6)
+                        token_bal = trx_bal if coin.upper() == "TRX" else Decimal("0.00")
+                        if coin.upper() != "TRX":
+                            for t_entry in d.get("trc20", []):
+                                if "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" in t_entry:
+                                    token_bal = Decimal(str(t_entry["TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"])) / Decimal(10**6)
                         return {
                             "wallet_address": target_addr,
                             "token_balance": token_bal,
@@ -140,6 +189,7 @@ class HotWalletService:
                             "has_gas": trx_bal >= Decimal("15.0"),
                             "is_configured": True,
                             "coin": coin,
+                            "network": "Tron (TRC-20)",
                         }
             except Exception as ex:
                 logger.warning("Tron on-chain query exception for %s: %s", target_addr, ex)
@@ -151,9 +201,42 @@ class HotWalletService:
                 "has_gas": False,
                 "is_configured": True,
                 "coin": coin,
+                "network": "Tron (TRC-20)",
             }
 
-        # 2. SOLANA (SPL)
+        # 2. BITCOIN (BTC)
+        if target_addr.startswith("bc1") or target_addr.startswith("1") or target_addr.startswith("3") or "BTC" in coin.upper():
+            try:
+                r = requests.get(f"https://blockstream.info/api/address/{target_addr}", timeout=4.0)
+                if r.status_code == 200:
+                    d = r.json()
+                    stats = d.get("chain_stats", {})
+                    sats = stats.get("funded_txo_sum", 0) - stats.get("spent_txo_sum", 0)
+                    btc_bal = Decimal(str(max(0, sats))) / Decimal(10**8)
+                    return {
+                        "wallet_address": target_addr,
+                        "token_balance": btc_bal,
+                        "gas_balance": btc_bal,
+                        "gas_symbol": "BTC",
+                        "has_gas": btc_bal > Decimal("0.00001"),
+                        "is_configured": True,
+                        "coin": coin,
+                        "network": "Bitcoin Network",
+                    }
+            except Exception as ex:
+                logger.warning("Bitcoin on-chain query exception for %s: %s", target_addr, ex)
+            return {
+                "wallet_address": target_addr,
+                "token_balance": Decimal("0.00"),
+                "gas_balance": Decimal("0.00"),
+                "gas_symbol": "BTC",
+                "has_gas": False,
+                "is_configured": True,
+                "coin": coin,
+                "network": "Bitcoin Network",
+            }
+
+        # 3. SOLANA (SPL / SOL)
         if len(target_addr) in [43, 44] and not target_addr.startswith("0x"):
             try:
                 payload = {"jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [target_addr]}
@@ -169,6 +252,7 @@ class HotWalletService:
                         "has_gas": sol_bal >= Decimal("0.005"),
                         "is_configured": True,
                         "coin": coin,
+                        "network": "Solana Network",
                     }
             except Exception as ex:
                 logger.warning("Solana on-chain query exception for %s: %s", target_addr, ex)
@@ -180,9 +264,10 @@ class HotWalletService:
                 "has_gas": False,
                 "is_configured": True,
                 "coin": coin,
+                "network": "Solana Network",
             }
 
-        # 3. EVM / BNB SMART CHAIN (BEP-20)
+        # 4. EVM / BNB SMART CHAIN (BEP-20) / ETHEREUM
         try:
             chk_addr = Web3.to_checksum_address(target_addr)
             bnb_wei = self.w3.eth.get_balance(chk_addr)
@@ -205,6 +290,7 @@ class HotWalletService:
                 "has_gas": bnb_bal >= Decimal("0.001"),
                 "is_configured": True,
                 "coin": coin,
+                "network": "BNB Smart Chain (BEP-20)",
             }
         except Exception as ex:
             logger.warning("BSC on-chain query exception for %s: %s", target_addr, ex)
@@ -216,6 +302,7 @@ class HotWalletService:
                 "has_gas": False,
                 "is_configured": True,
                 "coin": coin,
+                "network": "BNB Smart Chain (BEP-20)",
             }
 
     def check_sufficient_funds(

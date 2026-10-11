@@ -3,6 +3,14 @@ import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, 
 import { adminApi } from '../../shared/api/admin';
 import { SystemHealthData } from '../../shared/types';
 
+const SUPPORTED_COINS = [
+  { id: 'USDT_BEP20', label: 'USDT (BEP-20)', network: 'BNB Smart Chain', symbol: 'USDT' },
+  { id: 'BNB', label: 'BNB (BEP-20)', network: 'BNB Smart Chain', symbol: 'BNB' },
+  { id: 'USDT_TRC20', label: 'USDT (TRC-20)', network: 'Tron Network', symbol: 'USDT' },
+  { id: 'SOL', label: 'Solana (SOL)', network: 'Solana Network', symbol: 'SOL' },
+  { id: 'BTC', label: 'Bitcoin (BTC)', network: 'Bitcoin Network', symbol: 'BTC' },
+];
+
 export const SettingsPage: React.FC = () => {
   const [healthData, setHealthData] = useState<SystemHealthData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -11,6 +19,7 @@ export const SettingsPage: React.FC = () => {
   const [isPurging, setIsPurging] = useState(false);
 
   // Platform Hot Wallet & On-Chain Float
+  const [selectedCoin, setSelectedCoin] = useState('USDT_BEP20');
   const [hotWalletAddress, setHotWalletAddress] = useState('0x36b25000587762425F2682d721A57eD7d74671F0');
   const [isSavingWallet, setIsSavingWallet] = useState(false);
   const [walletStatusMsg, setWalletStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -45,11 +54,15 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const fetchWalletBalance = async (customAddr?: string) => {
+  const fetchWalletBalance = async (coinId?: string, customAddr?: string) => {
     setIsCheckingBalance(true);
+    const activeCoin = coinId || selectedCoin;
     try {
-      const res = await adminApi.getHotWalletBalance('USDT_BEP20', customAddr || hotWalletAddress);
+      const res = await adminApi.getHotWalletBalance(activeCoin, customAddr);
       setWalletBalance(res);
+      if (res.wallet_address) {
+        setHotWalletAddress(res.wallet_address);
+      }
     } catch (err) {
       console.error('Failed to query hot wallet balance', err);
     } finally {
@@ -336,23 +349,53 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
 
+        {/* Coin Selector Pills */}
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+            Select Cryptocurrency & Network to Inspect:
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {SUPPORTED_COINS.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCoin(c.id);
+                  fetchWalletBalance(c.id);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedCoin === c.id
+                    ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/30'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Live Balance Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1">
                 <Coins className="w-3.5 h-3.5 text-emerald-500" />
-                <span>USDT Balance (BEP-20)</span>
+                <span>{SUPPORTED_COINS.find(c => c.id === selectedCoin)?.label || 'Crypto'} Balance</span>
               </span>
-              <span className="text-[10px] uppercase font-mono text-emerald-600 dark:text-emerald-400 font-bold">BSC</span>
+              <span className="text-[10px] uppercase font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                {SUPPORTED_COINS.find(c => c.id === selectedCoin)?.network || 'On-Chain'}
+              </span>
             </div>
             <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
-              {walletBalance ? `${parseFloat(walletBalance.token_balance).toFixed(2)} USDT` : '—'}
+              {walletBalance
+                ? `${parseFloat(walletBalance.token_balance).toFixed(selectedCoin.includes('BTC') ? 6 : selectedCoin.includes('SOL') ? 4 : 2)} ${SUPPORTED_COINS.find(c => c.id === selectedCoin)?.symbol || ''}`
+                : '—'}
             </div>
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
               {walletBalance && parseFloat(walletBalance.token_balance) > 0
                 ? '✅ Float available for payouts'
-                : '⚠️ Empty float. Deposit USDT before releasing orders'}
+                : '⚠️ Empty float. Deposit crypto before releasing orders'}
             </p>
           </div>
 
@@ -360,15 +403,17 @@ export const SettingsPage: React.FC = () => {
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1">
                 <Server className="w-3.5 h-3.5 text-amber-500" />
-                <span>Network Gas (BNB)</span>
+                <span>Network Gas ({walletBalance?.gas_symbol || 'Fee'})</span>
               </span>
               <span className="text-[10px] uppercase font-mono text-amber-600 dark:text-amber-400 font-bold">Gas Fee</span>
             </div>
             <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
-              {walletBalance ? `${parseFloat(walletBalance.gas_balance).toFixed(4)} BNB` : '—'}
+              {walletBalance ? `${parseFloat(walletBalance.gas_balance).toFixed(4)} ${walletBalance.gas_symbol}` : '—'}
             </div>
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
-              {walletBalance?.has_gas ? '✅ Gas available for blockchain transfers' : '⚠️ Need min 0.005 BNB for gas'}
+              {walletBalance?.has_gas
+                ? `✅ Gas available for blockchain transfers`
+                : `⚠️ Need min ${walletBalance?.gas_symbol === 'TRX' ? '15 TRX' : walletBalance?.gas_symbol === 'SOL' ? '0.005 SOL' : '0.002 BNB'} for gas`}
             </p>
           </div>
 
