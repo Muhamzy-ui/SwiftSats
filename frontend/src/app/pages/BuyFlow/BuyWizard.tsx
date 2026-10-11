@@ -18,7 +18,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'BTC',
     network: 'BITCOIN',
     price_usd: '77590.78',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '109500000.00',
     is_featured: true,
     speed_category: 'Standard',
@@ -34,7 +34,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'USDC',
     network: 'BASE',
     price_usd: '0.996',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '1405.85',
     is_featured: true,
     speed_category: 'Fastest',
@@ -50,7 +50,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'BNB',
     network: 'BEP20',
     price_usd: '684.61',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '966166.00',
     is_featured: true,
     speed_category: 'Fastest',
@@ -66,7 +66,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'USDT',
     network: 'ERC20',
     price_usd: '0.999',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '1409.84',
     is_featured: true,
     speed_category: 'Standard',
@@ -82,7 +82,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'USDT',
     network: 'TRC20',
     price_usd: '0.999',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '1409.84',
     is_featured: true,
     speed_category: 'Fastest',
@@ -98,7 +98,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'SOL',
     network: 'SOLANA',
     price_usd: '101.76',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '143614.00',
     is_featured: true,
     speed_category: 'Fastest',
@@ -114,7 +114,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'USDT',
     network: 'BEP20',
     price_usd: '0.999',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '1409.84',
     is_featured: true,
     speed_category: 'Fastest',
@@ -130,7 +130,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'ETH',
     network: 'ERC20',
     price_usd: '2442.52',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '3447006.00',
     is_featured: true,
     speed_category: 'Fastest',
@@ -146,7 +146,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'BCH',
     network: 'BCH',
     price_usd: '245.54',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '346528.00',
     is_featured: false,
     speed_category: 'Standard',
@@ -162,7 +162,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'TRX',
     network: 'TRC20',
     price_usd: '0.329',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '465.43',
     is_featured: false,
     speed_category: 'Fastest',
@@ -178,7 +178,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'DOGE',
     network: 'DOGE',
     price_usd: '0.082',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '116.09',
     is_featured: false,
     speed_category: 'Fastest',
@@ -194,7 +194,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'POL',
     network: 'POLYGON',
     price_usd: '0.091',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '128.86',
     is_featured: false,
     speed_category: 'Fastest',
@@ -210,7 +210,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'SHIB',
     network: 'ERC20',
     price_usd: '0.00000508',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '0.00717',
     is_featured: false,
     speed_category: 'Standard',
@@ -226,7 +226,7 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     symbol: 'XLM',
     network: 'STELLAR',
     price_usd: '0.175',
-    usd_to_ngn_rate: '1425.00',
+    usd_to_ngn_rate: '1398.99',
     rate_ngn: '247.72',
     is_featured: false,
     speed_category: 'Fastest',
@@ -346,7 +346,7 @@ export const BuyWizard: React.FC = () => {
     let targetNgn: number | null = null;
     if (params.get('amount_usd') || params.get('usd')) {
       const u = parseFloat(params.get('amount_usd') || params.get('usd') || '');
-      if (!isNaN(u) && u > 0) targetNgn = Math.round(u * 1425.00);
+      if (!isNaN(u) && u > 0) targetNgn = Math.round(u * 1398.99);
     } else if (params.get('amount_ngn') || params.get('ngn')) {
       const n = parseFloat(params.get('amount_ngn') || params.get('ngn') || '');
       if (!isNaN(n) && n > 0) targetNgn = Math.round(n);
@@ -354,7 +354,7 @@ export const BuyWizard: React.FC = () => {
       const raw = parseFloat(amountParam.trim());
       if (!isNaN(raw) && raw > 0) {
         if (raw <= 1000) {
-          targetNgn = Math.round(raw * 1425.00);
+          targetNgn = Math.round(raw * 1398.99);
         } else {
           targetNgn = Math.round(raw);
         }

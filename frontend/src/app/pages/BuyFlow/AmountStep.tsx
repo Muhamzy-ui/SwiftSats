@@ -22,7 +22,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   onQuoteCreated,
   onBack,
 }) => {
-  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1425.00');
+  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1398.99');
   
   // Calculate starting dollar value from optional URL parameter
   const getInitialDollar = () => {

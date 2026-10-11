@@ -308,11 +308,11 @@ COIN_METADATA = {
     },
 }
 
-# Standard NGN per USD base exchange rate (configured to ₦1,425.00 / $1 USD)
-BASE_USD_TO_NGN_RATE = Decimal("1425.00")
+# Standard NGN per USD base exchange rate (configured to ₦1,398.99 / $1 USD)
+BASE_USD_TO_NGN_RATE = Decimal("1398.99")
 
-# Standard Service Fee defaults
-SERVICE_FEE_NGN = Decimal("2850.00")
+# Standard Service Fee defaults ($2.00 flat = ₦2,797.98)
+SERVICE_FEE_NGN = Decimal("2797.98")
 SERVICE_FEE_USD = Decimal("2.00")
 
 
