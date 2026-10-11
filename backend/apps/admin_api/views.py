@@ -1033,7 +1033,7 @@ class AdminVerifyOrderPayoutView(APIView):
 class AdminPurgeOrdersView(APIView):
     """
     POST /api/v1/admin/orders/purge/
-    Purges all test/mock orders and clears the ledger.
+    Purges test/mock orders and clears the ledger, safely preserving completed orders.
     Super Admin only.
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -1042,19 +1042,28 @@ class AdminPurgeOrdersView(APIView):
         if not getattr(request.user, "is_superuser", False) and getattr(request.user, "role", "") != AdminRole.SUPER_ADMIN:
             return Response({"error": "Unauthorized. Super Admin only."}, status=status.HTTP_403_FORBIDDEN)
 
-        count = Order.objects.count()
-        Order.objects.all().delete()
-        AuditLog.objects.exclude(actor=AuditActor.SYSTEM).delete()
+        # Preserve completed orders by default
+        purge_all = request.data.get("purge_all", False)
+        if purge_all:
+            to_delete = Order.objects.all()
+        else:
+            to_delete = Order.objects.exclude(status=OrderStatus.COMPLETED)
+
+        count = to_delete.count()
+        refs = list(to_delete.values_list("order_reference", flat=True))
+        to_delete.delete()
+        if refs:
+            AuditLog.objects.filter(order_reference__in=refs).delete()
 
         send_telegram_alert(
             f"🗑️ <b>TEST ORDERS PURGED</b>\n"
-            f"<b>Count:</b> {count} orders deleted\n"
+            f"<b>Count:</b> {count} test orders deleted\n"
             f"<b>Executed by:</b> {request.user.email}"
         )
 
         return Response({
             "success": True,
-            "message": f"Successfully purged {count} orders. The operational ledger is completely fresh and clean.",
+            "message": f"Successfully purged {count} test orders. Completed records remain preserved.",
             "purged_count": count,
         })
 
