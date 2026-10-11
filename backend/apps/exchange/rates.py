@@ -44,19 +44,9 @@ class RateService:
 
     def get_live_usd_to_ngn_rate(self) -> Decimal:
         """
-        Get the live wholesale USD/NGN exchange rate directly from Quidax orderbook.
-        Falls back to BASE_USD_TO_NGN_RATE only if API is unreachable.
+        Get the standard wholesale USD/NGN exchange rate for SwiftSats (fixed at ₦1,425.00).
         """
-        cache_key = "swiftsats:live_usd_to_ngn"
-        cached = cache.get(cache_key)
-        if cached:
-            return Decimal(str(cached))
-
-        all_tickers = self.client.get_all_market_tickers()
-        rate = all_tickers.get("_usd_to_ngn") or all_tickers.get(SupportedCoin.USDT_TRC20) or BASE_USD_TO_NGN_RATE
-        live_rate = Decimal(str(rate)).quantize(Decimal("0.01"))
-        cache.set(cache_key, str(live_rate), timeout=RATE_CACHE_TTL_SECONDS)
-        return live_rate
+        return BASE_USD_TO_NGN_RATE
 
     def calculate_crypto_for_naira(
         self,
@@ -66,8 +56,9 @@ class RateService:
         """
         Compute how much crypto the user receives for a given Naira amount based on live rates.
         Pricing Rule:
-        - For <= $10 USD deposit: $1.00 USD flat service fee.
-        - For > $10 USD deposit: 5% service fee of deposit amount.
+        - For >= $100 USD deposit: Flat $2.00 USD service fee (not percentage anymore).
+        - For <= $10 USD deposit: Flat $1.00 USD service fee.
+        - For $10 - $100 USD deposit: 5% service fee, capped at $2.00 USD max.
         """
         if coin not in COIN_METADATA:
             raise ValueError(f"Unsupported coin: {coin}")
@@ -80,18 +71,32 @@ class RateService:
         usd_price = (wholesale_rate / usd_to_ngn_rate).quantize(Decimal("0.0001"))
         network_fee_crypto = meta["network_fee_crypto"]
 
-        # Determine fee: $1.00 flat for <= $10 USD; 5% for > $10 USD
-        one_dollar_ngn = usd_to_ngn_rate
-        ten_dollars_total_threshold = (Decimal("10.0") * usd_to_ngn_rate) + one_dollar_ngn
+        two_dollars_ngn = (Decimal("2.0") * usd_to_ngn_rate).quantize(Decimal("0.01"))
+        approx_usd = fiat_amount_ngn / usd_to_ngn_rate
 
-        if fiat_amount_ngn <= ten_dollars_total_threshold:
-            service_fee_ngn = one_dollar_ngn
+        # Pricing rules:
+        # 1. From $100 upward: flat $2.00 USD (not % anymore)
+        if approx_usd >= Decimal("100.0"):
+            service_fee_usd = Decimal("2.00")
+            service_fee_ngn = two_dollars_ngn
             net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
+        # 2. For <= $11 USD: flat $1.00 USD
+        elif approx_usd <= Decimal("11.0"):
             service_fee_usd = Decimal("1.00")
+            service_fee_ngn = usd_to_ngn_rate
+            net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
+        # 3. Between $11 and $100: 5% capped at $2.00 USD
         else:
-            net_deposit_ngn = (fiat_amount_ngn / Decimal("1.05")).quantize(Decimal("0.01"))
-            service_fee_ngn = (fiat_amount_ngn - net_deposit_ngn).quantize(Decimal("0.01"))
-            service_fee_usd = (service_fee_ngn / usd_to_ngn_rate).quantize(Decimal("0.01"))
+            calc_net = (fiat_amount_ngn / Decimal("1.05")).quantize(Decimal("0.01"))
+            calc_fee = (fiat_amount_ngn - calc_net).quantize(Decimal("0.01"))
+            if calc_fee > two_dollars_ngn:
+                service_fee_ngn = two_dollars_ngn
+                service_fee_usd = Decimal("2.00")
+                net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - two_dollars_ngn)
+            else:
+                service_fee_ngn = calc_fee
+                service_fee_usd = (service_fee_ngn / usd_to_ngn_rate).quantize(Decimal("0.01"))
+                net_deposit_ngn = calc_net
 
         dollar_value = (net_deposit_ngn / usd_to_ngn_rate).quantize(Decimal("0.01"))
         gross_crypto = (net_deposit_ngn / wholesale_rate).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)

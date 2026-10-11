@@ -31,3 +31,31 @@ class TestRateService:
         assert SupportedCoin.SOL in coins
         assert SupportedCoin.BNB in coins
         assert SupportedCoin.BTC in coins
+        for r in rates:
+            assert Decimal(r["usd_to_ngn_rate"]) == Decimal("1425.00")
+
+    def test_dollar_rate_is_1425(self):
+        service = RateService()
+        assert service.get_live_usd_to_ngn_rate() == Decimal("1425.00")
+
+    def test_fee_from_100_dollars_upward_is_flat_2_dollars(self):
+        service = RateService()
+        # 1. Test $100 order: $100 * 1425 + $2 fee (2850) = 145,350 NGN
+        res100 = service.calculate_crypto_for_naira(
+            coin=SupportedCoin.USDT_TRC20,
+            fiat_amount_ngn=Decimal("145350.00")
+        )
+        assert res100["service_fee_usd"] == Decimal("2.00")
+        assert res100["service_fee_ngn"] == Decimal("2850.00")
+        assert res100["net_deposit_ngn"] == Decimal("142500.00")
+        assert res100["dollar_value"] == Decimal("100.00")
+
+        # 2. Test $500 order: $500 * 1425 + $2 fee (2850) = 715,350 NGN
+        res500 = service.calculate_crypto_for_naira(
+            coin=SupportedCoin.USDT_TRC20,
+            fiat_amount_ngn=Decimal("715350.00")
+        )
+        assert res500["service_fee_usd"] == Decimal("2.00")
+        assert res500["service_fee_ngn"] == Decimal("2850.00")
+        assert res500["net_deposit_ngn"] == Decimal("712500.00")
+        assert res500["dollar_value"] == Decimal("500.00")

@@ -308,12 +308,12 @@ COIN_METADATA = {
     },
 }
 
-# Standard NGN per USD base exchange rate (above Quidax ₦1,373 wholesale for guaranteed profit)
-BASE_USD_TO_NGN_RATE = Decimal("1410.65")
+# Standard NGN per USD base exchange rate (configured to ₦1,425.00 / $1 USD)
+BASE_USD_TO_NGN_RATE = Decimal("1425.00")
 
-# Fixed Service Fee: Discounted to exactly ₦1,310.00 (₦100 removed from ₦1,410.65)
-SERVICE_FEE_NGN = Decimal("1310.00")
-SERVICE_FEE_USD = Decimal("0.93")
+# Standard Service Fee defaults
+SERVICE_FEE_NGN = Decimal("2850.00")
+SERVICE_FEE_USD = Decimal("2.00")
 
 
 class AdminRole(models.TextChoices):

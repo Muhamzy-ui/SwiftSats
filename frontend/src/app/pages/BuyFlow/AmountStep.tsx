@@ -22,7 +22,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   onQuoteCreated,
   onBack,
 }) => {
-  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1372.20');
+  const ratePerDollar = parseFloat(selectedRate.usd_to_ngn_rate || '1425.00');
   
   // Calculate starting dollar value from optional URL parameter
   const getInitialDollar = () => {
@@ -56,17 +56,32 @@ export const AmountStep: React.FC<AmountStepProps> = ({
     }
   }, [currencyMode, dollarInput, cryptoInput, coinPriceUsd]);
 
-  // Live calculated amounts: $1 fee for <= $10 USD; 10% fee for > $10 USD
+  // Live calculated amounts:
+  // - >= $100 USD: $2.00 flat service fee (not % anymore)
+  // - <= $10 USD: $1.00 flat service fee
+  // - $10 - $100 USD: 5% capped at $2.00 USD
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
     const cryptoReceived = (dollarAmount / coinPriceUsd).toFixed(8);
     const cryptoValueNgn = dollarAmount * ratePerDollar;
     
-    // Fee rule: $1.00 flat for <= $10 USD; 5% of deposit for > $10 USD
-    const feeNgn = dollarAmount <= 10.0
-      ? (1.0 * ratePerDollar)
-      : (cryptoValueNgn * 0.05);
+    let feeNgn = 1.0 * ratePerDollar;
+    let feeLabel = '($1.00 flat)';
+
+    if (dollarAmount >= 100.0) {
+      feeNgn = 2.0 * ratePerDollar;
+      feeLabel = '($2.00 flat)';
+    } else if (dollarAmount > 10.0) {
+      const pctFee = cryptoValueNgn * 0.05;
+      if (pctFee >= 2.0 * ratePerDollar) {
+        feeNgn = 2.0 * ratePerDollar;
+        feeLabel = '($2.00 max)';
+      } else {
+        feeNgn = pctFee;
+        feeLabel = '(5%)';
+      }
+    }
 
     const totalNgnToPay = cryptoValueNgn + feeNgn;
 
@@ -74,6 +89,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       cryptoReceived,
       cryptoValueNgn,
       feeNgn,
+      feeLabel,
       totalNgnToPay,
     };
   }, [dollarAmount, coinPriceUsd, ratePerDollar]);
@@ -266,7 +282,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
 
           {/* 6. Service fee */}
           <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 font-mono text-xs">
-            <span>Service fee {dollarAmount <= 10 ? '($1.00 flat)' : '(5%)'}</span>
+            <span>Service fee {calculations.feeLabel}</span>
             <span className="text-emerald-600 dark:text-[#00e676] font-semibold">
               {formatNaira(calculations.feeNgn)}
             </span>

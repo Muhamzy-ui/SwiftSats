@@ -24,23 +24,23 @@ def is_dev_or_test_environment() -> bool:
     return getattr(settings, "DEBUG", False) or getattr(settings, "TESTING", False) or "test" in sys.argv
 
 
-# Mock reference rates in NGN for development / testing (based on ₦1,310.00 / $1 USD)
+# Mock reference rates in NGN for development / testing (based on ₦1,425.00 / $1 USD)
 MOCK_BASE_RATES_NGN: Dict[str, Decimal] = {
-    SupportedCoin.BTC: Decimal("101643921.80"),
-    SupportedCoin.USDC: Decimal("1304.98"),
-    SupportedCoin.BNB: Decimal("896848.66"),
-    SupportedCoin.USDT_ERC20: Decimal("1308.69"),
-    SupportedCoin.USDT_TRC20: Decimal("1308.69"),
-    SupportedCoin.SOL: Decimal("133310.45"),
-    SupportedCoin.USDT_BEP20: Decimal("1308.69"),
-    SupportedCoin.ETH: Decimal("3199701.20"),
-    SupportedCoin.BCH: Decimal("321666.44"),
-    SupportedCoin.TRX: Decimal("432.04"),
-    SupportedCoin.DOGE: Decimal("107.77"),
-    SupportedCoin.POL: Decimal("119.62"),
-    SupportedCoin.SHIB: Decimal("0.00665"),
-    SupportedCoin.XLM: Decimal("229.95"),
-    SupportedCoin.USDC_BASE: Decimal("1304.98"),
+    SupportedCoin.BTC: (Decimal("83042.96") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.USDC: Decimal("1425.00"),
+    SupportedCoin.BNB: (Decimal("746.77") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.USDT_ERC20: Decimal("1425.00"),
+    SupportedCoin.USDT_TRC20: Decimal("1425.00"),
+    SupportedCoin.SOL: (Decimal("150.00") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.USDT_BEP20: Decimal("1425.00"),
+    SupportedCoin.ETH: (Decimal("2600.00") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.BCH: (Decimal("350.00") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.TRX: (Decimal("0.24") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.DOGE: (Decimal("0.15") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.POL: (Decimal("0.35") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.SHIB: (Decimal("0.000015") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.XLM: (Decimal("0.18") * Decimal("1425.00")).quantize(Decimal("0.01")),
+    SupportedCoin.USDC_BASE: Decimal("1425.00"),
 }
 
 
@@ -92,9 +92,8 @@ class QuidaxClient:
                 response = requests.get(url, headers=self._get_headers(), timeout=1.5)
                 if response.status_code == 200:
                     data = response.json().get("data", {})
-                    # 1. Determine real-time USD/NGN benchmark from Quidax USDT/NGN
-                    usdt_data = data.get("usdtngn", {}).get("ticker", {})
-                    usdt_ngn = Decimal(str(usdt_data.get("last") or usdt_data.get("buy") or "1372.09"))
+                    # 1. Determine standard USD/NGN benchmark for SwiftSats (1425.00)
+                    usdt_ngn = Decimal("1425.00")
                     tickers["_usd_to_ngn"] = usdt_ngn
 
                     # 2. Map all supported coins to real live prices
