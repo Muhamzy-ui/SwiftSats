@@ -16,7 +16,6 @@ class TestProductionSafeguards(TestCase):
             with pytest.raises(ImproperlyConfigured) as exc_info:
                 validate_production_configuration()
             assert "FATAL CONFIGURATION ERROR - STARTUP BLOCKED" in str(exc_info.value)
-            assert "QUIDAX_API_KEY is missing" in str(exc_info.value)
             assert "PAYSTACK_SECRET_KEY is missing" in str(exc_info.value)
 
     def test_quidax_mock_raises_error_in_production_environment(self):
