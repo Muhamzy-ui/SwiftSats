@@ -8,7 +8,6 @@ import { ProfilePage } from './pages/Profile';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
 import { Header } from '../shared/components/Header';
-import { Footer } from '../shared/components/Footer';
 import { MobileBottomNav } from '../shared/components/MobileBottomNav';
 import { useTheme } from '../shared/context/ThemeContext';
 
@@ -52,7 +51,6 @@ export const AppRoutes: React.FC = () => {
                   <Route path="register" element={<RegisterPage />} />
                 </Routes>
               </main>
-              <Footer />
               <MobileBottomNav />
             </>
           }

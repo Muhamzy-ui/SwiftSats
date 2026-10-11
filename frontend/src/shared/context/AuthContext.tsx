@@ -17,7 +17,7 @@ interface AuthContextType {
   metrics: CustomerMetrics | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ is_admin: boolean; redirect: string } | void>;
   register: (data: { email: string; password: string; full_name?: string; phone?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -67,13 +67,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const res = await customerAuthApi.login({ email, password });
+    if (res.success && (res as any).is_admin) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('swiftsats_admin_token', res.token);
+      }
+      return { is_admin: true, redirect: '/admin' };
+    }
     if (res.success && res.token) {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('swiftsats_customer_token', res.token);
       }
       setUser(res.user);
       await refreshProfile();
+      return { is_admin: false, redirect: '/profile' };
     }
+    return { is_admin: false, redirect: '/profile' };
   };
 
   const register = async (data: { email: string; password: string; full_name?: string; phone?: string }) => {

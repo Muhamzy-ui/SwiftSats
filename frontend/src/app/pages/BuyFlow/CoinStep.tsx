@@ -114,9 +114,14 @@ export const CoinStep: React.FC<CoinStepProps> = ({
         ))}
       </div>
 
-      {/* Footer Info Matching Image 3 */}
+      {/* Footer Info */}
       <div className="pt-3 text-center space-y-1 text-slate-400 dark:text-slate-500 text-[11px] font-medium border-t border-slate-100 dark:border-white/[0.06]">
-        <p>Contact center <strong>0802 777 7877</strong></p>
+        <p>
+          Contact center{' '}
+          <a href="tel:08072410373" className="font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-500 transition-colors">
+            0807 241 0373
+          </a>
+        </p>
         <p className="text-[10px] text-slate-400 dark:text-slate-600">
           Rates are refreshed in real time and confirmed at checkout.
         </p>

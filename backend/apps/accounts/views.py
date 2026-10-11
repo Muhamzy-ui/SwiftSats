@@ -306,6 +306,18 @@ class CustomerRegisterView(APIView):
         # Link any existing unlinked orders made with this email address
         Order.objects.filter(user_email__iexact=email, customer__isnull=True).update(customer=customer)
 
+        # Notify Admin on Telegram of new user signup
+        try:
+            from core.telegram import send_telegram_alert
+            send_telegram_alert(
+                f"👤 <b>NEW USER SIGNED UP!</b>\n"
+                f"<b>Name:</b> {full_name or 'N/A'}\n"
+                f"<b>Email:</b> <code>{email}</code>\n"
+                f"<b>Phone:</b> {phone or 'N/A'}"
+            )
+        except Exception:
+            pass
+
         # Issue 30-day JWT session token
         token = generate_customer_jwt_token(customer)
 
@@ -334,7 +346,7 @@ class CustomerRegisterView(APIView):
 class CustomerLoginView(APIView):
     """
     Customer Login with Email and Password.
-    Returns JWT bearer token and user profile.
+    If valid Admin credentials are submitted, securely routes them directly to the Admin Dashboard.
     """
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -348,6 +360,35 @@ class CustomerLoginView(APIView):
 
         customer = Customer.objects.filter(email__iexact=email).first()
         if not customer or not customer.check_password(password):
+            # Check if this is an AdminUser logging in from the front user login
+            admin_user = AdminUser.objects.filter(email__iexact=email, is_active=True).first()
+            if admin_user and admin_user.check_password(password):
+                token = generate_admin_jwt_token(admin_user)
+                response = Response({
+                    "success": True,
+                    "is_admin": True,
+                    "redirect": "/admin",
+                    "token": token,
+                    "user": AdminUserSerializer(admin_user).data,
+                })
+
+                cookie_name = getattr(settings, "JWT_AUTH_COOKIE", "swiftsats_admin_jwt")
+                cookie_secure = getattr(settings, "JWT_AUTH_COOKIE_SECURE", False)
+                cookie_httponly = getattr(settings, "JWT_AUTH_COOKIE_HTTPONLY", True)
+                cookie_samesite = getattr(settings, "JWT_AUTH_COOKIE_SAMESITE", "Lax")
+                max_age = getattr(settings, "ADMIN_SESSION_TIMEOUT_MINUTES", 60) * 60
+
+                response.set_cookie(
+                    key=cookie_name,
+                    value=token,
+                    max_age=max_age,
+                    httponly=cookie_httponly,
+                    secure=cookie_secure,
+                    samesite=cookie_samesite,
+                    path="/",
+                )
+                return response
+
             return Response(
                 {
                     "success": False,

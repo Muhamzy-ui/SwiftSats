@@ -4,6 +4,8 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle, Loader2 
 import { useAuth } from '../../../shared/context/AuthContext';
 import { SwiftSatsLogo } from '../../../shared/components/SwiftSatsLogo';
 
+import { adminApi } from '../../../shared/api/admin';
+
 export const LoginPage: React.FC = () => {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -34,10 +36,23 @@ export const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      await login(email.trim(), password);
+      const authResult = (await login(email.trim(), password)) as { is_admin?: boolean; redirect?: string } | undefined;
+      if (authResult?.is_admin) {
+        window.location.href = '/admin';
+        return;
+      }
       const from = (location.state as any)?.from?.pathname || '/profile';
       navigate(from, { replace: true });
     } catch (err: any) {
+      // Fallback: check if valid admin credentials were entered
+      try {
+        const adminRes = await adminApi.loginInit(email.trim(), password.trim());
+        if (adminRes.success && adminRes.token) {
+          localStorage.setItem('swiftsats_admin_token', adminRes.token);
+          window.location.href = '/admin';
+          return;
+        }
+      } catch {}
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);

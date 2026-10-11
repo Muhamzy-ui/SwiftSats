@@ -7,7 +7,7 @@ import { formatNaira } from '../../shared/utils/formatters';
 export interface AdminAlert {
   id: string;
   orderReference: string;
-  type: 'NEW_ORDER' | 'PAYMENT_RECEIVED' | 'MANUAL_APPROVAL' | 'COMPLETED';
+  type: 'NEW_ORDER' | 'PAYMENT_RECEIVED' | 'MANUAL_APPROVAL' | 'COMPLETED' | 'NEW_USER';
   title: string;
   message: string;
   amountNgn: string | number;
@@ -37,6 +37,8 @@ export const AdminNotificationProvider: React.FC<{ children: React.ReactNode }> 
 
   const knownOrdersMap = useRef<Map<string, string>>(new Map());
   const isFirstLoad = useRef<boolean>(true);
+  const knownCustomersSet = useRef<Set<string>>(new Set());
+  const isFirstCustomerLoad = useRef<boolean>(true);
 
   const enableBrowserNotifications = async (): Promise<boolean> => {
     const granted = await requestPushPermission();
@@ -58,128 +60,165 @@ export const AdminNotificationProvider: React.FC<{ children: React.ReactNode }> 
 
     const pollLiveOrders = async () => {
       try {
+        // 1. Poll Orders
         const res = await adminApi.getOrders({ page: 1 });
-        if (!res.success || !res.results || !isMounted) return;
+        if (res.success && res.results && isMounted) {
+          const currentOrders: AdminOrderSummary[] = res.results;
 
-        const currentOrders: AdminOrderSummary[] = res.results;
+          // On first run, seed the cache so we don't spam historical alerts
+          if (isFirstLoad.current) {
+            currentOrders.forEach((o) => {
+              knownOrdersMap.current.set(o.order_reference, o.status);
+            });
+            isFirstLoad.current = false;
+          } else {
+            // Compare incoming orders with cached statuses
+            for (const o of currentOrders) {
+              const prevStatus = knownOrdersMap.current.get(o.order_reference);
 
-        // On first run, seed the cache so we don't spam historical alerts
-        if (isFirstLoad.current) {
-          currentOrders.forEach((o) => {
-            knownOrdersMap.current.set(o.order_reference, o.status);
-          });
-          isFirstLoad.current = false;
-          return;
+              // 1. BRAND NEW ORDER
+              if (!prevStatus) {
+                knownOrdersMap.current.set(o.order_reference, o.status);
+                sound.playNewOrder();
+                triggerHaptic([100, 50, 100]);
+
+                const alertItem: AdminAlert = {
+                  id: `${o.order_reference}-NEW-${Date.now()}`,
+                  orderReference: o.order_reference,
+                  type: 'NEW_ORDER',
+                  title: '🛒 New Order Created',
+                  message: `${formatNaira(o.fiat_amount_ngn)} for ${o.crypto_amount} ${o.coin.split('_')[0]}`,
+                  amountNgn: o.fiat_amount_ngn,
+                  coin: o.coin,
+                  timestamp: Date.now(),
+                  read: false,
+                };
+
+                addAlert(alertItem);
+                showSystemNotification(
+                  alertItem.title,
+                  `${o.order_reference}: ${alertItem.message}`,
+                  o.order_reference,
+                  `/admin/orders?search=${o.order_reference}`
+                );
+              }
+              // 2. PAYMENT RECEIVED / VERIFYING
+              else if (
+                prevStatus !== o.status &&
+                (o.status === 'VERIFYING' || o.status === 'PAYMENT_CONFIRMED')
+              ) {
+                knownOrdersMap.current.set(o.order_reference, o.status);
+                sound.playPaymentReceived();
+                triggerHaptic([200, 100, 200, 100, 300]);
+
+                const alertItem: AdminAlert = {
+                  id: `${o.order_reference}-PAY-${Date.now()}`,
+                  orderReference: o.order_reference,
+                  type: 'PAYMENT_RECEIVED',
+                  title: '💰 Bank Transfer Received!',
+                  message: `Payment detected: ${formatNaira(o.fiat_amount_ngn)} for ${o.order_reference}`,
+                  amountNgn: o.fiat_amount_ngn,
+                  coin: o.coin,
+                  timestamp: Date.now(),
+                  read: false,
+                };
+
+                addAlert(alertItem);
+                showSystemNotification(
+                  alertItem.title,
+                  alertItem.message,
+                  o.order_reference,
+                  `/admin/orders?search=${o.order_reference}`
+                );
+              }
+              // 3. PAYOUT PROCESSING
+              else if (
+                prevStatus !== o.status &&
+                o.status === 'PAYOUT_PROCESSING'
+              ) {
+                knownOrdersMap.current.set(o.order_reference, o.status);
+                sound.playPaymentReceived();
+                triggerHaptic([300, 100, 300]);
+
+                const alertItem: AdminAlert = {
+                  id: `${o.order_reference}-PAYOUT-${Date.now()}`,
+                  orderReference: o.order_reference,
+                  type: 'MANUAL_APPROVAL',
+                  title: '⚡ Payout Processing',
+                  message: `Sending ${o.crypto_amount} ${o.coin.split('_')[0]} to user wallet`,
+                  amountNgn: o.fiat_amount_ngn,
+                  coin: o.coin,
+                  timestamp: Date.now(),
+                  read: false,
+                };
+
+                addAlert(alertItem);
+                showSystemNotification(
+                  alertItem.title,
+                  alertItem.message,
+                  o.order_reference,
+                  `/admin/orders?search=${o.order_reference}`
+                );
+              }
+              // 4. COMPLETED
+              else if (prevStatus !== o.status && o.status === 'COMPLETED') {
+                knownOrdersMap.current.set(o.order_reference, o.status);
+                sound.playCryptoDelivered();
+
+                const alertItem: AdminAlert = {
+                  id: `${o.order_reference}-DONE-${Date.now()}`,
+                  orderReference: o.order_reference,
+                  type: 'COMPLETED',
+                  title: '🎉 Order Completed',
+                  message: `Crypto dispatched for ${o.order_reference}`,
+                  amountNgn: o.fiat_amount_ngn,
+                  coin: o.coin,
+                  timestamp: Date.now(),
+                  read: false,
+                };
+
+                addAlert(alertItem);
+              } else {
+                knownOrdersMap.current.set(o.order_reference, o.status);
+              }
+            }
+          }
         }
 
-        // Compare incoming orders with cached statuses
-        for (const o of currentOrders) {
-          const prevStatus = knownOrdersMap.current.get(o.order_reference);
-
-          // 1. BRAND NEW ORDER
-          if (!prevStatus) {
-            knownOrdersMap.current.set(o.order_reference, o.status);
-            sound.playNewOrder();
-            triggerHaptic([100, 50, 100]);
-
-            const alertItem: AdminAlert = {
-              id: `${o.order_reference}-NEW-${Date.now()}`,
-              orderReference: o.order_reference,
-              type: 'NEW_ORDER',
-              title: '🛒 New Order Created',
-              message: `${formatNaira(o.fiat_amount_ngn)} for ${o.crypto_amount} ${o.coin.split('_')[0]}`,
-              amountNgn: o.fiat_amount_ngn,
-              coin: o.coin,
-              timestamp: Date.now(),
-              read: false,
-            };
-
-            addAlert(alertItem);
-            showSystemNotification(
-              alertItem.title,
-              `${o.order_reference}: ${alertItem.message}`,
-              o.order_reference,
-              `/admin/orders?search=${o.order_reference}`
-            );
-          }
-          // 2. PAYMENT RECEIVED / VERIFYING
-          else if (
-            prevStatus !== o.status &&
-            (o.status === 'VERIFYING' || o.status === 'PAYMENT_CONFIRMED')
-          ) {
-            knownOrdersMap.current.set(o.order_reference, o.status);
-            sound.playPaymentReceived();
-            triggerHaptic([200, 100, 200, 100, 300]);
-
-            const alertItem: AdminAlert = {
-              id: `${o.order_reference}-PAY-${Date.now()}`,
-              orderReference: o.order_reference,
-              type: 'PAYMENT_RECEIVED',
-              title: '💰 Bank Transfer Received!',
-              message: `Payment detected: ${formatNaira(o.fiat_amount_ngn)} for ${o.order_reference}`,
-              amountNgn: o.fiat_amount_ngn,
-              coin: o.coin,
-              timestamp: Date.now(),
-              read: false,
-            };
-
-            addAlert(alertItem);
-            showSystemNotification(
-              alertItem.title,
-              alertItem.message,
-              o.order_reference,
-              `/admin/orders?search=${o.order_reference}`
-            );
-          }
-          // 3. PAYOUT PROCESSING
-          else if (
-            prevStatus !== o.status &&
-            o.status === 'PAYOUT_PROCESSING'
-          ) {
-            knownOrdersMap.current.set(o.order_reference, o.status);
-            sound.playPaymentReceived();
-            triggerHaptic([300, 100, 300]);
-
-            const alertItem: AdminAlert = {
-              id: `${o.order_reference}-PAYOUT-${Date.now()}`,
-              orderReference: o.order_reference,
-              type: 'MANUAL_APPROVAL',
-              title: '⚡ Payout Processing',
-              message: `Sending ${o.crypto_amount} ${o.coin.split('_')[0]} to user wallet`,
-              amountNgn: o.fiat_amount_ngn,
-              coin: o.coin,
-              timestamp: Date.now(),
-              read: false,
-            };
-
-            addAlert(alertItem);
-            showSystemNotification(
-              alertItem.title,
-              alertItem.message,
-              o.order_reference,
-              `/admin/orders?search=${o.order_reference}`
-            );
-          }
-          // 4. COMPLETED
-          else if (prevStatus !== o.status && o.status === 'COMPLETED') {
-            knownOrdersMap.current.set(o.order_reference, o.status);
-            sound.playCryptoDelivered();
-
-            const alertItem: AdminAlert = {
-              id: `${o.order_reference}-DONE-${Date.now()}`,
-              orderReference: o.order_reference,
-              type: 'COMPLETED',
-              title: '🎉 Order Completed',
-              message: `Crypto dispatched for ${o.order_reference}`,
-              amountNgn: o.fiat_amount_ngn,
-              coin: o.coin,
-              timestamp: Date.now(),
-              read: false,
-            };
-
-            addAlert(alertItem);
+        // 2. Poll Registered Customers for New Signups
+        const custRes = await adminApi.getCustomers();
+        if (custRes.success && custRes.customers && isMounted) {
+          if (isFirstCustomerLoad.current) {
+            custRes.customers.forEach((c) => knownCustomersSet.current.add(c.id));
+            isFirstCustomerLoad.current = false;
           } else {
-            knownOrdersMap.current.set(o.order_reference, o.status);
+            for (const c of custRes.customers) {
+              if (!knownCustomersSet.current.has(c.id)) {
+                knownCustomersSet.current.add(c.id);
+                sound.playNewOrder();
+                triggerHaptic([150, 100, 150]);
+
+                const userAlert: AdminAlert = {
+                  id: `USER-${c.id}-${Date.now()}`,
+                  orderReference: c.email,
+                  type: 'NEW_USER',
+                  title: '👤 New User Registered!',
+                  message: `${c.full_name || 'Customer'} (${c.email}) just created an account!`,
+                  amountNgn: '0',
+                  coin: 'ACCOUNT',
+                  timestamp: Date.now(),
+                  read: false,
+                };
+
+                addAlert(userAlert);
+                showSystemNotification(
+                  userAlert.title,
+                  userAlert.message,
+                  c.email,
+                  '/admin/users'
+                );
+              }
+            }
           }
         }
       } catch (e) {

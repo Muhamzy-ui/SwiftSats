@@ -10,7 +10,11 @@ export const AdminNotificationBell: React.FC = () => {
 
   const handleOpenAlert = (alert: AdminAlert) => {
     setIsOpen(false);
-    navigate(`/admin/orders?search=${alert.orderReference}`);
+    if (alert.type === 'NEW_USER') {
+      navigate('/admin/users');
+    } else {
+      navigate(`/admin/orders?search=${alert.orderReference}`);
+    }
   };
 
   return (
@@ -128,11 +132,15 @@ export const AdminFloatingToast: React.FC = () => {
               type="button"
               onClick={() => {
                 dismissToast();
-                navigate(`/admin/orders?search=${activeToast.orderReference}`);
+                if (activeToast.type === 'NEW_USER') {
+                  navigate('/admin/users');
+                } else {
+                  navigate(`/admin/orders?search=${activeToast.orderReference}`);
+                }
               }}
               className="px-3 py-1 rounded-lg bg-[#00c853] dark:bg-[#00e676] text-slate-950 font-black text-[10px] hover:opacity-90 active:scale-95 transition-all shadow-xs flex items-center gap-1"
             >
-              <span>View Order</span>
+              <span>{activeToast.type === 'NEW_USER' ? 'View User' : 'View Order'}</span>
               <ExternalLink className="w-3 h-3" />
             </button>
             <span className="text-[10px] font-mono text-slate-400">{activeToast.orderReference}</span>
