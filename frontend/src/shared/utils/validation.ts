@@ -19,6 +19,7 @@ export function validateWalletAddress(coin: CoinCode, address: string): { isVali
 
   switch (coin) {
     case 'USDT_TRC20':
+    case 'TRX':
       if (clean.length !== 34 || !clean.startsWith('T') || !isBase58(clean)) {
         return { isValid: false, error: 'Invalid TRC-20 address. Must start with "T" and be exactly 34 characters.' };
       }
@@ -31,9 +32,15 @@ export function validateWalletAddress(coin: CoinCode, address: string): { isVali
       break;
 
     case 'BNB':
+    case 'USDC':
     case 'USDC_BASE':
+    case 'USDT_BEP20':
+    case 'USDT_ERC20':
+    case 'ETH':
+    case 'POL':
+    case 'SHIB':
       if (clean.length !== 42 || !clean.startsWith('0x') || !/^0x[0-9a-fA-F]{40}$/.test(clean)) {
-        return { isValid: false, error: 'Invalid address. Must start with "0x" followed by 40 hex characters.' };
+        return { isValid: false, error: 'Invalid EVM address. Must start with "0x" followed by 40 hex characters.' };
       }
       break;
 
@@ -52,7 +59,19 @@ export function validateWalletAddress(coin: CoinCode, address: string): { isVali
       break;
 
     default:
-      return { isValid: false, error: 'Unsupported coin type.' };
+      // If starts with 0x and length 42, accept as valid EVM
+      if (clean.startsWith('0x') && clean.length === 42 && /^0x[0-9a-fA-F]{40}$/.test(clean)) {
+        return { isValid: true };
+      }
+      // If starts with T and length 34, accept as Tron
+      if (clean.startsWith('T') && clean.length === 34 && isBase58(clean)) {
+        return { isValid: true };
+      }
+      // If Solana Base58 32-44 chars
+      if (clean.length >= 32 && clean.length <= 44 && isBase58(clean)) {
+        return { isValid: true };
+      }
+      return { isValid: false, error: 'Unsupported coin type or invalid address format.' };
   }
 
   return { isValid: true };
@@ -60,13 +79,19 @@ export function validateWalletAddress(coin: CoinCode, address: string): { isVali
 
 export function validateCryptoAddress(address: string, networkOrCoin: string): { valid: boolean; error?: string } {
   // Normalize coin code
-  let coin: CoinCode = 'USDT_TRC20';
   const upper = networkOrCoin.toUpperCase();
+  let coin: CoinCode = 'SOL';
   if (upper.includes('TRC') || upper.includes('TRON')) coin = 'USDT_TRC20';
   else if (upper.includes('SOL')) coin = 'SOL';
   else if (upper.includes('BNB') || upper.includes('BEP')) coin = 'BNB';
+  else if (upper.includes('USDC')) coin = 'USDC';
   else if (upper.includes('BASE')) coin = 'USDC_BASE';
+  else if (upper.includes('ETH')) coin = 'ETH';
   else if (upper.includes('BTC') || upper.includes('BITCOIN')) coin = 'BTC';
+  else if (upper.includes('POL')) coin = 'POL';
+  else if (address.startsWith('0x')) coin = 'BNB';
+  else if (address.startsWith('T')) coin = 'USDT_TRC20';
+  else if (address.startsWith('bc1') || address.startsWith('1') || address.startsWith('3')) coin = 'BTC';
 
   const res = validateWalletAddress(coin, address);
   return { valid: res.isValid, error: res.error };

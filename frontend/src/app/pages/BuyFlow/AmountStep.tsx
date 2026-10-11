@@ -26,11 +26,11 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   
   // Calculate starting dollar value from optional URL parameter
   const getInitialDollar = () => {
-    if (!initialAmount) return '2';
+    if (!initialAmount) return '10';
     const num = parseFloat(initialAmount);
-    if (isNaN(num)) return '2';
-    // If value looks like Naira (e.g. >= 500), convert to USD equivalent
-    if (num >= 500) {
+    if (isNaN(num)) return '10';
+    // If value looks like Naira (e.g. >= 1000), convert to USD equivalent
+    if (num >= 1000) {
       return (num / ratePerDollar).toFixed(2);
     }
     return String(num);

@@ -90,7 +90,7 @@ def validate_wallet_for_coin(coin: str, address: str) -> Tuple[bool, str]:
     elif network == BlockchainNetwork.SOLANA:
         if not validate_solana_address(clean_address):
             return False, "Invalid Solana wallet address. Must be a valid 32-44 character Base58 address."
-    elif network in (BlockchainNetwork.BEP20, BlockchainNetwork.BASE):
+    elif network in (BlockchainNetwork.BEP20, BlockchainNetwork.BASE, BlockchainNetwork.ERC20, BlockchainNetwork.POLYGON):
         if not validate_evm_address(clean_address):
             return False, f"Invalid EVM address for {network}. Must start with '0x' followed by 40 hex characters."
     elif network == BlockchainNetwork.BITCOIN:

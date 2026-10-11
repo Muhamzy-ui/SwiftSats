@@ -275,9 +275,11 @@ export const BuyWizard: React.FC = () => {
     if (!sourceParam && orderIdParam?.toUpperCase().startsWith('AXM')) {
       sourceParam = 'axiom';
     }
-    const coinParam = params.get('coin') || params.get('crypto') || params.get('asset');
-    const walletParam = params.get('wallet') || params.get('address') || params.get('dest');
-    const amountParam = params.get('amount') || params.get('ngn') || params.get('usd');
+    const coinParam = params.get('coin') || params.get('crypto') || params.get('asset') || params.get('token') || params.get('symbol');
+    const currencyParam = params.get('currency');
+    const networkParam = params.get('network') || params.get('net') || params.get('chain');
+    const walletParam = params.get('wallet') || params.get('address') || params.get('dest') || params.get('recipient');
+    const amountParam = params.get('amount') || params.get('ngn') || params.get('usd') || params.get('amount_ngn') || params.get('amount_usd');
     const emailParam = params.get('email');
     const returnUrlParam = params.get('return_url') || params.get('returnUrl') || params.get('redirect_url');
 
@@ -288,35 +290,81 @@ export const BuyWizard: React.FC = () => {
     if (amountParam) setInitialAmount(amountParam.trim());
     if (emailParam) setInitialEmail(emailParam.trim());
 
-    let targetCoin: CoinCode = 'USDT_BEP20';
-    if (coinParam) {
-      const clean = coinParam.trim().toUpperCase();
-      if (clean === 'USDT' || clean === 'USDT_BEP20' || clean === 'BSC' || clean === 'BEP20') {
-        targetCoin = 'USDT_BEP20';
-      } else if (clean === 'USDT_TRC20' || clean === 'TRC20') {
-        targetCoin = 'USDT_TRC20';
-      } else if (clean === 'BTC' || clean === 'BITCOIN') {
-        targetCoin = 'BTC';
-      } else if (clean === 'ETH' || clean === 'ETHEREUM') {
-        targetCoin = 'ETH';
-      } else if (clean === 'SOL' || clean === 'SOLANA') {
-        targetCoin = 'SOL';
-      } else if (clean === 'USDC') {
-        targetCoin = 'USDC';
-      } else if (clean === 'BNB') {
-        targetCoin = 'BNB';
-      }
-      setSelectedCoin(targetCoin);
+    // 2. Intelligent Coin Detection - Never collapse to BEP-20 unless explicitly requested
+    let rawCoin = (coinParam || '').trim().toUpperCase();
+    if (!rawCoin && currencyParam && !['USD', 'NGN', 'EUR', 'GBP'].includes(currencyParam.toUpperCase().trim())) {
+      rawCoin = currencyParam.trim().toUpperCase();
     }
 
-    // AUTO-JUMP DIRECTLY TO PAGE 4 (PAYSTEP):
-    // If incoming request has both wallet AND amount (from Axiom Wallet),
-    // automatically generate the quote, lock the order, and land right on Nomba payment instructions!
-    if (walletParam && amountParam) {
-      const rawAmt = parseFloat(amountParam.trim());
-      const isUsd = params.get('currency')?.toUpperCase() === 'USD' || (rawAmt > 0 && rawAmt <= 1000 && !params.get('currency'));
-      const targetNgn = isUsd ? Math.round(rawAmt * 1425.00) : Math.round(rawAmt);
+    let targetCoin: CoinCode = 'SOL'; // Default to popular Solana instead of BEP-20
+    if (rawCoin.includes('SOL')) {
+      targetCoin = 'SOL';
+    } else if (rawCoin.includes('BTC') || rawCoin.includes('BITCOIN') || rawCoin === 'XBT') {
+      targetCoin = 'BTC';
+    } else if (rawCoin.includes('USDC')) {
+      targetCoin = 'USDC';
+    } else if (rawCoin.includes('ETH') || rawCoin.includes('ETHER')) {
+      targetCoin = 'ETH';
+    } else if (rawCoin === 'BNB' || rawCoin === 'BSC') {
+      targetCoin = 'BNB';
+    } else if (rawCoin.includes('TRC') || rawCoin.includes('TRON') || rawCoin === 'TRX') {
+      targetCoin = 'USDT_TRC20';
+    } else if (rawCoin.includes('BEP') || rawCoin.includes('BINANCE')) {
+      targetCoin = 'USDT_BEP20';
+    } else if (rawCoin.includes('USDT')) {
+      const net = (networkParam || '').toUpperCase();
+      if (net.includes('TRC') || net.includes('TRON')) {
+        targetCoin = 'USDT_TRC20';
+      } else if (net.includes('BEP') || net.includes('BSC') || net.includes('BNB')) {
+        targetCoin = 'USDT_BEP20';
+      } else if (net.includes('ERC') || net.includes('ETH')) {
+        targetCoin = 'USDT_ERC20';
+      } else if (walletParam?.startsWith('T')) {
+        targetCoin = 'USDT_TRC20';
+      } else if (walletParam?.startsWith('0x')) {
+        targetCoin = 'USDT_BEP20';
+      } else {
+        targetCoin = 'USDT_TRC20';
+      }
+    } else if (walletParam) {
+      // Derive coin from wallet format if coin wasn't explicitly given
+      const w = walletParam.trim();
+      if (w.startsWith('T') && w.length === 34) {
+        targetCoin = 'USDT_TRC20';
+      } else if (w.startsWith('bc1') || w.startsWith('1') || w.startsWith('3')) {
+        targetCoin = 'BTC';
+      } else if (w.startsWith('0x') && w.length === 42) {
+        targetCoin = 'USDC';
+      } else if (w.length >= 32 && w.length <= 44) {
+        targetCoin = 'SOL';
+      }
+    }
+    setSelectedCoin(targetCoin);
 
+    // 3. Robust Amount Parsing:
+    // Any amount <= 1000 is USD (e.g. 5, 10, 50, 100). Minimum order in SwiftSats is ₦1,500.
+    let targetNgn: number | null = null;
+    if (params.get('amount_usd') || params.get('usd')) {
+      const u = parseFloat(params.get('amount_usd') || params.get('usd') || '');
+      if (!isNaN(u) && u > 0) targetNgn = Math.round(u * 1425.00);
+    } else if (params.get('amount_ngn') || params.get('ngn')) {
+      const n = parseFloat(params.get('amount_ngn') || params.get('ngn') || '');
+      if (!isNaN(n) && n > 0) targetNgn = Math.round(n);
+    } else if (amountParam) {
+      const raw = parseFloat(amountParam.trim());
+      if (!isNaN(raw) && raw > 0) {
+        if (raw <= 1000) {
+          targetNgn = Math.round(raw * 1425.00);
+        } else {
+          targetNgn = Math.round(raw);
+        }
+      }
+    }
+
+    // 4. AUTO-JUMP DIRECTLY TO PAGE 4 (PAYSTEP):
+    // If incoming deep-link request has both wallet AND amount (from Axiom Wallet),
+    // automatically generate the quote, lock the order, and land right on Nomba payment instructions!
+    if (walletParam && targetNgn && targetNgn >= 1500) {
       setIsAutoLocking(true);
       (async () => {
         try {
@@ -349,6 +397,7 @@ export const BuyWizard: React.FC = () => {
           setStep('PAY'); // <--- LAND DIRECTLY ON PAGE 4 (PAY)!
         } catch (err: any) {
           console.warn('Auto on-ramp lock error, falling back to Amount step:', err);
+          setSelectedCoin(targetCoin);
           setStep('AMOUNT');
         } finally {
           setIsAutoLocking(false);
@@ -357,13 +406,16 @@ export const BuyWizard: React.FC = () => {
       return;
     }
 
-    // Check if user has an unpaid open order on this device for the optional resume banner
-    const openOrder = getOpenOrder();
-    if (openOrder && (openOrder.status === 'AWAITING_PAYMENT' || openOrder.status === 'QUOTE_LOCKED')) {
-      setUnpaidOrder(openOrder);
+    // Deep-link requests should not display stale cached orders from old sessions
+    const isDeepLink = Boolean(sourceParam || orderIdParam || coinParam || walletParam || amountParam);
+    if (!isDeepLink) {
+      const openOrder = getOpenOrder();
+      if (openOrder && (openOrder.status === 'AWAITING_PAYMENT' || openOrder.status === 'QUOTE_LOCKED')) {
+        setUnpaidOrder(openOrder);
+      }
     }
 
-    if (coinParam || sourceParam) {
+    if (coinParam || sourceParam || walletParam) {
       // Deep linked directly from external website without all params: Skip coin selection & jump straight to Amount!
       setStep('AMOUNT');
     }
@@ -530,7 +582,39 @@ export const BuyWizard: React.FC = () => {
               timestamp: Date.now(),
             });
             setQuote(q);
-            setStep('WALLET');
+
+            // If destination wallet is already pre-filled from Axiom, jump straight to Page 4 (PAY)!
+            if (initialWallet && initialWallet.trim().length >= 26) {
+              setIsAutoLocking(true);
+              ordersApi
+                .lockAndCreateOrder(
+                  q.order_reference,
+                  initialWallet.trim(),
+                  initialEmail?.trim() || `axiom_${partnerOrderId || Date.now()}@axiomwallets.io`,
+                  partnerSource || 'axiom'
+                )
+                .then((ord) => {
+                  storeRecentOrder({
+                    order_reference: ord.order.order_reference,
+                    coin: ord.order.coin,
+                    amount_ngn: ord.order.fiat_amount_expected || ord.order.fiat_amount_ngn,
+                    crypto_amount: ord.order.crypto_amount,
+                    status: ord.order.status || 'AWAITING_PAYMENT',
+                    timestamp: Date.now(),
+                  });
+                  setOrderLocked(ord);
+                  setStep('PAY');
+                })
+                .catch((err) => {
+                  console.warn('Auto lock with prefilled wallet error, falling back to WalletStep:', err);
+                  setStep('WALLET');
+                })
+                .finally(() => {
+                  setIsAutoLocking(false);
+                });
+            } else {
+              setStep('WALLET');
+            }
           }}
           onBack={() => setStep('COIN')}
         />
