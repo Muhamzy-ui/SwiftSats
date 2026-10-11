@@ -219,7 +219,13 @@ class HotWalletService:
                     return ps.hot_wallet_address_tron.strip()
             except Exception:
                 pass
-            return "TRwHndDNkm2vpE6SiszKjowv6aKaKD7RZT"
+            try:
+                tron_info = self.get_tron_account()
+                if tron_info:
+                    return tron_info[1]
+            except Exception:
+                pass
+            return ""
 
         # 2. BITCOIN (BTC)
         if "BTC" in coin_upper or "BITCOIN" in net_upper:
@@ -239,7 +245,7 @@ class HotWalletService:
                     return btc_acc[3]
             except Exception:
                 pass
-            return "bc1q6eqe0nn04k4k78ll6gmdr3wqctgk8daayrtryl"
+            return ""
 
         # 3. SOLANA (SOL / SPL)
         if "SOL" in coin_upper or "SOLANA" in net_upper:
@@ -253,7 +259,13 @@ class HotWalletService:
                     return ps.hot_wallet_address_solana.strip()
             except Exception:
                 pass
-            return "4F7JuhSiALdZNwDi14x7mVa3T8Pie9QmgBGUPDk32jWC"
+            try:
+                sol_info = self.get_solana_keypair()
+                if sol_info:
+                    return sol_info[1]
+            except Exception:
+                pass
+            return ""
 
         # 4. EVM / BSC / ETHEREUM / BASE / POLYGON
         account = self.get_configured_account()
@@ -272,7 +284,7 @@ class HotWalletService:
         if env_addr:
             return env_addr
 
-        return "0x36b25000587762425F2682d721A57eD7d74671F0"
+        return ""
 
     def get_wallet_balance(self, coin: str = "USDT_BEP20", address: Optional[str] = None) -> Dict[str, Any]:
         """
