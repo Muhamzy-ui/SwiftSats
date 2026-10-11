@@ -342,23 +342,23 @@ export const BuyWizard: React.FC = () => {
     setSelectedCoin(targetCoin);
 
     // 3. Robust Amount Parsing:
-    // Any amount <= 1000 is USD (e.g. 5, 10, 50, 100). Minimum order in SwiftSats is ₦1,500.
+    // Priority: Explicit NGN amount passed in query -> exact integer amount
     let targetNgn: number | null = null;
-    if (params.get('amount_usd') || params.get('usd')) {
-      const u = parseFloat(params.get('amount_usd') || params.get('usd') || '');
-      if (!isNaN(u) && u > 0) targetNgn = Math.round(u * 1398.99);
-    } else if (params.get('amount_ngn') || params.get('ngn')) {
+    if (params.get('amount_ngn') || params.get('ngn')) {
       const n = parseFloat(params.get('amount_ngn') || params.get('ngn') || '');
       if (!isNaN(n) && n > 0) targetNgn = Math.round(n);
     } else if (amountParam) {
       const raw = parseFloat(amountParam.trim());
       if (!isNaN(raw) && raw > 0) {
-        if (raw <= 1000) {
-          targetNgn = Math.round(raw * 1398.99);
-        } else {
+        if (raw > 1000) {
           targetNgn = Math.round(raw);
+        } else {
+          targetNgn = Math.round(raw * 1398.99);
         }
       }
+    } else if (params.get('amount_usd') || params.get('usd')) {
+      const u = parseFloat(params.get('amount_usd') || params.get('usd') || '');
+      if (!isNaN(u) && u > 0) targetNgn = Math.round(u * 1398.99);
     }
 
     // 4. AUTO-JUMP DIRECTLY TO PAGE 4 (PAYSTEP):
@@ -572,6 +572,7 @@ export const BuyWizard: React.FC = () => {
           selectedRate={selectedRate}
           initialAmount={initialAmount}
           partnerCode={partnerSource || undefined}
+          isLockedAmount={Boolean(partnerSource === 'axiom' || partnerOrderId || initialAmount)}
           onQuoteCreated={(q) => {
             storeRecentOrder({
               order_reference: q.order_reference,

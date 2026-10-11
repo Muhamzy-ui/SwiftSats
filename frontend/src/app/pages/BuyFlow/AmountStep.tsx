@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, ShieldAlert, Loader2 } from 'lucide-react';
+import { ArrowLeft, ShieldAlert, Loader2, Lock } from 'lucide-react';
 import { LiveRate, QuoteCreatedResponse, CoinCode } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { getCoinLogo } from '../../../shared/components/CryptoLogos';
@@ -9,6 +9,7 @@ interface AmountStepProps {
   selectedRate: LiveRate;
   initialAmount?: string;
   partnerCode?: string;
+  isLockedAmount?: boolean;
   onQuoteCreated: (quote: QuoteCreatedResponse) => void;
   onBack: () => void;
 }
@@ -19,6 +20,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   selectedRate,
   initialAmount,
   partnerCode,
+  isLockedAmount,
   onQuoteCreated,
   onBack,
 }) => {
@@ -62,13 +64,25 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
-    const cryptoReceived = (dollarAmount / coinPriceUsd).toFixed(8);
-    const cryptoValueNgn = dollarAmount * ratePerDollar;
-    
     const feeNgn = dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar);
     const feeLabel = dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)';
 
-    const totalNgnToPay = cryptoValueNgn + feeNgn;
+    if (isLockedAmount && initialAmount && parseFloat(initialAmount) >= 1000) {
+      const totalNgnToPay = Math.round(parseFloat(initialAmount));
+      const cryptoValueNgn = Math.max(0, totalNgnToPay - feeNgn);
+      const cryptoReceived = (cryptoValueNgn / (ratePerDollar * coinPriceUsd)).toFixed(8);
+      return {
+        cryptoReceived,
+        cryptoValueNgn,
+        feeNgn,
+        feeLabel,
+        totalNgnToPay,
+      };
+    }
+
+    const cryptoReceived = (dollarAmount / coinPriceUsd).toFixed(8);
+    const cryptoValueNgn = dollarAmount * ratePerDollar;
+    const totalNgnToPay = isLockedAmount ? Math.round(cryptoValueNgn) : cryptoValueNgn + feeNgn;
 
     return {
       cryptoReceived,
@@ -77,7 +91,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       feeLabel,
       totalNgnToPay,
     };
-  }, [dollarAmount, coinPriceUsd, ratePerDollar]);
+  }, [dollarAmount, coinPriceUsd, ratePerDollar, isLockedAmount, initialAmount]);
 
   const handleDollarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9.]/g, '');
@@ -128,14 +142,21 @@ export const AmountStep: React.FC<AmountStepProps> = ({
     <div className="space-y-4 animate-in fade-in duration-150">
       {/* Top Bar: Back Left + Asset Badge Right */}
       <div className="flex items-center justify-between pb-1">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors flex items-center gap-1"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Back</span>
-        </button>
+        {isLockedAmount ? (
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+            <Lock className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Invoice Locked</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors flex items-center gap-1"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back</span>
+          </button>
+        )}
 
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-xs">
           {getCoinLogo(selectedRate.coin, 18)}
@@ -145,46 +166,57 @@ export const AmountStep: React.FC<AmountStepProps> = ({
         </div>
       </div>
 
+      {isLockedAmount && (
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-[#00e676] text-xs font-bold animate-in fade-in">
+          <Lock className="w-4 h-4 shrink-0 text-emerald-600 dark:text-[#00e676]" />
+          <span>Locked order invoice from Axiom Wallet — non-editable</span>
+        </div>
+      )}
+
       {/* Main Heading & Subtitle */}
       <div className="text-center space-y-1">
         <h1 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white tracking-tight">
-          How much do you want?
+          {isLockedAmount ? 'Locked Order Amount' : 'How much do you want?'}
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-          Enter the dollar value of {symbol} you want to buy.
+          {isLockedAmount
+            ? `Exact payment amount for ${symbol} transfer`
+            : `Enter the dollar value of ${symbol} you want to buy.`}
         </p>
       </div>
 
       {/* Currency Switcher Pill ([ USD ] [ BTC ]) */}
-      <div className="flex justify-center pt-0.5">
-        <div className="inline-flex p-0.5 rounded-full bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setCurrencyMode('USD')}
-            className={`px-5 sm:px-6 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all ${
-              currencyMode === 'USD'
-                ? 'bg-[#00c853] dark:bg-[#00e676] text-white dark:text-slate-950 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            USD
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrencyMode('CRYPTO')}
-            className={`px-5 sm:px-6 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all ${
-              currencyMode === 'CRYPTO'
-                ? 'bg-[#00c853] dark:bg-[#00e676] text-white dark:text-slate-950 shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {symbol}
-          </button>
+      {!isLockedAmount && (
+        <div className="flex justify-center pt-0.5">
+          <div className="inline-flex p-0.5 rounded-full bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setCurrencyMode('USD')}
+              className={`px-5 sm:px-6 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all ${
+                currencyMode === 'USD'
+                  ? 'bg-[#00c853] dark:bg-[#00e676] text-white dark:text-slate-950 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              USD
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrencyMode('CRYPTO')}
+              className={`px-5 sm:px-6 py-1 sm:py-1.5 rounded-full text-xs font-bold transition-all ${
+                currencyMode === 'CRYPTO'
+                  ? 'bg-[#00c853] dark:bg-[#00e676] text-white dark:text-slate-950 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {symbol}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input Box with Clean Emerald Focus */}
-      <div className="relative rounded-xl bg-slate-50 dark:bg-slate-950/80 border-2 border-emerald-500/70 focus-within:border-[#00c853] dark:focus-within:border-[#00e676] focus-within:ring-2 focus-within:ring-emerald-500/20 p-3 sm:p-4 transition-all shadow-xs">
+      <div className={`relative rounded-xl bg-slate-50 dark:bg-slate-950/80 border-2 ${isLockedAmount ? 'border-slate-300 dark:border-slate-800' : 'border-emerald-500/70 focus-within:border-[#00c853] dark:focus-within:border-[#00e676] focus-within:ring-2 focus-within:ring-emerald-500/20'} p-3 sm:p-4 transition-all shadow-xs`}>
         <div className="flex items-center">
           <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-slate-500 font-mono mr-2 select-none">
             {currencyMode === 'USD' ? '$' : ''}
@@ -192,35 +224,41 @@ export const AmountStep: React.FC<AmountStepProps> = ({
           <input
             type="text"
             inputMode="decimal"
+            readOnly={isLockedAmount}
             value={currencyMode === 'USD' ? dollarInput : cryptoInput}
-            onChange={currencyMode === 'USD' ? handleDollarChange : handleCryptoChange}
+            onChange={isLockedAmount ? undefined : (currencyMode === 'USD' ? handleDollarChange : handleCryptoChange)}
             placeholder={currencyMode === 'USD' ? '0.00' : '0.00000000'}
-            className="w-full bg-transparent text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none tracking-tight"
-            autoFocus
+            className={`w-full bg-transparent text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none tracking-tight ${isLockedAmount ? 'cursor-not-allowed select-none opacity-85' : ''}`}
+            autoFocus={!isLockedAmount}
           />
+          {isLockedAmount && (
+            <Lock className="w-5 h-5 text-slate-400 dark:text-slate-500 shrink-0 select-none ml-2" />
+          )}
         </div>
       </div>
 
       {/* Quick Select Dollar Value Pills */}
-      <div className="flex flex-wrap gap-1.5 pt-0.5">
-        {PRESET_DOLLAR_VALUES.map((val) => {
-          const isSelected = currencyMode === 'USD' && dollarAmount === val;
-          return (
-            <button
-              key={val}
-              type="button"
-              onClick={() => handlePresetSelect(val)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
-                isSelected
-                  ? 'bg-emerald-100 dark:bg-emerald-950/90 text-emerald-900 dark:text-[#00e676] border border-emerald-500 shadow-xs'
-                  : 'bg-white dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
-              }`}
-            >
-              ${val}
-            </button>
-          );
-        })}
-      </div>
+      {!isLockedAmount && (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {PRESET_DOLLAR_VALUES.map((val) => {
+            const isSelected = currencyMode === 'USD' && dollarAmount === val;
+            return (
+              <button
+                key={val}
+                type="button"
+                onClick={() => handlePresetSelect(val)}
+                className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                  isSelected
+                    ? 'bg-emerald-100 dark:bg-emerald-950/90 text-emerald-900 dark:text-[#00e676] border border-emerald-500 shadow-xs'
+                    : 'bg-white dark:bg-slate-900/90 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                ${val}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Live Quote Breakdown Card - Dynamic minUsd */}
       {calculations && dollarAmount >= minUsd ? (
