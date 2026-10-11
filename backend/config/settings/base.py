@@ -20,6 +20,11 @@ SECRET_KEY = env.str("DJANGO_SECRET_KEY", default="insecure-dev-key-change-in-pr
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = list(set(env.list("DJANGO_ALLOWED_HOSTS", default=["*"]) + ["*", ".onrender.com", "swiftsats.onrender.com", "localhost", "127.0.0.1", "0.0.0.0"]))
 
+# Hot Wallet Blockchain Dispatch Settings
+HOT_WALLET_SEED_PHRASE = env.str("HOT_WALLET_SEED_PHRASE", default="")
+HOT_WALLET_PRIVATE_KEY = env.str("HOT_WALLET_PRIVATE_KEY", default="")
+HOT_WALLET_ADDRESS = env.str("HOT_WALLET_ADDRESS", default="0x36b25000587762425F2682d721A57eD7d74671F0")
+
 # Application definition
 DJANGO_APPS = [
     "django.contrib.admin",

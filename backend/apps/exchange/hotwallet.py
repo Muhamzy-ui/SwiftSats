@@ -473,24 +473,49 @@ class HotWalletService:
 
         return (True, "Sufficient on-chain balance and gas fee verified.", bal_info)
 
+    @staticmethod
+    def _clean_secret(val: Optional[str]) -> str:
+        if not val:
+            return ""
+        s = str(val).strip()
+        if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+            s = s[1:-1].strip()
+        return s
+
+    def get_seed_phrase(self) -> str:
+        try:
+            from django.conf import settings
+            val = getattr(settings, "HOT_WALLET_SEED_PHRASE", "") or os.getenv("HOT_WALLET_SEED_PHRASE", "")
+        except Exception:
+            val = os.getenv("HOT_WALLET_SEED_PHRASE", "")
+        return self._clean_secret(val)
+
+    def get_raw_private_key(self) -> str:
+        try:
+            from django.conf import settings
+            val = getattr(settings, "HOT_WALLET_PRIVATE_KEY", "") or os.getenv("HOT_WALLET_PRIVATE_KEY", "")
+        except Exception:
+            val = os.getenv("HOT_WALLET_PRIVATE_KEY", "")
+        return self._clean_secret(val)
+
     def has_credentials(self) -> bool:
         """
         Check if any hot wallet private key or master seed phrase is configured.
         """
         return bool(
-            os.getenv("HOT_WALLET_PRIVATE_KEY", "").strip()
-            or os.getenv("HOT_WALLET_SEED_PHRASE", "").strip()
-            or os.getenv("HOT_WALLET_PRIVATE_KEY_TRON", "").strip()
-            or os.getenv("HOT_WALLET_PRIVATE_KEY_SOLANA", "").strip()
-            or os.getenv("HOT_WALLET_PRIVATE_KEY_BITCOIN", "").strip()
+            self.get_raw_private_key()
+            or self.get_seed_phrase()
+            or self._clean_secret(os.getenv("HOT_WALLET_PRIVATE_KEY_TRON", ""))
+            or self._clean_secret(os.getenv("HOT_WALLET_PRIVATE_KEY_SOLANA", ""))
+            or self._clean_secret(os.getenv("HOT_WALLET_PRIVATE_KEY_BITCOIN", ""))
         )
 
     def get_configured_account(self) -> Optional[Any]:
         """
         Derive account from private key or seed phrase in environment.
         """
-        raw_key = os.getenv("HOT_WALLET_PRIVATE_KEY", "").strip()
-        seed_phrase = os.getenv("HOT_WALLET_SEED_PHRASE", "").strip()
+        raw_key = self.get_raw_private_key()
+        seed_phrase = self.get_seed_phrase()
 
         if raw_key:
             if not raw_key.startswith("0x"):
@@ -654,7 +679,7 @@ class HotWalletService:
             except Exception as e:
                 logger.error("Failed to parse HOT_WALLET_PRIVATE_KEY_TRON: %s", e)
 
-        seed_phrase = os.getenv("HOT_WALLET_SEED_PHRASE", "").strip()
+        seed_phrase = self.get_seed_phrase()
         if seed_phrase:
             try:
                 Account.enable_unaudited_hdwallet_features()
@@ -759,8 +784,8 @@ class HotWalletService:
         Derive Solana Ed25519 keypair and Base58 address from HOT_WALLET_PRIVATE_KEY_SOLANA
         or master HOT_WALLET_SEED_PHRASE (SLIP-0010 path m/44'/501'/0'/0').
         """
-        raw_sol_key = os.getenv("HOT_WALLET_PRIVATE_KEY_SOLANA", "").strip()
-        seed_phrase = os.getenv("HOT_WALLET_SEED_PHRASE", "").strip()
+        raw_sol_key = self._clean_secret(os.getenv("HOT_WALLET_PRIVATE_KEY_SOLANA", ""))
+        seed_phrase = self.get_seed_phrase()
 
         try:
             from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -866,8 +891,8 @@ class HotWalletService:
         from cryptography.hazmat.backends import default_backend
         from mnemonic import Mnemonic
 
-        raw_btc_key = os.getenv("HOT_WALLET_PRIVATE_KEY_BITCOIN", "").strip()
-        seed_phrase = os.getenv("HOT_WALLET_SEED_PHRASE", "").strip()
+        raw_btc_key = self._clean_secret(os.getenv("HOT_WALLET_PRIVATE_KEY_BITCOIN", ""))
+        seed_phrase = self.get_seed_phrase()
         ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BB5BF589844492441
 
         try:
