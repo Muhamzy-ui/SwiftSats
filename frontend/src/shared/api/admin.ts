@@ -13,8 +13,10 @@ export interface AdminLoginInitResponse {
   success: boolean;
   message: string;
   requires_2fa: boolean;
-  temp_session_token: string;
-  user_email: string;
+  temp_session_token?: string;
+  user_email?: string;
+  token?: string;
+  user?: AdminUser;
 }
 
 export interface AdminLoginVerifyResponse {

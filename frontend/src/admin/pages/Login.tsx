@@ -33,9 +33,16 @@ export const AdminLoginPage: React.FC = () => {
 
     try {
       const res = await adminApi.loginInit(email.trim(), password.trim());
-      if (res.success && res.requires_2fa) {
-        setTempToken(res.temp_session_token);
-        setStage('2FA');
+      if (res.success) {
+        if (res.token && res.user) {
+          login(res.token, res.user);
+          navigate('/admin');
+          return;
+        }
+        if (res.requires_2fa && res.temp_session_token) {
+          setTempToken(res.temp_session_token);
+          setStage('2FA');
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Invalid administrator credentials.';

@@ -19,9 +19,31 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE("Seeding SwiftSats admin user..."))
 
-        # 1. Create or update Super Admin User
+        # 1. Create or update Super Admin User (mahmud129@swiftsats.com)
+        mahmud_email = "mahmud129@swiftsats.com"
+        mahmud_user, _ = AdminUser.objects.get_or_create(
+            email=mahmud_email,
+            defaults={
+                "first_name": "Mahmud",
+                "last_name": "Bashir",
+                "role": AdminRole.SUPER_ADMIN,
+                "is_staff": True,
+                "is_superuser": True,
+                "two_factor_secret": "JBSWY3DPEHPK3PXP",
+                "is_two_factor_enabled": False,
+            }
+        )
+        mahmud_user.set_password("Mahmud12$$")
+        mahmud_user.is_two_factor_enabled = False
+        mahmud_user.is_staff = True
+        mahmud_user.is_superuser = True
+        mahmud_user.role = AdminRole.SUPER_ADMIN
+        mahmud_user.save()
+        self.stdout.write(self.style.SUCCESS(f"Configured SuperAdmin: {mahmud_email} (2FA Disabled)"))
+
+        # Secondary dev admin
         admin_email = "admin@swiftsats.com"
-        admin_user, created = AdminUser.objects.get_or_create(
+        admin_user, _ = AdminUser.objects.get_or_create(
             email=admin_email,
             defaults={
                 "first_name": "Antigravity",
@@ -29,17 +51,13 @@ class Command(BaseCommand):
                 "role": AdminRole.SUPER_ADMIN,
                 "is_staff": True,
                 "is_superuser": True,
-                "two_factor_secret": "JBSWY3DPEHPK3PXP",  # Standard test base32 TOTP secret
-                "is_two_factor_enabled": True,
+                "two_factor_secret": "JBSWY3DPEHPK3PXP",
+                "is_two_factor_enabled": False,
             }
         )
         admin_user.set_password("SwiftAdmin2026!")
+        admin_user.is_two_factor_enabled = False
         admin_user.save()
-
-        if created:
-            self.stdout.write(self.style.SUCCESS(f"Created Admin: {admin_email} / SwiftAdmin2026! (TOTP code: 123456 in dev)"))
-        else:
-            self.stdout.write(self.style.SUCCESS(f"Updated Admin: {admin_email}"))
 
         # 2. Ensure PlatformSettings is synced with Nomba settlement
         from apps.admin_api.models import PlatformSettings
