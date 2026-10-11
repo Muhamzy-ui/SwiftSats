@@ -21,6 +21,8 @@ export const SettingsPage: React.FC = () => {
   // Platform Hot Wallet & On-Chain Float
   const [selectedCoin, setSelectedCoin] = useState('USDT_BEP20');
   const [hotWalletAddress, setHotWalletAddress] = useState('0x36b25000587762425F2682d721A57eD7d74671F0');
+  const [payoutMode, setPayoutMode] = useState<'AUTOMATED' | 'MANUAL'>('MANUAL');
+  const [isTogglingPayoutMode, setIsTogglingPayoutMode] = useState(false);
   const [isSavingWallet, setIsSavingWallet] = useState(false);
   const [walletStatusMsg, setWalletStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [walletBalance, setWalletBalance] = useState<{
@@ -74,6 +76,9 @@ export const SettingsPage: React.FC = () => {
     try {
       const s = await adminApi.getPlatformSettings();
       if (s) {
+        if (s.payout_mode) {
+          setPayoutMode(s.payout_mode);
+        }
         setTelegramEnabled(s.telegram_alerts_enabled);
         setBotToken(s.telegram_bot_token || '');
         setChatId(s.telegram_admin_chat_id || '');
@@ -101,6 +106,28 @@ export const SettingsPage: React.FC = () => {
       setWalletStatusMsg({ type: 'error', text: msg });
     } finally {
       setIsSavingWallet(false);
+    }
+  };
+
+  const handleTogglePayoutMode = async () => {
+    const nextMode = payoutMode === 'AUTOMATED' ? 'MANUAL' : 'AUTOMATED';
+    setIsTogglingPayoutMode(true);
+    setWalletStatusMsg(null);
+    try {
+      const res = await adminApi.updatePayoutMode({ payout_mode: nextMode });
+      if (res.success) {
+        const updated = (res.payout_mode || nextMode) as 'AUTOMATED' | 'MANUAL';
+        setPayoutMode(updated);
+        setWalletStatusMsg({
+          type: 'success',
+          text: `Platform Payout Mode changed to ${updated === 'AUTOMATED' ? '24/7 Autopilot' : 'Manual 1-Tap Approval'}.`,
+        });
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to switch payout mode.';
+      setWalletStatusMsg({ type: 'error', text: msg });
+    } finally {
+      setIsTogglingPayoutMode(false);
     }
   };
 
@@ -417,20 +444,40 @@ export const SettingsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
               <span className="flex items-center gap-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-                <span>Dispatch Mode</span>
+                <span>Payout Mode</span>
               </span>
-              <span className="text-[10px] uppercase font-mono text-blue-600 dark:text-blue-400 font-bold">Safety</span>
+              <span className={`text-[10px] uppercase font-mono font-bold px-2 py-0.5 rounded-full ${
+                payoutMode === 'AUTOMATED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+              }`}>
+                {payoutMode === 'AUTOMATED' ? '24/7 Autopilot' : '1-Tap Approval'}
+              </span>
             </div>
-            <div className="text-sm font-bold font-mono text-slate-900 dark:text-white pt-1">
-              {walletBalance?.has_private_key ? '24/7 Automated Hot Key' : '1-Tap Admin Approval'}
+            <div className="text-sm font-bold font-mono text-slate-900 dark:text-white">
+              {payoutMode === 'AUTOMATED' ? '⚡ 24/7 Automated' : '🔒 Manual Approval'}
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">
-              Strict pre-flight check enforces balance before release
-            </p>
+            <button
+              type="button"
+              onClick={handleTogglePayoutMode}
+              disabled={isTogglingPayoutMode}
+              className={`w-full py-1.5 px-3 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                payoutMode === 'AUTOMATED'
+                  ? 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs'
+              }`}
+            >
+              <RefreshCw className={`w-3 h-3 ${isTogglingPayoutMode ? 'animate-spin' : ''}`} />
+              <span>
+                {isTogglingPayoutMode
+                  ? 'Switching...'
+                  : payoutMode === 'AUTOMATED'
+                  ? 'Switch to Manual Approval'
+                  : 'Activate 24/7 Autopilot'}
+              </span>
+            </button>
           </div>
         </div>
 

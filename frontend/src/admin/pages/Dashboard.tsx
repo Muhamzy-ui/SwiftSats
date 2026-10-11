@@ -45,6 +45,8 @@ export const DashboardPage: React.FC = () => {
   }, [chartData, metricScope]);
 
   const [isTogglingMode, setIsTogglingMode] = useState(false);
+  const [payoutMode, setPayoutMode] = useState<'AUTOMATED' | 'MANUAL'>('MANUAL');
+  const [toggleNotice, setToggleNotice] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
     setIsLoading(true);
@@ -52,6 +54,9 @@ export const DashboardPage: React.FC = () => {
       const res = await adminApi.getDashboard();
       if (res.success) {
         setStats(res.stats);
+        if (res.stats?.payout_mode) {
+          setPayoutMode(res.stats.payout_mode as any);
+        }
         setChartData(res.charts.orders_trend);
         setRecentOrders(res.recent_activity);
       }
@@ -63,16 +68,23 @@ export const DashboardPage: React.FC = () => {
   };
 
   const handleTogglePayoutMode = async () => {
-    const currentMode = stats?.payout_mode || 'AUTOMATED';
+    const currentMode = payoutMode;
     const nextMode = currentMode === 'AUTOMATED' ? 'MANUAL' : 'AUTOMATED';
     setIsTogglingMode(true);
+    setToggleNotice(null);
     try {
       const res = await adminApi.updatePayoutMode({ payout_mode: nextMode });
       if (res.success) {
-        setStats((prev) => (prev ? { ...prev, payout_mode: res.payout_mode as any } : null));
+        const updatedMode = (res.payout_mode || nextMode) as 'AUTOMATED' | 'MANUAL';
+        setPayoutMode(updatedMode);
+        setStats((prev) => (prev ? { ...prev, payout_mode: updatedMode } : null));
+        setToggleNotice(`Switched to ${updatedMode === 'AUTOMATED' ? '24/7 Autopilot' : 'Manual 1-Tap Approval'}`);
+        setTimeout(() => setToggleNotice(null), 4000);
       }
     } catch (err) {
       console.error('Failed to toggle payout mode', err);
+      setToggleNotice('Failed to switch payout mode. Please try again.');
+      setTimeout(() => setToggleNotice(null), 4000);
     } finally {
       setIsTogglingMode(false);
     }
@@ -82,7 +94,7 @@ export const DashboardPage: React.FC = () => {
     fetchDashboardData();
   }, []);
 
-  const isAutomated = (stats?.payout_mode || 'AUTOMATED') === 'AUTOMATED';
+  const isAutomated = payoutMode === 'AUTOMATED';
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-full overflow-x-hidden">
@@ -151,6 +163,13 @@ export const DashboardPage: React.FC = () => {
           )}
         </button>
       </div>
+
+      {toggleNotice && (
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <span>{toggleNotice}</span>
+          <button onClick={() => setToggleNotice(null)} className="text-emerald-500 hover:text-emerald-300 text-xs">✕</button>
+        </div>
+      )}
 
       {/* Top 4 KPI Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
