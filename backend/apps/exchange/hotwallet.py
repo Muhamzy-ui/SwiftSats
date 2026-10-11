@@ -426,7 +426,7 @@ class HotWalletService:
                 "token_balance": token_bal,
                 "gas_balance": bnb_bal,
                 "gas_symbol": "BNB",
-                "has_gas": bnb_bal >= Decimal("0.001"),
+                "has_gas": bnb_bal >= Decimal("0.0002"),
                 "is_configured": True,
                 "coin": coin,
                 "network": "BNB Smart Chain (BEP-20)",

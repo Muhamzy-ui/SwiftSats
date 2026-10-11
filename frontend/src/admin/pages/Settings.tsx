@@ -442,7 +442,7 @@ export const SettingsPage: React.FC = () => {
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
               {walletBalance?.has_gas
                 ? `✅ Gas available for blockchain transfers`
-                : `⚠️ Need min ${walletBalance?.gas_symbol === 'TRX' ? '15 TRX' : walletBalance?.gas_symbol === 'SOL' ? '0.005 SOL' : '0.002 BNB'} for gas`}
+                : `⚠️ Need min ${walletBalance?.gas_symbol === 'TRX' ? '15 TRX' : walletBalance?.gas_symbol === 'SOL' ? '0.005 SOL' : '0.0005 BNB'} for gas`}
             </p>
           </div>
 
