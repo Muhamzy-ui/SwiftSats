@@ -18,7 +18,7 @@ def health_check_view(request):
     return JsonResponse({
         "status": "healthy",
         "service": "SwiftSats Backend API",
-        "version": "1.0.4-diagnostics",
+        "version": "1.0.5-database-fallback",
         "hot_wallet_configured": has_creds,
         "keys_found": keys_found,
         "seed_len": len(hw.get_seed_phrase()),

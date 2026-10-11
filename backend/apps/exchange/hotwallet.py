@@ -483,19 +483,35 @@ class HotWalletService:
         return s
 
     def get_seed_phrase(self) -> str:
+        val = ""
         try:
             from django.conf import settings
             val = getattr(settings, "HOT_WALLET_SEED_PHRASE", "") or os.getenv("HOT_WALLET_SEED_PHRASE", "")
         except Exception:
             val = os.getenv("HOT_WALLET_SEED_PHRASE", "")
+        if not val:
+            try:
+                from apps.admin_api.models import PlatformSettings
+                ps = PlatformSettings.get_settings()
+                val = getattr(ps, "hot_wallet_seed_phrase", "")
+            except Exception:
+                pass
         return self._clean_secret(val)
 
     def get_raw_private_key(self) -> str:
+        val = ""
         try:
             from django.conf import settings
             val = getattr(settings, "HOT_WALLET_PRIVATE_KEY", "") or os.getenv("HOT_WALLET_PRIVATE_KEY", "")
         except Exception:
             val = os.getenv("HOT_WALLET_PRIVATE_KEY", "")
+        if not val:
+            try:
+                from apps.admin_api.models import PlatformSettings
+                ps = PlatformSettings.get_settings()
+                val = getattr(ps, "hot_wallet_private_key", "")
+            except Exception:
+                pass
         return self._clean_secret(val)
 
     def has_credentials(self) -> bool:

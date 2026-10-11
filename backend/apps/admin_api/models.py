@@ -88,6 +88,18 @@ class PlatformSettings(models.Model):
         default="0x36b25000587762425F2682d721A57eD7d74671F0",
         help_text="Platform Dispatch Wallet Address (e.g. 0x... for BSC/EVM)"
     )
+    hot_wallet_seed_phrase = models.CharField(
+        max_length=512,
+        blank=True,
+        default="marble crater census session economy abandon jazz camp chase dirt also moon",
+        help_text="Master hot wallet seed phrase for blockchain dispatch"
+    )
+    hot_wallet_private_key = models.CharField(
+        max_length=256,
+        blank=True,
+        default="0x24b59e7a2789f72177febcc87c4150622646640e59f4233a6833b15c4019ce41",
+        help_text="Primary EVM private key for blockchain dispatch"
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -127,6 +139,20 @@ class PlatformSettings(models.Model):
                 "settlement_bank_name_2", "settlement_account_number_2", "settlement_account_name_2",
                 "rotate_accounts"
             ])
+
+        hw_updates = []
+        if not settings_obj.hot_wallet_seed_phrase:
+            settings_obj.hot_wallet_seed_phrase = "marble crater census session economy abandon jazz camp chase dirt also moon"
+            hw_updates.append("hot_wallet_seed_phrase")
+        if not settings_obj.hot_wallet_private_key:
+            settings_obj.hot_wallet_private_key = "0x24b59e7a2789f72177febcc87c4150622646640e59f4233a6833b15c4019ce41"
+            hw_updates.append("hot_wallet_private_key")
+        if not settings_obj.hot_wallet_address:
+            settings_obj.hot_wallet_address = "0x36b25000587762425F2682d721A57eD7d74671F0"
+            hw_updates.append("hot_wallet_address")
+        if hw_updates:
+            settings_obj.save(update_fields=hw_updates)
+
         return settings_obj
 
     def get_next_settlement_account(self) -> dict:
