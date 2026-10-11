@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAdminAuth } from '../../shared/hooks/useAdminAuth';
@@ -13,6 +13,16 @@ export const AdminLayout: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const manifestLink = document.querySelector('link[rel="manifest"]');
+      if (manifestLink) {
+        manifestLink.setAttribute('href', '/admin-manifest.json');
+      }
+      document.title = 'SwiftSats Operator Console';
+    } catch {}
+  }, []);
 
   if (isLoading) {
     return (

@@ -156,7 +156,14 @@ export const AnalyticsPage: React.FC = () => {
             <BarChart data={peakHours} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.4} vertical={false} />
               <XAxis dataKey="hour" stroke={axisColor} fontSize={10} tickLine={false} />
-              <YAxis stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+              <YAxis
+                stroke={axisColor}
+                fontSize={10}
+                tickLine={false}
+                axisLine={false}
+                allowDecimals={false}
+                domain={[0, (dataMax: number) => Math.max(dataMax, 5)]}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: isDark ? '#0f172a' : '#ffffff',
@@ -165,6 +172,7 @@ export const AnalyticsPage: React.FC = () => {
                   color: isDark ? '#f8fafc' : '#0f172a',
                   fontSize: '12px',
                 }}
+                formatter={(val: unknown) => [`${Number(val) || 0} Orders`, 'Order Arrival']}
               />
               <Bar dataKey="orders" name="Orders Placed" radius={[4, 4, 0, 0]}>
                 {peakHours.map((entry, index) => {

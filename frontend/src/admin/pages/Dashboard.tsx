@@ -240,7 +240,15 @@ export const DashboardPage: React.FC = () => {
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} vertical={false} />
                   <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
-                  <YAxis yAxisId="left" stroke={axisColor} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke={axisColor}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    domain={[0, (dataMax: number) => Math.max(dataMax, 5)]}
+                  />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
@@ -248,7 +256,13 @@ export const DashboardPage: React.FC = () => {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val) => `₦${(val / 1000).toFixed(0)}k`}
+                    domain={[0, (dataMax: number) => Math.max(dataMax, 50000)]}
+                    tickFormatter={(val: number) => {
+                      if (!val || val === 0) return '₦0';
+                      if (val >= 1000000) return `₦${(val / 1000000).toFixed(1)}M`;
+                      if (val >= 1000) return `₦${(val / 1000).toFixed(0)}k`;
+                      return `₦${val}`;
+                    }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -260,7 +274,7 @@ export const DashboardPage: React.FC = () => {
                       boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
                     }}
                     formatter={(val: unknown, name: unknown) => [
-                      name === 'Volume (₦)' ? formatNaira(Number(val) || 0) : String(val),
+                      name === 'Volume (₦)' ? formatNaira(Number(val) || 0) : `${Number(val) || 0} Orders`,
                       String(name),
                     ]}
                   />
@@ -291,7 +305,15 @@ export const DashboardPage: React.FC = () => {
                 <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={gridColor} opacity={0.5} vertical={false} />
                   <XAxis dataKey="date" stroke={axisColor} fontSize={11} tickLine={false} />
-                  <YAxis yAxisId="left" stroke={axisColor} fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis
+                    yAxisId="left"
+                    stroke={axisColor}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    domain={[0, (dataMax: number) => Math.max(dataMax, 5)]}
+                  />
                   <YAxis
                     yAxisId="right"
                     orientation="right"
@@ -299,7 +321,13 @@ export const DashboardPage: React.FC = () => {
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val) => `₦${(val / 1000).toFixed(0)}k`}
+                    domain={[0, (dataMax: number) => Math.max(dataMax, 50000)]}
+                    tickFormatter={(val: number) => {
+                      if (!val || val === 0) return '₦0';
+                      if (val >= 1000000) return `₦${(val / 1000000).toFixed(1)}M`;
+                      if (val >= 1000) return `₦${(val / 1000).toFixed(0)}k`;
+                      return `₦${val}`;
+                    }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -310,7 +338,7 @@ export const DashboardPage: React.FC = () => {
                       fontSize: '12px',
                     }}
                     formatter={(val: unknown, name: unknown) => [
-                      name === 'Volume (₦)' ? formatNaira(Number(val) || 0) : String(val),
+                      name === 'Volume (₦)' ? formatNaira(Number(val) || 0) : `${Number(val) || 0} Orders`,
                       String(name),
                     ]}
                   />

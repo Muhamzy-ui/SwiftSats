@@ -24,7 +24,7 @@ export const Header: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           {/* WhatsApp Support Pill */}
           <a
-            href="https://wa.me/2348000000000"
+            href="https://wa.me/2348072410373"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="WhatsApp Support"

@@ -36,13 +36,16 @@
           }
         } catch(e) {}
 
-        // Single Page Apps fallback: restore deep URL from 404 handler
+        // Dynamic PWA Manifest for Admin Console vs User Onramp
         try {
-          var redirect = sessionStorage.getItem('swiftsats_spa_redirect');
-          if (redirect) {
-            sessionStorage.removeItem('swiftsats_spa_redirect');
-            if (redirect !== (window.location.pathname + window.location.search + window.location.hash)) {
-              window.history.replaceState(null, null, redirect);
+          if (window.location.pathname.startsWith('/admin')) {
+            var manifestLink = document.querySelector('link[rel="manifest"]');
+            if (manifestLink) {
+              manifestLink.setAttribute('href', '/admin-manifest.json');
+            }
+            var titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+            if (titleMeta) {
+              titleMeta.setAttribute('content', 'SwiftAdmin');
             }
           }
         } catch(e) {}

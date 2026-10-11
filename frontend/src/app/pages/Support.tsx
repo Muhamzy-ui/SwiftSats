@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ArrowRight,
   Headphones,
+  Phone,
 } from 'lucide-react';
 
 interface FAQItem {
@@ -89,13 +90,13 @@ export const SupportPage: React.FC = () => {
 
         <div className="pt-1 relative z-10">
           <a
-            href="https://wa.me/2348000000000?text=Hello%20SwiftSats%20Support%2C%20I%20need%20assistance%20with%20my%20order"
+            href="https://wa.me/2348072410373?text=Hello%20SwiftSats%20Support%2C%20I%20need%20assistance%20with%20my%20order"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 group active:scale-98"
           >
             <MessageCircle className="w-4 h-4 fill-slate-950" />
-            <span>Chat on WhatsApp (Live Now)</span>
+            <span>Chat on WhatsApp: 08072410373</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </a>
         </div>
@@ -105,8 +106,32 @@ export const SupportPage: React.FC = () => {
             <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
             <span>Support Agents Online</span>
           </span>
-          <span>Open 24 Hours • 7 Days a Week</span>
+          <span>Hotline: +234 807 241 0373 • 24/7</span>
         </div>
+      </div>
+
+      {/* Direct Phone Hotline Card */}
+      <div className="p-5 rounded-3xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] shadow-sm flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 text-[#00c853] dark:text-[#00e676] flex items-center justify-center shrink-0 border border-emerald-300 dark:border-emerald-500/30">
+            <Phone className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Direct Phone Call
+            </span>
+            <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">
+              08072410373
+            </span>
+          </div>
+        </div>
+
+        <a
+          href="tel:+2348072410373"
+          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors shrink-0"
+        >
+          Call Now
+        </a>
       </div>
 
       {/* Alternative Email Contact Card */}

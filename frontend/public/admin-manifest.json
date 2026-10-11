@@ -1,0 +1,31 @@
+{
+  "short_name": "SwiftAdmin",
+  "name": "SwiftSats Operator Console",
+  "description": "SwiftSats Real-Time Admin Operations & Payouts Console",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/admin",
+  "scope": "/admin",
+  "background_color": "#07080d",
+  "theme_color": "#00e676",
+  "display": "standalone",
+  "orientation": "portrait"
+}
