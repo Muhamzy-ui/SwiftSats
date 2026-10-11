@@ -365,9 +365,9 @@ export const BuyWizard: React.FC = () => {
             success: true,
             order: res.order,
             payment_instructions: {
-              bank_name: res.order.virtual_bank_name || 'Paystack-Titan / Wema',
-              account_number: res.order.virtual_account_number || '',
-              account_name: res.order.virtual_account_name || 'SwiftSats Checkout Desk',
+              bank_name: res.order.virtual_bank_name || 'Nomba Microfinance Bank',
+              account_number: res.order.virtual_account_number || '1623796514',
+              account_name: res.order.virtual_account_name || 'Mbovibe Systems/swiftsats',
               amount_ngn: String(res.order.fiat_amount_expected || res.order.fiat_amount_ngn),
               salt_kobo: res.order.salt_kobo_value,
               order_reference: res.order.order_reference,
