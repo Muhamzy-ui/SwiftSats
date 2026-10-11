@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Search,
   ExternalLink,
@@ -24,7 +24,6 @@ import { getStoredRecentOrders, getOpenOrder, LocalTrackedOrder } from '../../sh
 
 export const OrderStatusPage: React.FC = () => {
   const { reference } = useParams<{ reference: string }>();
-  const navigate = useNavigate();
 
   // Search Mode: 'reference' or 'email'
   const [searchMode, setSearchMode] = useState<'reference' | 'email'>('reference');
@@ -56,12 +55,6 @@ export const OrderStatusPage: React.FC = () => {
     try {
       const res = await ordersApi.lookupOrder(ref.trim());
       if (res.success && res.order) {
-        // Redirect to payment page ONLY when the order is open
-        if (res.order.status === 'AWAITING_PAYMENT' || res.order.status === 'QUOTE_LOCKED') {
-          navigate(`/pay/${res.order.order_reference}`);
-          return;
-        }
-
         setOrder(res.order);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
@@ -75,24 +68,21 @@ export const OrderStatusPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // If no explicit reference in URL, check if there is an open order on this device
-    if (!reference) {
+    // If explicit reference in URL, look it up
+    if (reference) {
+      setSearchInput(reference);
+      fetchOrder(reference);
+    } else {
+      // If there's an open order on this device, pre-load tracking info without hijacking the page
       const openOrder = getOpenOrder();
       if (openOrder) {
-        navigate(`/pay/${openOrder.order_reference}`, { replace: true });
-        return;
+        setSearchInput(openOrder.order_reference);
+        fetchOrder(openOrder.order_reference);
       }
     }
 
     // Load local stored orders from this browser
     setLocalOrders(getStoredRecentOrders());
-  }, [reference, navigate]);
-
-  useEffect(() => {
-    if (reference) {
-      setSearchInput(reference);
-      fetchOrder(reference);
-    }
   }, [reference]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -100,11 +90,7 @@ export const OrderStatusPage: React.FC = () => {
     fetchOrder(searchInput);
   };
 
-  const selectOrderToTrack = (ref: string, orderStatus?: string) => {
-    if (orderStatus === 'AWAITING_PAYMENT' || orderStatus === 'QUOTE_LOCKED') {
-      navigate(`/pay/${ref}`);
-      return;
-    }
+  const selectOrderToTrack = (ref: string, _orderStatus?: string) => {
     setSearchInput(ref);
     fetchOrder(ref);
   };
@@ -463,6 +449,26 @@ export const OrderStatusPage: React.FC = () => {
               Fiat Paid: <strong className="text-slate-900 dark:text-white font-mono">{formatNaira(order.fiat_amount_ngn)}</strong>
             </span>
           </div>
+
+          {/* Pending Payment Action Bar */}
+          {(order.status === 'AWAITING_PAYMENT' || order.status === 'QUOTE_LOCKED') && (
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="text-center sm:text-left">
+                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300 block">
+                  Awaiting Bank Transfer
+                </span>
+                <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                  Transfer the exact amount to Nomba Microfinance Bank to release crypto.
+                </span>
+              </div>
+              <Link
+                to={`/pay/${order.order_reference}`}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs text-center shadow-md active:scale-95 transition-all shrink-0"
+              >
+                Proceed to Payment &rarr;
+              </Link>
+            </div>
+          )}
 
           <div className="space-y-3 text-xs divide-y divide-slate-100 dark:divide-white/[0.06]">
             <div className="flex justify-between items-center py-2">

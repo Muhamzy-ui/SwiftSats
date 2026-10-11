@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Clock, ArrowRight, X } from 'lucide-react';
 import { CoinStep } from './CoinStep';
 import { AmountStep } from './AmountStep';
 import { WalletStep } from './WalletStep';
 import { PayStep } from './PayStep';
 import { LiveRate, CoinCode, QuoteCreatedResponse, OrderLockedResponse } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
-import { storeRecentOrder, updateStoredOrderStatus, getOpenOrder } from '../../../shared/utils/orderStorage';
+import { storeRecentOrder, updateStoredOrderStatus, getOpenOrder, cancelStoredOrder, LocalTrackedOrder } from '../../../shared/utils/orderStorage';
 
 export type Step = 'COIN' | 'AMOUNT' | 'WALLET' | 'PAY';
 
@@ -253,6 +253,7 @@ export const BuyWizard: React.FC = () => {
   const [initialAmount, setInitialAmount] = useState<string>('');
   const [initialEmail, setInitialEmail] = useState<string>('');
   const [isAutoLocking, setIsAutoLocking] = useState<boolean>(false);
+  const [unpaidOrder, setUnpaidOrder] = useState<LocalTrackedOrder | null>(null);
 
   useEffect(() => {
     const fetchRates = async () => {
@@ -356,28 +357,13 @@ export const BuyWizard: React.FC = () => {
       return;
     }
 
-    // If user has an open order awaiting payment, auto-resume directly on Step 4 (PAY)
+    // Check if user has an unpaid open order on this device for the optional resume banner
     const openOrder = getOpenOrder();
     if (openOrder && (openOrder.status === 'AWAITING_PAYMENT' || openOrder.status === 'QUOTE_LOCKED')) {
-      ordersApi.lookupOrder(openOrder.order_reference).then((res) => {
-        if (res.success && res.order && res.order.status === 'AWAITING_PAYMENT') {
-          setOrderLocked({
-            success: true,
-            order: res.order,
-            payment_instructions: {
-              bank_name: res.order.virtual_bank_name || 'Nomba Microfinance Bank',
-              account_number: res.order.virtual_account_number || '1623796514',
-              account_name: res.order.virtual_account_name || 'Mbovibe Systems/swiftsats',
-              amount_ngn: String(res.order.fiat_amount_expected || res.order.fiat_amount_ngn),
-              salt_kobo: res.order.salt_kobo_value,
-              order_reference: res.order.order_reference,
-              expires_at: res.order.quote_expires_at,
-            },
-          });
-          setStep('PAY');
-        }
-      }).catch(() => {});
-    } else if (coinParam || sourceParam) {
+      setUnpaidOrder(openOrder);
+    }
+
+    if (coinParam || sourceParam) {
       // Deep linked directly from external website without all params: Skip coin selection & jump straight to Amount!
       setStep('AMOUNT');
     }
@@ -464,6 +450,60 @@ export const BuyWizard: React.FC = () => {
           <span>Live Rates</span>
         </span>
       </div>
+
+      {/* Optional Dismissible Unpaid Order Resume Banner */}
+      {unpaidOrder && step !== 'PAY' && (
+        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-500/30 flex items-center justify-between text-xs animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-emerald-600 dark:text-[#00e676] shrink-0" />
+            <div className="text-[11px] leading-tight">
+              <span className="text-slate-800 dark:text-slate-200">
+                You have an open order <strong className="font-mono text-emerald-700 dark:text-[#00e676]">{unpaidOrder.order_reference}</strong> awaiting payment.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                ordersApi.lookupOrder(unpaidOrder.order_reference).then((res) => {
+                  if (res.success && res.order) {
+                    setOrderLocked({
+                      success: true,
+                      order: res.order,
+                      payment_instructions: {
+                        bank_name: res.order.virtual_bank_name || 'Nomba Microfinance Bank',
+                        account_number: res.order.virtual_account_number || '1623796514',
+                        account_name: res.order.virtual_account_name || 'Mbovibe Systems/swiftsats',
+                        amount_ngn: String(res.order.fiat_amount_expected || res.order.fiat_amount_ngn),
+                        salt_kobo: res.order.salt_kobo_value,
+                        order_reference: res.order.order_reference,
+                        expires_at: res.order.quote_expires_at,
+                      },
+                    });
+                    setStep('PAY');
+                  }
+                });
+              }}
+              className="px-2.5 py-1 rounded-xl bg-[#00c853] dark:bg-[#00e676] text-slate-950 font-black text-[11px] shadow-sm hover:opacity-90 active:scale-95 transition-all flex items-center gap-1"
+            >
+              <span>Resume</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                cancelStoredOrder(unpaidOrder.order_reference);
+                setUnpaidOrder(null);
+              }}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Step Views */}
       {step === 'COIN' && (

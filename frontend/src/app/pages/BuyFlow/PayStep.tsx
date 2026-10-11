@@ -586,13 +586,27 @@ export const PayStep: React.FC<PayStepProps> = ({
         </div>
       )}
 
-      {/* Cancel Order Action */}
-      <div className="pt-2 text-center">
+      {/* Order Actions: Start New Order or Cancel */}
+      <div className="pt-2 flex items-center justify-center gap-4 text-center">
+        <button
+          type="button"
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            } else {
+              window.location.href = '/';
+            }
+          }}
+          className="text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors py-2 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 inline-flex items-center gap-1.5"
+        >
+          <span>← Start a New Order</span>
+        </button>
+        <span className="text-slate-300 dark:text-slate-700">•</span>
         <button
           type="button"
           onClick={() => setShowCancelModal(true)}
           disabled={isCancelling}
-          className="text-xs font-semibold text-rose-500 hover:text-rose-400 dark:text-rose-400 dark:hover:text-rose-300 transition-colors py-2 px-4 rounded-xl hover:bg-rose-500/10 inline-flex items-center gap-1.5"
+          className="text-xs font-semibold text-rose-500 hover:text-rose-400 dark:text-rose-400 dark:hover:text-rose-300 transition-colors py-2 px-3 rounded-xl hover:bg-rose-500/10 inline-flex items-center gap-1.5"
         >
           <XCircle className="w-4 h-4" />
           <span>Cancel this Order</span>
