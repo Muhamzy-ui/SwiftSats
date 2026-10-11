@@ -57,31 +57,16 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   }, [currencyMode, dollarInput, cryptoInput, coinPriceUsd]);
 
   // Live calculated amounts:
-  // - >= $100 USD: $2.00 flat service fee (not % anymore)
-  // - <= $10 USD: $1.00 flat service fee
-  // - $10 - $100 USD: 5% capped at $2.00 USD
+  // - >= $100 USD: $2.00 flat service fee
+  // - < $100 USD: $1.00 flat service fee
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
     const cryptoReceived = (dollarAmount / coinPriceUsd).toFixed(8);
     const cryptoValueNgn = dollarAmount * ratePerDollar;
     
-    let feeNgn = 1.0 * ratePerDollar;
-    let feeLabel = '($1.00 flat)';
-
-    if (dollarAmount >= 100.0) {
-      feeNgn = 2.0 * ratePerDollar;
-      feeLabel = '($2.00 flat)';
-    } else if (dollarAmount > 10.0) {
-      const pctFee = cryptoValueNgn * 0.05;
-      if (pctFee >= 2.0 * ratePerDollar) {
-        feeNgn = 2.0 * ratePerDollar;
-        feeLabel = '($2.00 max)';
-      } else {
-        feeNgn = pctFee;
-        feeLabel = '(5%)';
-      }
-    }
+    const feeNgn = dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar);
+    const feeLabel = dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)';
 
     const totalNgnToPay = cryptoValueNgn + feeNgn;
 

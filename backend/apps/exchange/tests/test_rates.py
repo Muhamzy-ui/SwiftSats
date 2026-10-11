@@ -59,3 +59,25 @@ class TestRateService:
         assert res500["service_fee_ngn"] == Decimal("2850.00")
         assert res500["net_deposit_ngn"] == Decimal("712500.00")
         assert res500["dollar_value"] == Decimal("500.00")
+
+    def test_fee_under_100_dollars_is_flat_1_dollar(self):
+        service = RateService()
+        # Test $10 order: $10 * 1425 + $1 fee (1425) = 15,675 NGN
+        res10 = service.calculate_crypto_for_naira(
+            coin=SupportedCoin.USDT_TRC20,
+            fiat_amount_ngn=Decimal("15675.00")
+        )
+        assert res10["service_fee_usd"] == Decimal("1.00")
+        assert res10["service_fee_ngn"] == Decimal("1425.00")
+        assert res10["net_deposit_ngn"] == Decimal("14250.00")
+        assert res10["dollar_value"] == Decimal("10.00")
+
+        # Test $50 order: $50 * 1425 + $1 fee (1425) = 72,675 NGN
+        res50 = service.calculate_crypto_for_naira(
+            coin=SupportedCoin.USDT_TRC20,
+            fiat_amount_ngn=Decimal("72675.00")
+        )
+        assert res50["service_fee_usd"] == Decimal("1.00")
+        assert res50["service_fee_ngn"] == Decimal("1425.00")
+        assert res50["net_deposit_ngn"] == Decimal("71250.00")
+        assert res50["dollar_value"] == Decimal("50.00")

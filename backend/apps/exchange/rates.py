@@ -75,28 +75,16 @@ class RateService:
         approx_usd = fiat_amount_ngn / usd_to_ngn_rate
 
         # Pricing rules:
-        # 1. From $100 upward: flat $2.00 USD (not % anymore)
+        # 1. From $100 USD upward: flat $2.00 USD service fee
+        # 2. Below $100 USD (including $10 - $100): flat $1.00 USD service fee
         if approx_usd >= Decimal("100.0"):
             service_fee_usd = Decimal("2.00")
             service_fee_ngn = two_dollars_ngn
             net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
-        # 2. For <= $11 USD: flat $1.00 USD
-        elif approx_usd <= Decimal("11.0"):
+        else:
             service_fee_usd = Decimal("1.00")
             service_fee_ngn = usd_to_ngn_rate
             net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
-        # 3. Between $11 and $100: 5% capped at $2.00 USD
-        else:
-            calc_net = (fiat_amount_ngn / Decimal("1.05")).quantize(Decimal("0.01"))
-            calc_fee = (fiat_amount_ngn - calc_net).quantize(Decimal("0.01"))
-            if calc_fee > two_dollars_ngn:
-                service_fee_ngn = two_dollars_ngn
-                service_fee_usd = Decimal("2.00")
-                net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - two_dollars_ngn)
-            else:
-                service_fee_ngn = calc_fee
-                service_fee_usd = (service_fee_ngn / usd_to_ngn_rate).quantize(Decimal("0.01"))
-                net_deposit_ngn = calc_net
 
         dollar_value = (net_deposit_ngn / usd_to_ngn_rate).quantize(Decimal("0.01"))
         gross_crypto = (net_deposit_ngn / wholesale_rate).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
