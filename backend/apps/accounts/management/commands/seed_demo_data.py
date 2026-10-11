@@ -41,15 +41,19 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.SUCCESS(f"Updated Admin: {admin_email}"))
 
-        # 2. Ensure PlatformSettings is synced with OPay settlement
+        # 2. Ensure PlatformSettings is synced with Nomba settlement
         from apps.admin_api.models import PlatformSettings
         settings_obj = PlatformSettings.get_settings()
         settings_obj.use_paystack_virtual_accounts = False
-        settings_obj.settlement_bank_name = "OPay"
-        settings_obj.settlement_account_number = "8072410373"
-        settings_obj.settlement_account_name = "Mahmud Bashir Olasunkanmi"
+        settings_obj.settlement_bank_name = "Nomba Microfinance Bank"
+        settings_obj.settlement_account_number = "1623796514"
+        settings_obj.settlement_account_name = "Mbovibe Systems/swiftsats"
+        settings_obj.settlement_bank_name_2 = "Nomba Microfinance Bank"
+        settings_obj.settlement_account_number_2 = "1623796514"
+        settings_obj.settlement_account_name_2 = "Mbovibe Systems/swiftsats"
+        settings_obj.rotate_accounts = False
         settings_obj.save()
-        self.stdout.write(self.style.SUCCESS("PlatformSettings synced to OPay (8072410373 - Mahmud Bashir Olasunkanmi)"))
+        self.stdout.write(self.style.SUCCESS("PlatformSettings synced to Nomba (1623796514 - Mbovibe Systems/swiftsats)"))
 
         # 3. Database ready
         self.stdout.write(self.style.SUCCESS("Admin user and platform settings ready for real transactions."))

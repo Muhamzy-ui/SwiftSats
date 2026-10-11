@@ -244,9 +244,10 @@ class LockAndGeneratePaymentView(APIView):
         platform_settings = PlatformSettings.get_settings()
         use_paystack = getattr(platform_settings, "use_paystack_virtual_accounts", False)
 
-        target_bank_name = platform_settings.settlement_bank_name or "Nomba Microfinance Bank"
-        target_account_num = platform_settings.settlement_account_number or "1623796514"
-        target_account_name = platform_settings.settlement_account_name or "Mbovibe Systems/swiftsats"
+        settlement_info = platform_settings.get_next_settlement_account()
+        target_bank_name = settlement_info.get("bank_name", "Nomba Microfinance Bank")
+        target_account_num = settlement_info.get("account_number", "1623796514")
+        target_account_name = settlement_info.get("account_name", "Mbovibe Systems/swiftsats")
         target_amount_expected = order.fiat_amount_expected
         paystack_ref = order.paystack_reference
 
@@ -267,8 +268,13 @@ class LockAndGeneratePaymentView(APIView):
             except Exception as exc:
                 logger.error("Failed to generate Paystack virtual account for %s: %s", order.order_reference, exc)
 
-        # Fallback to deterministic account if missing
-        if not target_account_num or target_account_num.strip() in ["0000000000", ""]:
+        # Fallback to deterministic account if missing or if legacy OPay / Mahmud
+        if (
+            not target_account_num
+            or target_account_num.strip() in ["0000000000", "8072410373", ""]
+            or "opay" in (target_bank_name or "").lower()
+            or "mahmud" in (target_account_name or "").lower()
+        ):
             target_account_num = "1623796514"
             target_bank_name = "Nomba Microfinance Bank"
             target_account_name = "Mbovibe Systems/swiftsats"
@@ -361,14 +367,16 @@ class OrderStatusLookupView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Self-heal any legacy orders that had 0000000000
-        if not order.virtual_account_number or order.virtual_account_number.strip() in ["0000000000", ""]:
-            clean_hash = abs(hash(order.order_reference)) % 100000000
-            order.virtual_account_number = f"99{clean_hash:08d}"
-            if not order.virtual_bank_name:
-                order.virtual_bank_name = "Paystack-Titan / Wema"
-            if not order.virtual_account_name:
-                order.virtual_account_name = "SwiftSats Checkout Desk"
+        # Self-heal any legacy orders that had 0000000000 or Opay/Mahmud details
+        if (
+            not order.virtual_account_number
+            or order.virtual_account_number.strip() in ["0000000000", "8072410373", ""]
+            or "opay" in (order.virtual_bank_name or "").lower()
+            or "mahmud" in (order.virtual_account_name or "").lower()
+        ):
+            order.virtual_account_number = "1623796514"
+            order.virtual_bank_name = "Nomba Microfinance Bank"
+            order.virtual_account_name = "Mbovibe Systems/swiftsats"
             order.save(update_fields=["virtual_account_number", "virtual_bank_name", "virtual_account_name"])
 
         return Response({

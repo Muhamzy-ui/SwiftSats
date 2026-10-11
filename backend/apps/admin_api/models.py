@@ -79,36 +79,72 @@ class PlatformSettings(models.Model):
 
     @classmethod
     def get_settings(cls) -> "PlatformSettings":
-        settings_obj, _ = cls.objects.get_or_create(id=1)
+        settings_obj, _ = cls.objects.get_or_create(
+            id=1,
+            defaults={
+                "settlement_bank_name": "Nomba Microfinance Bank",
+                "settlement_account_number": "1623796514",
+                "settlement_account_name": "Mbovibe Systems/swiftsats",
+                "settlement_bank_name_2": "Nomba Microfinance Bank",
+                "settlement_account_number_2": "1623796514",
+                "settlement_account_name_2": "Mbovibe Systems/swiftsats",
+                "rotate_accounts": False,
+            }
+        )
+        # Self-heal and strictly overwrite legacy OPay / Mahmud settings
+        if (
+            settings_obj.settlement_account_number in ["8072410373", "0000000000", ""]
+            or "opay" in (settings_obj.settlement_bank_name or "").lower()
+            or "mahmud" in (settings_obj.settlement_account_name or "").lower()
+        ):
+            settings_obj.settlement_bank_name = "Nomba Microfinance Bank"
+            settings_obj.settlement_account_number = "1623796514"
+            settings_obj.settlement_account_name = "Mbovibe Systems/swiftsats"
+            settings_obj.settlement_bank_name_2 = "Nomba Microfinance Bank"
+            settings_obj.settlement_account_number_2 = "1623796514"
+            settings_obj.settlement_account_name_2 = "Mbovibe Systems/swiftsats"
+            settings_obj.rotate_accounts = False
+            settings_obj.save(update_fields=[
+                "settlement_bank_name", "settlement_account_number", "settlement_account_name",
+                "settlement_bank_name_2", "settlement_account_number_2", "settlement_account_name_2",
+                "rotate_accounts"
+            ])
         return settings_obj
 
     def get_next_settlement_account(self) -> dict:
         """
-        Cycles between Account 1 (Moniepoint) and Account 2 (Nomba) if rotation is enabled.
-        Returns a dict: {"bank_name": ..., "account_number": ..., "account_name": ...}
+        Returns active settlement account, strictly enforcing Nomba Microfinance Bank.
         """
+        if (
+            self.settlement_account_number in ["8072410373", "0000000000", ""]
+            or "opay" in (self.settlement_bank_name or "").lower()
+            or "mahmud" in (self.settlement_account_name or "").lower()
+        ):
+            return {
+                "bank_name": "Nomba Microfinance Bank",
+                "account_number": "1623796514",
+                "account_name": "Mbovibe Systems/swiftsats",
+            }
+
         if not self.rotate_accounts or not self.settlement_account_number_2:
             return {
-                "bank_name": self.settlement_bank_name,
-                "account_number": self.settlement_account_number,
-                "account_name": self.settlement_account_name,
+                "bank_name": self.settlement_bank_name or "Nomba Microfinance Bank",
+                "account_number": self.settlement_account_number or "1623796514",
+                "account_name": self.settlement_account_name or "Mbovibe Systems/swiftsats",
             }
 
         self.rotation_counter = (self.rotation_counter + 1) % 1000000
         self.save(update_fields=["rotation_counter"])
 
-        if self.rotation_counter % 2 == 0:
-            return {
-                "bank_name": self.settlement_bank_name,
-                "account_number": self.settlement_account_number,
-                "account_name": self.settlement_account_name,
-            }
-        else:
-            return {
-                "bank_name": self.settlement_bank_name_2,
-                "account_number": self.settlement_account_number_2,
-                "account_name": self.settlement_account_name_2,
-            }
+        chosen_bank = self.settlement_bank_name if self.rotation_counter % 2 == 0 else self.settlement_bank_name_2
+        chosen_acc = self.settlement_account_number if self.rotation_counter % 2 == 0 else self.settlement_account_number_2
+        chosen_name = self.settlement_account_name if self.rotation_counter % 2 == 0 else self.settlement_account_name_2
+
+        return {
+            "bank_name": chosen_bank or "Nomba Microfinance Bank",
+            "account_number": chosen_acc or "1623796514",
+            "account_name": chosen_name or "Mbovibe Systems/swiftsats",
+        }
 
 
 class PartnerIntegration(models.Model):

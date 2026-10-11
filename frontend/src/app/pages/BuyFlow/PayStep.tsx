@@ -45,18 +45,24 @@ export const PayStep: React.FC<PayStepProps> = ({
   const { payment_instructions } = orderData;
   const orderRef = currentOrder.order_reference;
 
-  // Derive guaranteed valid 10-digit account number (never 0000000000)
-  const rawAcc = payment_instructions.account_number?.trim();
-  const displayAccount =
-    rawAcc && rawAcc !== '0000000000' && rawAcc.length >= 8
-      ? rawAcc
-      : (() => {
-          let h = 0;
-          for (let i = 0; i < orderRef.length; i++) {
-            h = (h * 31 + orderRef.charCodeAt(i)) % 100000000;
-          }
-          return `99${Math.abs(h).toString().padStart(8, '4')}`;
-        })();
+  // Derive guaranteed valid account details - Strictly enforce Nomba and eradicate legacy OPay/Mahmud
+  const rawAcc = payment_instructions.account_number?.trim() || '';
+  const rawBank = payment_instructions.bank_name?.trim() || '';
+  const rawName = payment_instructions.account_name?.trim() || '';
+
+  const isLegacyOpay =
+    rawBank.toLowerCase().includes('opay') ||
+    rawAcc === '8072410373' ||
+    rawAcc === '0000000000' ||
+    rawName.toLowerCase().includes('mahmud');
+
+  const displayBank = isLegacyOpay ? 'Nomba Microfinance Bank' : (rawBank || 'Nomba Microfinance Bank');
+  const displayAccountName = isLegacyOpay ? 'Mbovibe Systems/swiftsats' : (rawName || 'Mbovibe Systems/swiftsats');
+  const displayAccount = isLegacyOpay
+    ? '1623796514'
+    : rawAcc && rawAcc.length >= 8
+    ? rawAcc
+    : '1623796514';
 
   // 15-Minute Countdown Timer - Guaranteed active real-time reading
   useEffect(() => {
@@ -360,7 +366,7 @@ export const PayStep: React.FC<PayStepProps> = ({
     <div className="space-y-6 animate-in fade-in duration-200">
       <div className="text-center space-y-1">
         <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Transfer to {payment_instructions.bank_name || 'Bank Settlement'}
+          Transfer to {displayBank}
         </h2>
         <p className="text-xs text-slate-600 dark:text-slate-400">
           Transfer the exact amount below from your bank app. Crypto releases in seconds!
@@ -452,16 +458,11 @@ export const PayStep: React.FC<PayStepProps> = ({
             <span className="text-slate-400">Destination Bank</span>
             <div className="text-right">
               <span className="font-bold text-white text-sm block">
-                {payment_instructions.bank_name || 'Paystack-Titan / Wema'}
+                {displayBank}
               </span>
-              {(payment_instructions.bank_name || '').toLowerCase().includes('nomba') && (
+              {displayBank.toLowerCase().includes('nomba') && (
                 <span className="text-[10px] text-amber-400 font-medium block">
                   (Search "Nomba" or "Nombank" in your bank/OPay app)
-                </span>
-              )}
-              {(payment_instructions.bank_name || '').toLowerCase().includes('titan') && (
-                <span className="text-[10px] text-amber-400 font-medium block">
-                  (Search "Titan Trust Bank" in Kuda/OPay)
                 </span>
               )}
             </div>
@@ -488,7 +489,7 @@ export const PayStep: React.FC<PayStepProps> = ({
           <div className="flex justify-between items-center py-1 border-t border-slate-800">
             <span className="text-slate-400">Beneficiary Name</span>
             <span className="font-semibold text-slate-200 font-mono text-[11px]">
-              {payment_instructions.account_name || 'SwiftSats Settlement'}
+              {displayAccountName}
             </span>
           </div>
 
