@@ -46,7 +46,13 @@ export const AdminLayout: React.FC = () => {
         <AdminFloatingToast />
 
         {/* Mobile Top Header (Visible on screens < md) */}
-        <header className="md:hidden sticky top-0 z-30 bg-white/95 dark:bg-[#0c1017]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 h-14 flex items-center justify-between shadow-xs">
+        <header
+          className="md:hidden sticky top-0 z-30 bg-white/95 dark:bg-[#0c1017]/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between shadow-xs transition-colors duration-200"
+          style={{
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            height: 'calc(3.5rem + env(safe-area-inset-top, 0px))',
+          }}
+        >
           <div className="flex items-center gap-2.5">
             <button
               type="button"
@@ -82,7 +88,13 @@ export const AdminLayout: React.FC = () => {
             />
 
             {/* Drawer Sidebar */}
-            <div className="relative w-72 max-w-[80vw] h-full bg-white dark:bg-[#0c1017] shadow-2xl z-10 flex flex-col animate-in slide-in-from-left duration-200">
+            <div
+              className="relative w-72 max-w-[80vw] h-full bg-white dark:bg-[#0c1017] shadow-2xl z-10 flex flex-col animate-in slide-in-from-left duration-200"
+              style={{
+                paddingTop: 'env(safe-area-inset-top, 0px)',
+                paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+              }}
+            >
               <Sidebar
                 isHealthy={true}
                 onNavigate={() => setMobileDrawerOpen(false)}

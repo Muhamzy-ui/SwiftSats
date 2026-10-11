@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 
 export const Home: React.FC = () => {
   return (
-    <div className="space-y-4 sm:space-y-6 py-2 sm:py-6 max-w-xl mx-auto px-3 sm:px-4">
+    <div className="space-y-4 sm:space-y-6 pt-4 pb-6 sm:py-6 max-w-xl mx-auto px-3 sm:px-4">
 
       {/* 1. Sleek, Proportionate Hero Header */}
       <div className="text-center space-y-1.5 max-w-lg mx-auto">

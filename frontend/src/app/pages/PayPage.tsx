@@ -147,7 +147,7 @@ export const PayPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-lg mx-auto py-2 sm:py-6 px-3 sm:px-4 space-y-4">
+    <div className="max-w-lg mx-auto pt-4 pb-6 sm:py-6 px-3 sm:px-4 space-y-4">
       {/* Primary Card Shell Matching BuyWizard */}
       <div className="w-full bg-white dark:bg-[#0c1017] border border-slate-200/90 dark:border-white/[0.08] rounded-2xl sm:rounded-3xl p-4 sm:p-5 space-y-4 shadow-[0_8px_20px_rgba(0,0,0,0.04)] dark:shadow-2xl transition-all duration-200 relative">
         {/* Step Indicator Navigation - Page Number 4 */}

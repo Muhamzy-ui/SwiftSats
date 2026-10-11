@@ -12,8 +12,11 @@ export const Header: React.FC = () => {
   const displayName = user?.full_name?.trim().split(' ')[0] || 'Account';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#07080d]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-white/[0.08] transition-colors duration-200">
-      <div className="max-w-5xl mx-auto px-3.5 sm:px-6 h-13 sm:h-15 py-2 flex items-center justify-between">
+    <header
+      className="sticky top-0 z-40 bg-white/95 dark:bg-[#07080d]/95 backdrop-blur-md border-b border-slate-200/90 dark:border-white/[0.08] transition-colors duration-200"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
+      <div className="max-w-5xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         {/* Responsive SwiftSats Brand Logo */}
         <Link to="/" className="group flex items-center">
           <SwiftSatsLogo size={32} showText={true} className="sm:hidden" />

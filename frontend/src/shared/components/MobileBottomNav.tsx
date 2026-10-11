@@ -18,7 +18,10 @@ export const MobileBottomNav: React.FC = () => {
   ];
 
   return (
-    <div className="md:hidden fixed bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-[360px] pointer-events-auto">
+    <div
+      className="md:hidden fixed left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-[360px] pointer-events-auto transition-all"
+      style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       {/* Floating Island iOS 27 Frosted Ultra-Glass Capsule Dock */}
       <nav
         aria-label="Mobile Navigation"
