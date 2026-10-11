@@ -172,3 +172,49 @@ class NombaAutomationTestCase(TestCase):
 
         order = Order.objects.get(order_reference=order_ref)
         self.assertEqual(order.status, OrderStatus.VERIFYING)
+
+    def test_nomba_webhook_real_nested_payload(self):
+        """Test the real-world nested Nomba payload with transactionAmount and transactionId."""
+        self.platform_settings.payout_mode = PlatformSettings.PayoutMode.MANUAL
+        self.platform_settings.save()
+
+        quote_res = self.client.post("/api/v1/orders/quote/", {
+            "coin": "USDT_BEP20",
+            "amount_ngn": 8825,
+        }, content_type="application/json")
+        self.assertEqual(quote_res.status_code, 201)
+        quote_data = quote_res.json()
+        order_ref = quote_data["order_reference"]
+
+        self.client.post("/api/v1/orders/create/", {
+            "order_reference": order_ref,
+            "wallet_address": "0x20FFA10142c7DD6f3382A8fe037FFC48C510DAD5",
+        }, content_type="application/json")
+
+        payload = {
+            "event_type": "payment_success",
+            "requestId": "4aa115ad-5205-4654-99e0-b7fd15c982f8",
+            "data": {
+                "merchant": {"walletId": "6abc32f87b4b413e674bfff5", "walletBalance": 8919.0},
+                "terminal": {},
+                "transaction": {
+                    "fee": 0.0,
+                    "sessionId": "090267261011160329106089127025",
+                    "type": "wallet_topup",
+                    "transactionId": "AAP-WALLET_T-26085-887e1141-e437-45fe-8956-a53f666b263f",
+                    "transactionAmount": 8825.0,
+                    "narration": "sent",
+                },
+                "customer": {
+                    "senderName": "OBIANO, CHIDI JOHN",
+                    "bankName": "Kuda Microfinance Bank",
+                }
+            }
+        }
+        res = self.client.post("/api/v1/payments/webhook/nomba/", data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["status"], "awaiting_manual_approval")
+        order = Order.objects.get(order_reference=order_ref)
+        self.assertEqual(order.status, OrderStatus.VERIFYING)
+        self.assertEqual(order.nomba_transaction_ref, "AAP-WALLET_T-26085-887e1141-e437-45fe-8956-a53f666b263f")
+

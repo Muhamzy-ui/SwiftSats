@@ -11,6 +11,7 @@ import logging
 from decimal import Decimal
 from typing import Optional, Tuple
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -111,11 +112,41 @@ class NombaWebhookView(APIView):
         data = request.data
         logger.info("Received Nomba webhook payload: %s", json.dumps(data)[:300])
 
-        # Extract transaction fields from nested or flat payload
+        # Extract transaction fields from nested or flat Nomba payload
         payload_data = data.get("data", data)
-        raw_amount = payload_data.get("amount") or payload_data.get("fiat_amount") or payload_data.get("total_amount")
-        tx_ref = str(payload_data.get("transaction_reference") or payload_data.get("reference") or payload_data.get("id") or "")
-        sender_name = payload_data.get("sender_name") or payload_data.get("sender") or "Direct Bank Transfer"
+        if not isinstance(payload_data, dict):
+            payload_data = data
+
+        tx_obj = payload_data.get("transaction") if isinstance(payload_data.get("transaction"), dict) else {}
+        cust_obj = payload_data.get("customer") if isinstance(payload_data.get("customer"), dict) else {}
+
+        raw_amount = (
+            tx_obj.get("transactionAmount")
+            or tx_obj.get("amount")
+            or payload_data.get("amount")
+            or payload_data.get("transactionAmount")
+            or payload_data.get("fiat_amount")
+            or payload_data.get("total_amount")
+            or data.get("amount")
+        )
+        tx_ref = str(
+            tx_obj.get("transactionId")
+            or tx_obj.get("sessionId")
+            or tx_obj.get("reference")
+            or payload_data.get("transaction_reference")
+            or payload_data.get("transactionId")
+            or payload_data.get("reference")
+            or payload_data.get("id")
+            or data.get("requestId")
+            or ""
+        )
+        sender_name = (
+            cust_obj.get("senderName")
+            or payload_data.get("senderName")
+            or payload_data.get("sender_name")
+            or payload_data.get("sender")
+            or "Direct Bank Transfer"
+        )
 
         if not raw_amount or not tx_ref:
             logger.warning("Nomba webhook missing amount or reference: %s", data)
@@ -135,11 +166,11 @@ class NombaWebhookView(APIView):
         platform_settings = PlatformSettings.get_settings()
 
         with transaction.atomic():
-            # Match active order by exact expected amount (including kobo salt)
+            # Match active order by exact expected amount (including kobo salt) or fiat_amount_ngn
             matching_order = (
                 Order.objects.select_for_update()
                 .filter(
-                    fiat_amount_expected=paid_amount,
+                    Q(fiat_amount_expected=paid_amount) | Q(fiat_amount_ngn=paid_amount),
                     status__in=[
                         OrderStatus.QUOTE_LOCKED,
                         OrderStatus.AWAITING_PAYMENT,
