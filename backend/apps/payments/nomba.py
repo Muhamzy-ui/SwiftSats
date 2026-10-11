@@ -184,7 +184,7 @@ class NombaWebhookView(APIView):
                 )
                 return Response({"status": "awaiting_manual_approval"}, status=status.HTTP_200_OK)
 
-            # 24/7 FULLY AUTOMATED MODE: Execute Quidax Swap & Blockchain Payout
+            # 24/7 FULLY AUTOMATED MODE: Execute Hot Wallet Blockchain Payout
             logger.info("Executing 24/7 automated payout for order %s", matching_order.order_reference)
 
             start_payout_time = timezone.now()

@@ -228,6 +228,7 @@ export const adminApi = {
   async getPlatformSettings(): Promise<{
     success: boolean;
     payout_mode: 'AUTOMATED' | 'MANUAL';
+    hot_wallet_address?: string;
     use_paystack_virtual_accounts: boolean;
     settlement_bank_name: string;
     settlement_account_name: string;
@@ -242,6 +243,7 @@ export const adminApi = {
   /** Update platform & notification settings */
   async updatePlatformSettings(data: {
     payout_mode?: 'AUTOMATED' | 'MANUAL';
+    hot_wallet_address?: string;
     use_paystack_virtual_accounts?: boolean;
     settlement_bank_name?: string;
     settlement_account_number?: string;
@@ -249,11 +251,29 @@ export const adminApi = {
     telegram_alerts_enabled?: boolean;
     telegram_bot_token?: string;
     telegram_admin_chat_id?: string;
-  }): Promise<{ success: boolean; message: string }> {
+  }): Promise<{ success: boolean; message: string; hot_wallet_address?: string }> {
     return request('/api/v1/admin/settings/payout-mode/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /** Check real-time on-chain float and gas balance of platform wallet */
+  async getHotWalletBalance(coin: string = 'USDT_BEP20', address?: string): Promise<{
+    success: boolean;
+    wallet_address: string;
+    token_balance: string;
+    gas_balance: string;
+    gas_symbol: string;
+    has_gas: boolean;
+    is_configured: boolean;
+    has_private_key: boolean;
+    coin: string;
+    network: string;
+  }> {
+    const params = new URLSearchParams({ coin });
+    if (address) params.set('address', address);
+    return request(`/api/v1/admin/settings/hot-wallet-balance/?${params.toString()}`);
   },
 
   /** Send instant test ping to admin's phone via Telegram */

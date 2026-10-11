@@ -37,7 +37,7 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ isHealthy = 
     };
   }, [propHealth]);
 
-  const quidaxSvc = health?.services?.find((s) => s.name.toLowerCase().includes('quidax'));
+  const bscSvc = health?.services?.find((s) => s.name.toLowerCase().includes('bnb') || s.name.toLowerCase().includes('bep-20') || s.name.toLowerCase().includes('quidax'));
   const paystackSvc = health?.services?.find((s) => s.name.toLowerCase().includes('paystack'));
 
   const overallHealthy = isHealthy && (!health || health.services.every((s) => s.status === 'healthy'));
@@ -58,9 +58,9 @@ export const SystemHealthCard: React.FC<SystemHealthCardProps> = ({ isHealthy = 
 
       <div className="space-y-1 text-[11px] font-mono text-slate-500 dark:text-slate-400">
         <div className="flex justify-between">
-          <span>Quidax Gateway:</span>
+          <span>BNB Smart Chain:</span>
           <span className="text-emerald-700 dark:text-emerald-400 font-bold">
-            {quidaxSvc ? `${quidaxSvc.status === 'healthy' ? 'Online' : 'Degraded'} (${quidaxSvc.latency_ms}ms)` : 'Checking...'}
+            {bscSvc ? `${bscSvc.status === 'healthy' ? 'Online' : 'Degraded'} (${bscSvc.latency_ms}ms)` : 'Checking...'}
           </span>
         </div>
         <div className="flex justify-between">

@@ -109,7 +109,7 @@ export const DisputesPage: React.FC = () => {
                         onClick={() => handleAction(d.id, 'RETRY_PAYOUT')}
                         disabled={activeActionId === d.id}
                         className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-[11px] transition-colors shadow-subtle"
-                        title="Retry Quidax Payout Worker"
+                        title="Retry Blockchain Payout Worker"
                       >
                         <RotateCcw className="w-3 h-3" />
                         <span>Retry Payout</span>

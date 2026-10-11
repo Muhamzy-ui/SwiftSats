@@ -93,7 +93,7 @@ export const AdminLoginPage: React.FC = () => {
               Enterprise Operations & Settlement Console
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-3 leading-relaxed">
-              Internal mission control for Quidax crypto withdrawals, Paystack virtual bank accounts, and real-time transaction monitoring.
+              Internal mission control for on-chain cryptocurrency payouts, Paystack virtual bank accounts, and real-time transaction monitoring.
             </p>
           </div>
 

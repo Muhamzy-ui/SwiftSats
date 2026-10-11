@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save } from 'lucide-react';
+import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, Wallet, Coins } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { SystemHealthData } from '../../shared/types';
 
@@ -9,6 +9,21 @@ export const SettingsPage: React.FC = () => {
   const [dangerConfirm, setDangerConfirm] = useState(false);
   const [dangerNotice, setDangerNotice] = useState<string | null>(null);
   const [isPurging, setIsPurging] = useState(false);
+
+  // Platform Hot Wallet & On-Chain Float
+  const [hotWalletAddress, setHotWalletAddress] = useState('');
+  const [isSavingWallet, setIsSavingWallet] = useState(false);
+  const [walletStatusMsg, setWalletStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [walletBalance, setWalletBalance] = useState<{
+    token_balance: string;
+    gas_balance: string;
+    gas_symbol: string;
+    has_gas: boolean;
+    has_private_key: boolean;
+    wallet_address: string;
+    network: string;
+  } | null>(null);
+  const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
   // Telegram 24/7 Mobile Lockscreen Alerts
   const [telegramEnabled, setTelegramEnabled] = useState(true);
@@ -30,6 +45,18 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const fetchWalletBalance = async (customAddr?: string) => {
+    setIsCheckingBalance(true);
+    try {
+      const res = await adminApi.getHotWalletBalance('USDT_BEP20', customAddr || hotWalletAddress);
+      setWalletBalance(res);
+    } catch (err) {
+      console.error('Failed to query hot wallet balance', err);
+    } finally {
+      setIsCheckingBalance(false);
+    }
+  };
+
   const fetchSettings = async () => {
     try {
       const s = await adminApi.getPlatformSettings();
@@ -37,9 +64,33 @@ export const SettingsPage: React.FC = () => {
         setTelegramEnabled(s.telegram_alerts_enabled);
         setBotToken(s.telegram_bot_token || '');
         setChatId(s.telegram_admin_chat_id || '');
+        if (s.hot_wallet_address) {
+          setHotWalletAddress(s.hot_wallet_address);
+          fetchWalletBalance(s.hot_wallet_address);
+        } else {
+          fetchWalletBalance();
+        }
       }
     } catch (e) {
       console.warn('Could not load platform settings', e);
+      fetchWalletBalance();
+    }
+  };
+
+  const handleSaveWallet = async () => {
+    setIsSavingWallet(true);
+    setWalletStatusMsg(null);
+    try {
+      await adminApi.updatePlatformSettings({
+        hot_wallet_address: hotWalletAddress.trim(),
+      });
+      setWalletStatusMsg({ type: 'success', text: 'Platform hot wallet address updated successfully!' });
+      fetchWalletBalance(hotWalletAddress.trim());
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update hot wallet address.';
+      setWalletStatusMsg({ type: 'error', text: msg });
+    } finally {
+      setIsSavingWallet(false);
     }
   };
 
@@ -247,6 +298,126 @@ export const SettingsPage: React.FC = () => {
               <span>{isTestingTelegram ? 'Sending Test...' : '⚡ Test Alert to My Phone'}</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Self-Custody Platform Hot Wallet & On-Chain Float */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
+              <Wallet className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                Platform Hot Wallet & Blockchain Float
+              </h2>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Self-custodial on-chain wallet for customer payouts (Zero third-party Quidax dependency)
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => fetchWalletBalance()}
+            disabled={isCheckingBalance}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 self-start sm:self-auto cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isCheckingBalance ? 'animate-spin text-blue-500' : ''}`} />
+            <span>Check Live Balance</span>
+          </button>
+        </div>
+
+        {walletStatusMsg && (
+          <div className={`p-3 rounded-lg border text-xs font-semibold ${
+            walletStatusMsg.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+              : 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+          }`}>
+            {walletStatusMsg.text}
+          </div>
+        )}
+
+        {/* Live Balance Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1">
+                <Coins className="w-3.5 h-3.5 text-emerald-500" />
+                <span>USDT Balance (BEP-20)</span>
+              </span>
+              <span className="text-[10px] uppercase font-mono text-emerald-600 dark:text-emerald-400 font-bold">BSC</span>
+            </div>
+            <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+              {walletBalance ? `${parseFloat(walletBalance.token_balance).toFixed(2)} USDT` : '—'}
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              {walletBalance && parseFloat(walletBalance.token_balance) > 0
+                ? '✅ Float available for payouts'
+                : '⚠️ Empty float. Deposit USDT before releasing orders'}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1">
+                <Server className="w-3.5 h-3.5 text-amber-500" />
+                <span>Network Gas (BNB)</span>
+              </span>
+              <span className="text-[10px] uppercase font-mono text-amber-600 dark:text-amber-400 font-bold">Gas Fee</span>
+            </div>
+            <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+              {walletBalance ? `${parseFloat(walletBalance.gas_balance).toFixed(4)} BNB` : '—'}
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              {walletBalance?.has_gas ? '✅ Gas available for blockchain transfers' : '⚠️ Need min 0.005 BNB for gas'}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                <span>Dispatch Mode</span>
+              </span>
+              <span className="text-[10px] uppercase font-mono text-blue-600 dark:text-blue-400 font-bold">Safety</span>
+            </div>
+            <div className="text-sm font-bold font-mono text-slate-900 dark:text-white pt-1">
+              {walletBalance?.has_private_key ? '24/7 Automated Hot Key' : '1-Tap Admin Approval'}
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              Strict pre-flight check enforces balance before release
+            </p>
+          </div>
+        </div>
+
+        {/* Address Config */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+            Platform Hot Wallet / Vault Address (BEP-20 / TRC-20 / SOL)
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="e.g. 0x71C836E522f5b8fbe40D34341A5A507e78e1215B"
+              value={hotWalletAddress}
+              onChange={(e) => setHotWalletAddress(e.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={handleSaveWallet}
+              disabled={isSavingWallet}
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+            >
+              <Save className={`w-3.5 h-3.5 ${isSavingWallet ? 'animate-spin' : ''}`} />
+              <span>{isSavingWallet ? 'Saving...' : 'Save Address'}</span>
+            </button>
+          </div>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+            The platform will monitor this address on-chain in real-time. If there is no money in this wallet, releasing orders will be strictly blocked with an &quot;Insufficient Funds&quot; error.
+          </p>
         </div>
       </div>
 

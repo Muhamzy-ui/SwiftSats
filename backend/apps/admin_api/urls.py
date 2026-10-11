@@ -13,6 +13,7 @@ from .views import (
     AdminReportsView,
     AdminSettingsHealthView,
     AdminPayoutModeSettingsView,
+    AdminHotWalletBalanceView,
     AdminTestTelegramAlertView,
     AdminManualOrderReleaseView,
     AdminVerifyOrderPayoutView,
@@ -42,5 +43,6 @@ urlpatterns = [
     path("reports/", AdminReportsView.as_view(), name="admin-reports"),
     path("settings/", AdminSettingsHealthView.as_view(), name="admin-settings-health"),
     path("settings/payout-mode/", AdminPayoutModeSettingsView.as_view(), name="admin-payout-mode"),
+    path("settings/hot-wallet-balance/", AdminHotWalletBalanceView.as_view(), name="admin-hot-wallet-balance"),
     path("settings/test-telegram/", AdminTestTelegramAlertView.as_view(), name="admin-test-telegram"),
 ]

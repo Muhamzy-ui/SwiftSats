@@ -66,6 +66,22 @@ class PayoutService:
         )
 
         if is_bep20 and has_hot_wallet:
+            # Pre-flight on-chain balance verification
+            is_suff, reason, _ = self.hot_wallet.check_sufficient_funds(coin, amount, network)
+            if not is_suff:
+                logger.warning(
+                    "Automated hot wallet dispatch deferred for %s: %s",
+                    order_reference, reason
+                )
+                return {
+                    "id": f"PENDING-{order_reference}",
+                    "transaction_hash": "",
+                    "tx_hash": "",
+                    "status": "awaiting_manual_approval",
+                    "message": reason,
+                    "payout_channel": "HOT_WALLET_INSUFFICIENT_FUNDS",
+                }
+
             logger.info(
                 "Attempting automated BEP-20 hot wallet dispatch for %s: %s %s -> %s",
                 order_reference, amount, coin, destination_address

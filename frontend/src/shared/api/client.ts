@@ -82,8 +82,8 @@ export async function request<T>(
         }
       }
     }
-    const errorData = data?.error || {};
-    let message = errorData.message || data?.detail;
+    const errorData = (typeof data?.error === 'object' && data?.error !== null) ? data.error : {};
+    let message = typeof data?.error === 'string' ? data.error : (data?.error?.message || data?.detail);
 
     // If message is generic "Request validation failed" but errorData.details contains field breakdown
     if ((!message || message === 'Request validation failed') && errorData.details && typeof errorData.details === 'object') {

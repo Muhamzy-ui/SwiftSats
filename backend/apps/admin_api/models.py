@@ -82,6 +82,12 @@ class PlatformSettings(models.Model):
         default="",
         help_text="Telegram Admin Chat/Channel ID (from @userinfobot)"
     )
+    hot_wallet_address = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Platform Dispatch Wallet Address (e.g. 0x... for BSC/EVM)"
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

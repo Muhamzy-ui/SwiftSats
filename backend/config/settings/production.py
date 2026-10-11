@@ -82,10 +82,8 @@ def validate_production_configuration():
     from django.conf import settings
     errors = []
 
-    # 1. Quidax API Key check
-    quidax_key = getattr(settings, "QUIDAX_API_KEY", "")
-    if not quidax_key or quidax_key.startswith("sec_example") or quidax_key == "change-me":
-        errors.append("QUIDAX_API_KEY is missing or using placeholder in production!")
+    # 1. Hot Wallet / Blockchain Payout configuration check (Optional for manual mode)
+    pass
 
     # 2. Paystack Secret Key check
     paystack_key = getattr(settings, "PAYSTACK_SECRET_KEY", "")

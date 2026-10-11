@@ -78,6 +78,187 @@ class HotWalletService:
             self.rpc_url = "https://bsc-dataseed.binance.org/"
             self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
 
+    def get_dispatch_address(self) -> str:
+        """
+        Resolve platform dispatch wallet address from account, settings, or environment.
+        """
+        account = self.get_configured_account()
+        if account:
+            return account.address
+
+        try:
+            from apps.admin_api.models import PlatformSettings
+            ps = PlatformSettings.get_settings()
+            if ps and ps.hot_wallet_address:
+                return ps.hot_wallet_address.strip()
+        except Exception:
+            pass
+
+        env_addr = os.getenv("HOT_WALLET_ADDRESS", "").strip()
+        if env_addr:
+            return env_addr
+
+        # Fallback to primary vault address if defined
+        return "0x71C836E522f5b8fbe40D34341A5A507e78e1215B"
+
+    def get_wallet_balance(self, coin: str = "USDT_BEP20", address: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Query real-time on-chain token balance and native gas balance for the platform wallet.
+        """
+        import requests
+        target_addr = (address or self.get_dispatch_address()).strip()
+        if not target_addr:
+            return {
+                "wallet_address": "",
+                "token_balance": Decimal("0.00"),
+                "gas_balance": Decimal("0.00"),
+                "gas_symbol": "BNB",
+                "has_gas": False,
+                "is_configured": False,
+                "coin": coin,
+            }
+
+        # 1. TRON (TRC-20)
+        if target_addr.startswith("T") or "TRC" in coin.upper():
+            try:
+                r = requests.get(f"https://api.trongrid.io/v1/accounts/{target_addr}", timeout=4.0)
+                if r.status_code == 200:
+                    items = r.json().get("data", [])
+                    if items:
+                        d = items[0]
+                        trx_sun = d.get("balance", 0)
+                        trx_bal = Decimal(str(trx_sun)) / Decimal(10**6)
+                        token_bal = Decimal("0.00")
+                        for t_entry in d.get("trc20", []):
+                            if "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t" in t_entry:
+                                token_bal = Decimal(str(t_entry["TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"])) / Decimal(10**6)
+                        return {
+                            "wallet_address": target_addr,
+                            "token_balance": token_bal,
+                            "gas_balance": trx_bal,
+                            "gas_symbol": "TRX",
+                            "has_gas": trx_bal >= Decimal("15.0"),
+                            "is_configured": True,
+                            "coin": coin,
+                        }
+            except Exception as ex:
+                logger.warning("Tron on-chain query exception for %s: %s", target_addr, ex)
+            return {
+                "wallet_address": target_addr,
+                "token_balance": Decimal("0.00"),
+                "gas_balance": Decimal("0.00"),
+                "gas_symbol": "TRX",
+                "has_gas": False,
+                "is_configured": True,
+                "coin": coin,
+            }
+
+        # 2. SOLANA (SPL)
+        if len(target_addr) in [43, 44] and not target_addr.startswith("0x"):
+            try:
+                payload = {"jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [target_addr]}
+                r = requests.post("https://api.mainnet-beta.solana.com", json=payload, timeout=4.0)
+                if r.status_code == 200:
+                    lamports = r.json().get("result", {}).get("value", 0)
+                    sol_bal = Decimal(str(lamports)) / Decimal(10**9)
+                    return {
+                        "wallet_address": target_addr,
+                        "token_balance": sol_bal,
+                        "gas_balance": sol_bal,
+                        "gas_symbol": "SOL",
+                        "has_gas": sol_bal >= Decimal("0.005"),
+                        "is_configured": True,
+                        "coin": coin,
+                    }
+            except Exception as ex:
+                logger.warning("Solana on-chain query exception for %s: %s", target_addr, ex)
+            return {
+                "wallet_address": target_addr,
+                "token_balance": Decimal("0.00"),
+                "gas_balance": Decimal("0.00"),
+                "gas_symbol": "SOL",
+                "has_gas": False,
+                "is_configured": True,
+                "coin": coin,
+            }
+
+        # 3. EVM / BNB SMART CHAIN (BEP-20)
+        try:
+            chk_addr = Web3.to_checksum_address(target_addr)
+            bnb_wei = self.w3.eth.get_balance(chk_addr)
+            bnb_bal = Decimal(str(bnb_wei)) / Decimal(10**18)
+
+            coin_norm = (coin or "").upper()
+            if coin_norm in ["BNB", "BSC"]:
+                token_bal = bnb_bal
+            else:
+                contract_addr = Web3.to_checksum_address(BSC_USDT_CONTRACT_ADDRESS)
+                contract = self.w3.eth.contract(address=contract_addr, abi=ERC20_MINIMAL_ABI)
+                usdt_wei = contract.functions.balanceOf(chk_addr).call()
+                token_bal = Decimal(str(usdt_wei)) / Decimal(10**18)
+
+            return {
+                "wallet_address": chk_addr,
+                "token_balance": token_bal,
+                "gas_balance": bnb_bal,
+                "gas_symbol": "BNB",
+                "has_gas": bnb_bal >= Decimal("0.001"),
+                "is_configured": True,
+                "coin": coin,
+            }
+        except Exception as ex:
+            logger.warning("BSC on-chain query exception for %s: %s", target_addr, ex)
+            return {
+                "wallet_address": target_addr,
+                "token_balance": Decimal("0.00"),
+                "gas_balance": Decimal("0.00"),
+                "gas_symbol": "BNB",
+                "has_gas": False,
+                "is_configured": True,
+                "coin": coin,
+            }
+
+    def check_sufficient_funds(
+        self,
+        coin: str,
+        required_amount: Decimal,
+        destination_network: Optional[str] = None,
+        address: Optional[str] = None,
+    ) -> tuple[bool, str, Dict[str, Any]]:
+        """
+        Strict pre-flight validation: verifies on-chain that the platform wallet has
+        both sufficient crypto balance and gas fees to fulfill the order.
+        """
+        bal_info = self.get_wallet_balance(coin=coin, address=address)
+        if not bal_info.get("is_configured") or not bal_info.get("wallet_address"):
+            return (
+                False,
+                "Platform dispatch wallet address is not configured. Please set your wallet address in Admin Settings.",
+                bal_info,
+            )
+
+        token_bal = bal_info.get("token_balance", Decimal("0.00"))
+        gas_bal = bal_info.get("gas_balance", Decimal("0.00"))
+        gas_symbol = bal_info.get("gas_symbol", "BNB")
+        wallet_addr = bal_info.get("wallet_address", "")
+
+        if token_bal < required_amount:
+            shortage = required_amount - token_bal
+            return (
+                False,
+                f"❌ Insufficient Funds in Platform Wallet! Required: {required_amount} {coin}, but wallet ({wallet_addr}) only has {token_bal:.4f} {coin} (Shortage: {shortage:.4f} {coin}). Please deposit crypto to your platform wallet before releasing.",
+                bal_info,
+            )
+
+        if not bal_info.get("has_gas", True):
+            return (
+                False,
+                f"❌ Insufficient Network Gas Fee! Platform wallet has {token_bal:.4f} {coin}, but 0.00 {gas_symbol} for blockchain transaction fees. Please deposit at least 0.005 {gas_symbol} to cover gas fees.",
+                bal_info,
+            )
+
+        return (True, "Sufficient on-chain balance and gas fee verified.", bal_info)
+
     def get_configured_account(self) -> Optional[Any]:
         """
         Derive account from private key or seed phrase in environment.

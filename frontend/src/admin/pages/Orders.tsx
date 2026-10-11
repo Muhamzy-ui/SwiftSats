@@ -418,7 +418,7 @@ export const OrdersPage: React.FC = () => {
                       {orderDetail.payout_error}
                     </p>
                     <span className="text-[10px] text-slate-500 dark:text-slate-400 block pt-0.5">
-                      This error was reported by Quidax/Blockchain engine. Review Quidax float balance or wallet format.
+                      This error was reported by the Blockchain engine. Review platform hot wallet balance and network gas.
                     </span>
                   </div>
                 )}
@@ -520,7 +520,14 @@ export const OrdersPage: React.FC = () => {
                           />
                           <button
                             type="button"
-                            onClick={() => handleReleaseOrder(orderDetail.order_reference, manualTxHash.trim() || `MANUAL-${Date.now()}`)}
+                            onClick={() => {
+                              const cleanHash = manualTxHash.trim();
+                              if (!cleanHash) {
+                                setActionNotice({ type: 'error', message: 'Please enter the real external blockchain transaction hash (TxHash).' });
+                                return;
+                              }
+                              handleReleaseOrder(orderDetail.order_reference, cleanHash);
+                            }}
                             disabled={isProcessingAction}
                             className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors whitespace-nowrap shadow-xs"
                           >
@@ -547,8 +554,8 @@ export const OrdersPage: React.FC = () => {
                       <span>{orderDetail.paystack_reference || '—'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Quidax Withdrawal ID:</span>
-                      <span>{orderDetail.quidax_payout_id || '—'}</span>
+                      <span className="text-slate-400">Blockchain Dispatch ID:</span>
+                      <span>{orderDetail.quidax_payout_id || orderDetail.tx_hash || '—'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-400">Blockchain Tx Hash:</span>

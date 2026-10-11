@@ -74,7 +74,7 @@ export const PaymentMonitorPage: React.FC = () => {
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-purple-50/20 dark:bg-purple-950/20 shadow-subtle relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800 dark:text-purple-300">3. Quidax Payout</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800 dark:text-purple-300">3. Blockchain Payout</span>
             <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
           </div>
           <span className="text-2xl font-black font-mono text-purple-900 dark:text-purple-200">{funnel.payout_processing ?? 0}</span>

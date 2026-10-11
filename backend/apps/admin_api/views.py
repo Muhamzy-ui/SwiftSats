@@ -29,7 +29,7 @@ from apps.orders.state_machine import OrderStateMachine
 from apps.orders.tasks import process_crypto_payout
 from apps.audit.models import AuditLog
 from apps.accounts.models import AdminUser
-from apps.exchange.client import QuidaxClient
+from apps.exchange.hotwallet import HotWalletService
 from apps.exchange.payout import PayoutService
 from apps.payments.client import PaystackClient
 from core.constants import OrderStatus, SupportedCoin, AuditActor, COIN_METADATA
@@ -545,7 +545,6 @@ class AdminSettingsHealthView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        quidax_key_configured = bool(getattr(settings, "QUIDAX_API_KEY", ""))
         paystack_key_configured = bool(getattr(settings, "PAYSTACK_SECRET_KEY", ""))
 
         # Check DB connectivity and measure actual latency
@@ -570,10 +569,22 @@ class AdminSettingsHealthView(APIView):
             cache_healthy = False
             cache_latency = 0
 
-        # Gateway network latencies
-        quidax_latency = 45 if quidax_key_configured else 12
-        paystack_latency = 35 if paystack_key_configured else 15
+        # Decentralized BNB Smart Chain RPC Web3 ping
+        t_bsc = time.perf_counter()
+        bsc_healthy = True
+        try:
+            hw = HotWalletService()
+            if hw.w3 and hw.w3.is_connected():
+                hw.w3.eth.block_number
+                bsc_latency = max(5, int((time.perf_counter() - t_bsc) * 1000))
+            else:
+                bsc_healthy = False
+                bsc_latency = 0
+        except Exception:
+            bsc_healthy = False
+            bsc_latency = 0
 
+        paystack_latency = 35 if paystack_key_configured else 15
         db_engine_name = "PostgreSQL Cluster" if "postgres" in settings.DATABASES["default"]["ENGINE"] else "SQLite Engine"
 
         # Admin count
@@ -586,10 +597,10 @@ class AdminSettingsHealthView(APIView):
             "success": True,
             "services": [
                 {
-                    "name": "Quidax Crypto Gateway",
-                    "status": "healthy",
-                    "latency_ms": quidax_latency,
-                    "mode": "Live API" if quidax_key_configured else "Sandbox Simulated",
+                    "name": "BNB Smart Chain (BEP-20 Web3 RPC)",
+                    "status": "healthy" if bsc_healthy else "degraded",
+                    "latency_ms": bsc_latency,
+                    "mode": "Decentralized Mainnet RPC",
                     "last_check": timezone.now().isoformat(),
                 },
                 {
@@ -628,7 +639,7 @@ class AdminPayoutModeSettingsView(APIView):
     GET /api/v1/admin/settings/payout-mode/
     POST /api/v1/admin/settings/payout-mode/
     Allows admin to toggle between 24/7 AUTOMATED and MANUAL approval,
-    and update the Nomba settlement bank account.
+    set platform hot wallet address, and update Nomba settlement bank account.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -638,6 +649,7 @@ class AdminPayoutModeSettingsView(APIView):
         return Response({
             "success": True,
             "payout_mode": settings_obj.payout_mode,
+            "hot_wallet_address": settings_obj.hot_wallet_address or os.getenv("HOT_WALLET_ADDRESS", ""),
             "use_paystack_virtual_accounts": getattr(settings_obj, "use_paystack_virtual_accounts", False),
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_name": settings_obj.settlement_account_name,
@@ -650,6 +662,7 @@ class AdminPayoutModeSettingsView(APIView):
     def post(self, request):
         settings_obj = PlatformSettings.get_settings()
         payout_mode = request.data.get("payout_mode")
+        hot_wallet_address = request.data.get("hot_wallet_address")
         use_paystack = request.data.get("use_paystack_virtual_accounts")
         bank_name = request.data.get("settlement_bank_name")
         account_name = request.data.get("settlement_account_name")
@@ -660,6 +673,9 @@ class AdminPayoutModeSettingsView(APIView):
 
         if payout_mode in [PlatformSettings.PayoutMode.AUTOMATED, PlatformSettings.PayoutMode.MANUAL]:
             settings_obj.payout_mode = payout_mode
+
+        if hot_wallet_address is not None:
+            settings_obj.hot_wallet_address = str(hot_wallet_address).strip()
 
         if use_paystack is not None:
             settings_obj.use_paystack_virtual_accounts = bool(use_paystack)
@@ -682,17 +698,18 @@ class AdminPayoutModeSettingsView(APIView):
         send_telegram_alert(
             f"⚙️ <b>PLATFORM SETTINGS UPDATED</b>\n"
             f"<b>Payout Mode:</b> {settings_obj.payout_mode}\n"
+            f"<b>Platform Hot Wallet:</b> <code>{settings_obj.hot_wallet_address or 'Default'}</code>\n"
             f"<b>Settlement Bank:</b> {settings_obj.settlement_bank_name}\n"
             f"<b>Settlement Acct:</b> {settings_obj.settlement_account_number}\n"
             f"<b>Telegram Alerts:</b> {'Active ✅' if settings_obj.telegram_alerts_enabled else 'Disabled ❌'}\n"
             f"<b>Updated by:</b> {request.user.email}"
         )
 
-
         return Response({
             "success": True,
             "message": "Settings updated successfully.",
             "payout_mode": settings_obj.payout_mode,
+            "hot_wallet_address": settings_obj.hot_wallet_address,
             "use_paystack_virtual_accounts": settings_obj.use_paystack_virtual_accounts,
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_number": settings_obj.settlement_account_number,
@@ -700,6 +717,35 @@ class AdminPayoutModeSettingsView(APIView):
             "telegram_alerts_enabled": settings_obj.telegram_alerts_enabled,
             "telegram_bot_token": settings_obj.telegram_bot_token,
             "telegram_admin_chat_id": settings_obj.telegram_admin_chat_id,
+        })
+
+
+class AdminHotWalletBalanceView(APIView):
+    """
+    GET /api/v1/admin/settings/hot-wallet-balance/
+    Live on-chain balance query for the platform hot wallet.
+    Verifies USDT (BEP-20) float and native gas (BNB) availability.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        hw = HotWalletService()
+        coin = request.query_params.get("coin", "USDT_BEP20")
+        custom_address = request.query_params.get("address", None)
+        bal_info = hw.get_wallet_balance(coin=coin, address=custom_address)
+        account = hw.get_configured_account()
+
+        return Response({
+            "success": True,
+            "wallet_address": bal_info.get("wallet_address", ""),
+            "token_balance": str(bal_info.get("token_balance", "0")),
+            "gas_balance": str(bal_info.get("gas_balance", "0")),
+            "gas_symbol": bal_info.get("gas_symbol", "BNB"),
+            "has_gas": bal_info.get("has_gas", False),
+            "is_configured": bal_info.get("is_configured", False),
+            "has_private_key": bool(account),
+            "coin": coin,
+            "network": "BNB Smart Chain (BEP-20)",
         })
 
 
@@ -730,9 +776,9 @@ class AdminTestTelegramAlertView(APIView):
 class AdminManualOrderReleaseView(APIView):
     """
     POST /api/v1/admin/orders/<str:order_reference>/release/
-    Allows admin to 1-tap approve and release cryptocurrency to customer wallet.
-    Safely captures Quidax errors (e.g. insufficient float) and only writes COMPLETED
-    when blockchain broadcast is verified.
+    Allows admin to release cryptocurrency to customer wallet.
+    Strictly verifies on-chain hot wallet balance and gas fee before release.
+    NEVER writes COMPLETED if there are insufficient funds in the platform hot wallet.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -744,13 +790,15 @@ class AdminManualOrderReleaseView(APIView):
         if order.status == OrderStatus.COMPLETED:
             return Response({"error": "Order is already completed"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. Manual Dispatch / 1-Tap Manual Approval Mode
-        platform_settings = PlatformSettings.get_settings()
         manual_tx_hash = (request.data.get("tx_hash") or "").strip()
-        is_manual_mode = platform_settings.payout_mode == PlatformSettings.PayoutMode.MANUAL
+        is_genuine_tx = bool(
+            manual_tx_hash
+            and not manual_tx_hash.upper().startswith("MANUAL-")
+            and len(manual_tx_hash) >= 16
+        )
 
-        if manual_tx_hash or is_manual_mode:
-            actual_tx = manual_tx_hash or f"MANUAL-{timezone.now().strftime('%Y%m%d%H%M%S')}"
+        # 1. If admin physically dispatched externally and provided a genuine blockchain TxHash:
+        if is_genuine_tx:
             if order.status == OrderStatus.FAILED:
                 OrderStateMachine.transition_to(
                     order=order,
@@ -770,28 +818,70 @@ class AdminManualOrderReleaseView(APIView):
                 target_state=OrderStatus.COMPLETED,
                 actor=AuditActor.ADMIN,
                 actor_id=str(request.user.id),
-                tx_hash=actual_tx,
-                payout_tx_hash=actual_tx,
+                tx_hash=manual_tx_hash,
+                payout_tx_hash=manual_tx_hash,
                 completed_at=timezone.now(),
+            )
+            admin_email = getattr(request.user, "email", "admin")
+            send_telegram_alert(
+                f"✅ <b>MANUAL CRYPTO RELEASE CONFIRMED!</b>\n"
+                f"<b>Order:</b> {order.order_reference}\n"
+                f"<b>Delivered:</b> {order.crypto_amount} {order.coin}\n"
+                f"<b>Wallet:</b> <code>{order.masked_wallet_address}</code>\n"
+                f"<b>TxHash:</b> <code>{manual_tx_hash}</code>\n"
+                f"<b>Released by:</b> {html.escape(str(admin_email))}"
             )
             return Response({
                 "success": True,
-                "message": f"Order successfully approved and completed ({actual_tx})",
+                "message": f"Order successfully completed with blockchain TxHash ({manual_tx_hash[:18]}...)",
                 "order_reference": order.order_reference,
-                "tx_hash": actual_tx,
+                "tx_hash": manual_tx_hash,
                 "status": "COMPLETED",
             })
 
-        start_time = timezone.now()
-        if order.status == OrderStatus.FAILED:
-            OrderStateMachine.transition_to(
-                order=order,
-                target_state=OrderStatus.PAYOUT_PROCESSING,
-                actor=AuditActor.ADMIN,
-                actor_id=str(request.user.id),
+        # 2. 1-Tap "Approve & Release Crypto":
+        # MANDATORY ON-CHAIN PRE-FLIGHT BALANCE CHECK!
+        from apps.exchange.hotwallet import HotWalletService
+        hot_wallet = HotWalletService()
+
+        is_sufficient, reason, bal_info = hot_wallet.check_sufficient_funds(
+            coin=order.coin,
+            required_amount=order.crypto_amount,
+            destination_network=order.network,
+        )
+
+        if not is_sufficient:
+            # STOP! Refuse to write COMPLETED.
+            admin_email = getattr(request.user, "email", "admin")
+            send_telegram_alert(
+                f"⚠️ <b>CRYPTO RELEASE REJECTED: INSUFFICIENT FUNDS</b>\n"
+                f"<b>Order:</b> {order.order_reference}\n"
+                f"<b>Required:</b> {order.crypto_amount} {order.coin}\n"
+                f"<b>Wallet:</b> <code>{bal_info.get('wallet_address', 'Unset')}</code>\n"
+                f"<b>Available:</b> {bal_info.get('token_balance', 0)} {order.coin}\n"
+                f"<b>Gas:</b> {bal_info.get('gas_balance', 0)} {bal_info.get('gas_symbol', 'BNB')}\n"
+                f"<i>Release blocked. Please deposit crypto to the platform hot wallet before releasing.</i>"
             )
-        elif order.status != OrderStatus.PAYOUT_PROCESSING:
-            if order.status != OrderStatus.PAYMENT_CONFIRMED:
+            return Response({
+                "success": False,
+                "error": reason,
+                "order_reference": order.order_reference,
+                "status": order.status,
+                "balance_info": {
+                    "wallet_address": bal_info.get("wallet_address", ""),
+                    "token_balance": str(bal_info.get("token_balance", "0")),
+                    "gas_balance": str(bal_info.get("gas_balance", "0")),
+                    "gas_symbol": bal_info.get("gas_symbol", "BNB"),
+                },
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Funds ARE sufficient in platform wallet!
+        # Check if automated hot wallet account/private key is loaded in backend:
+        account = hot_wallet.get_configured_account()
+        if account:
+            # Automated blockchain dispatch
+            start_time = timezone.now()
+            if order.status not in [OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PAYOUT_PROCESSING]:
                 OrderStateMachine.transition_to(
                     order=order,
                     target_state=OrderStatus.PAYMENT_CONFIRMED,
@@ -805,143 +895,83 @@ class AdminManualOrderReleaseView(APIView):
                 actor_id=str(request.user.id),
             )
 
-        payout_service = PayoutService()
-        try:
-            payout_result = payout_service.execute_payout(
-                coin=order.coin,
-                amount=order.crypto_amount,
+            dispatch_res = hot_wallet.send_usdt_bep20(
                 destination_address=order.wallet_address,
+                amount_usdt=order.crypto_amount,
                 order_reference=order.order_reference,
             )
-        except Exception as exc:
-            raw_err = str(exc)
-            clean_err = raw_err
-            if "140017" in raw_err or "disabled for you" in raw_err.lower():
-                clean_err = "Quidax API: Crypto withdrawals are currently disabled on your Quidax exchange account (requires 2FA or Tier-2 clearance on Quidax). Please use the 'Manual Dispatch / TxHash' button to dispatch directly, or enable API withdrawals in Quidax."
-            elif "insufficient" in raw_err.lower() or "balance" in raw_err.lower():
-                clean_err = f"Quidax API: Insufficient float balance in Quidax wallet for {order.coin}. Please use 'Manual Dispatch / TxHash' to mark completed, or deposit funds to Quidax."
 
-            logger.error("Manual payout failed for %s: %s", order.order_reference, raw_err)
-            try:
+            if dispatch_res.get("success"):
+                tx_hash = dispatch_res.get("tx_hash", "")
+                end_time = timezone.now()
+                speed_ms = int((end_time - start_time).total_seconds() * 1000)
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.COMPLETED,
+                    actor=AuditActor.ADMIN,
+                    actor_id=str(request.user.id),
+                    tx_hash=tx_hash,
+                    payout_tx_hash=tx_hash,
+                    completed_at=end_time,
+                    speed_metric_ms=speed_ms,
+                )
+                admin_email = getattr(request.user, "email", "admin")
+                send_telegram_alert(
+                    f"🎉 <b>ON-CHAIN PAYOUT BROADCAST CONFIRMED!</b>\n"
+                    f"<b>Order:</b> {order.order_reference}\n"
+                    f"<b>Delivered:</b> {order.crypto_amount} {order.coin}\n"
+                    f"<b>Recipient:</b> <code>{order.masked_wallet_address}</code>\n"
+                    f"<b>TxHash:</b> <code>{tx_hash}</code>\n"
+                    f"<b>Explorer:</b> {dispatch_res.get('explorer_url', '')}\n"
+                    f"<b>Approved by:</b> {html.escape(str(admin_email))}"
+                )
+                return Response({
+                    "success": True,
+                    "message": "Crypto successfully broadcast on blockchain and delivered!",
+                    "order_reference": order.order_reference,
+                    "tx_hash": tx_hash,
+                    "status": "COMPLETED",
+                })
+            else:
+                err_msg = dispatch_res.get("message") or dispatch_res.get("error") or "Blockchain broadcast error"
                 OrderStateMachine.transition_to(
                     order=order,
                     target_state=OrderStatus.FAILED,
                     actor=AuditActor.ADMIN,
                     actor_id=str(request.user.id),
-                    payout_error=clean_err,
+                    payout_error=err_msg,
                 )
-            except Exception as trans_err:
-                logger.warning("Order state transition to FAILED failed: %s", trans_err)
+                return Response({
+                    "success": False,
+                    "error": err_msg,
+                    "order_reference": order.order_reference,
+                    "status": "FAILED",
+                }, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                admin_email = getattr(request.user, "email", "admin")
-                send_telegram_alert(
-                    f"❌ <b>MANUAL PAYOUT FAILED</b>\n"
-                    f"<b>Order:</b> {order.order_reference}\n"
-                    f"<b>Error:</b> <code>{html.escape(clean_err[:200])}</code>\n"
-                    f"<b>Attempted by:</b> {html.escape(str(admin_email))}"
-                )
-            except Exception as tel_err:
-                logger.warning("Telegram alert failed: %s", tel_err)
-
-            return Response({
-                "success": False,
-                "error": clean_err,
-                "order_reference": order.order_reference,
-                "status": "FAILED",
-                "payout_error": clean_err,
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        payout_id = str(payout_result.get("id") or payout_result.get("payout_id") or "")
-        tx_hash = payout_result.get("transaction_hash") or payout_result.get("tx_hash") or ""
-        payout_status = (payout_result.get("status") or "").lower()
-        swap_id = payout_result.get("swap_id") or ""
-
-        order.quidax_payout_id = payout_id
-        if swap_id:
-            order.quidax_swap_id = swap_id
-        if tx_hash:
-            order.tx_hash = tx_hash
-        order.save(update_fields=["quidax_payout_id", "quidax_swap_id", "tx_hash"])
-
-        # Poll exchange up to 3 times to get blockchain tx_hash if client is live
-        if not tx_hash and payout_id and payout_service.client and getattr(payout_service.client, "is_live", False):
-            for _ in range(3):
-                time.sleep(2)
-                status_data = payout_service.client.get_withdrawal_status(payout_id)
-                tx_hash = status_data.get("transaction_hash") or status_data.get("txid") or ""
-                payout_status = (status_data.get("status") or payout_status).lower()
-                if tx_hash or payout_status in ["done", "completed", "rejected", "cancelled"]:
-                    break
-
-        if not tx_hash and payout_status == "awaiting_manual_approval":
-            tx_hash = f"MANUAL-{timezone.now().strftime('%Y%m%d%H%M%S')}"
-            payout_status = "completed"
-
-        end_time = timezone.now()
-        speed_ms = int((end_time - start_time).total_seconds() * 1000)
-
-        # Only transition to COMPLETED if on-chain tx_hash is confirmed
-        if tx_hash or payout_status in ["done", "completed"]:
-            OrderStateMachine.transition_to(
-                order=order,
-                target_state=OrderStatus.COMPLETED,
-                actor=AuditActor.ADMIN,
-                actor_id=str(request.user.id),
-                tx_hash=tx_hash,
-                payout_tx_hash=tx_hash,
-                quidax_payout_id=payout_id,
-                quidax_swap_id=swap_id,
-                completed_at=end_time,
-                speed_metric_ms=speed_ms,
-            )
-            send_telegram_alert(
-                f"✅ <b>MANUAL PAYOUT APPROVED & CONFIRMED!</b>\n"
-                f"<b>Order:</b> {order.order_reference}\n"
-                f"<b>Delivered:</b> {order.crypto_amount} {order.coin}\n"
-                f"<b>Wallet:</b> <code>{order.masked_wallet_address}</code>\n"
-                f"<b>TxHash:</b> <code>{tx_hash[:18]}...</code>\n"
-                f"<b>Approved by:</b> {request.user.email}"
-            )
-            return Response({
-                "success": True,
-                "message": "Crypto successfully confirmed and delivered to customer wallet.",
-                "order_reference": order.order_reference,
-                "tx_hash": tx_hash,
-                "status": "COMPLETED",
-            })
-        elif payout_status in ["rejected", "cancelled", "failed"]:
-            err_msg = f"Quidax withdrawal {payout_status} by exchange."
-            OrderStateMachine.transition_to(
-                order=order,
-                target_state=OrderStatus.FAILED,
-                actor=AuditActor.ADMIN,
-                actor_id=str(request.user.id),
-                payout_error=err_msg,
-            )
-            return Response({
-                "success": False,
-                "error": err_msg,
-                "order_reference": order.order_reference,
-                "status": "FAILED",
-                "payout_error": err_msg,
-            }, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            # Remains in PAYOUT_PROCESSING
-            return Response({
-                "success": True,
-                "message": "Withdrawal submitted to Quidax. Payout is currently broadcasting on the blockchain.",
-                "order_reference": order.order_reference,
-                "status": "PAYOUT_PROCESSING",
-                "quidax_payout_id": payout_id,
-            })
+        # Sufficient funds exist on-chain, but automated private key is not configured in backend:
+        return Response({
+            "success": False,
+            "error": (
+                f"Platform hot wallet ({bal_info.get('wallet_address')}) has verified funds "
+                f"({bal_info.get('token_balance')} {order.coin}), but automated private key "
+                f"(HOT_WALLET_PRIVATE_KEY) is not loaded in backend environment. "
+                f"Please transfer from your wallet app and paste the transaction hash (TxHash) under 'Manual Dispatch / TxHash'."
+            ),
+            "order_reference": order.order_reference,
+            "status": order.status,
+            "balance_info": {
+                "wallet_address": bal_info.get("wallet_address", ""),
+                "token_balance": str(bal_info.get("token_balance", "0")),
+                "gas_balance": str(bal_info.get("gas_balance", "0")),
+                "gas_symbol": bal_info.get("gas_symbol", "BNB"),
+            },
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdminVerifyOrderPayoutView(APIView):
     """
     POST /api/v1/admin/orders/<str:order_reference>/verify/
-    Directly queries Quidax to verify whether the withdrawal has landed on-chain.
-    Updates order to COMPLETED once tx_hash is confirmed.
+    Verifies on-chain transaction receipt for the order via BNB Smart Chain RPC.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -950,62 +980,53 @@ class AdminVerifyOrderPayoutView(APIView):
         if not order:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if not order.quidax_payout_id:
+        tx_hash = order.tx_hash or order.payout_tx_hash
+        if not tx_hash or tx_hash.startswith("MANUAL-"):
             return Response({
                 "success": False,
-                "message": "No Quidax payout ID on this order. Withdrawal has not yet been initiated.",
+                "message": "No valid blockchain transaction hash recorded on this order yet.",
                 "status": order.status,
-                "payout_error": order.payout_error,
-            })
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        payout_service = PayoutService()
-        status_data = payout_service.client.get_withdrawal_status(order.quidax_payout_id)
-        payout_status = (status_data.get("status") or "").lower()
-        tx_hash = status_data.get("transaction_hash") or status_data.get("txid") or ""
+        from apps.exchange.hotwallet import HotWalletService
+        hw = HotWalletService()
+        if hw.w3 and hw.w3.is_connected() and tx_hash.startswith("0x") and len(tx_hash) == 66:
+            try:
+                receipt = hw.w3.eth.get_transaction_receipt(tx_hash)
+                if receipt:
+                    is_ok = receipt.get("status") == 1
+                    if is_ok:
+                        if order.status != OrderStatus.COMPLETED:
+                            OrderStateMachine.transition_to(
+                                order=order,
+                                target_state=OrderStatus.COMPLETED,
+                                actor=AuditActor.ADMIN,
+                                actor_id=str(request.user.id),
+                                tx_hash=tx_hash,
+                                completed_at=timezone.now(),
+                            )
+                        return Response({
+                            "success": True,
+                            "status": "COMPLETED",
+                            "tx_hash": tx_hash,
+                            "message": "Blockchain transaction confirmed on BNB Smart Chain!",
+                            "block_number": receipt.get("blockNumber"),
+                        })
+                    else:
+                        return Response({
+                            "success": False,
+                            "status": "FAILED",
+                            "message": "Blockchain transaction reverted on BNB Smart Chain.",
+                        })
+            except Exception as e:
+                logger.info("RPC receipt check: %s", e)
 
-        if tx_hash:
-            order.tx_hash = tx_hash
-            order.save(update_fields=["tx_hash"])
-
-        if (tx_hash or payout_status in ["done", "completed"]) and order.status != OrderStatus.COMPLETED:
-            OrderStateMachine.transition_to(
-                order=order,
-                target_state=OrderStatus.COMPLETED,
-                actor=AuditActor.ADMIN,
-                actor_id=str(request.user.id),
-                tx_hash=tx_hash,
-                completed_at=timezone.now(),
-            )
-            return Response({
-                "success": True,
-                "status": "COMPLETED",
-                "tx_hash": tx_hash,
-                "message": "Withdrawal verified! Crypto confirmed on blockchain.",
-            })
-        elif payout_status in ["rejected", "cancelled", "failed"]:
-            err_msg = f"Quidax reports withdrawal {payout_status}."
-            if order.status != OrderStatus.FAILED:
-                OrderStateMachine.transition_to(
-                    order=order,
-                    target_state=OrderStatus.FAILED,
-                    actor=AuditActor.ADMIN,
-                    actor_id=str(request.user.id),
-                    payout_error=err_msg,
-                )
-            return Response({
-                "success": False,
-                "status": "FAILED",
-                "payout_error": err_msg,
-                "message": err_msg,
-            })
-        else:
-            return Response({
-                "success": True,
-                "status": order.status,
-                "quidax_status": payout_status or "broadcasting",
-                "tx_hash": tx_hash or order.tx_hash,
-                "message": f"Withdrawal is still processing on exchange. Status: {payout_status or 'broadcasting'}",
-            })
+        return Response({
+            "success": True,
+            "status": order.status,
+            "tx_hash": tx_hash,
+            "message": f"Transaction recorded: {tx_hash}. Track on explorer: https://bscscan.com/tx/{tx_hash}",
+        })
 
 
 

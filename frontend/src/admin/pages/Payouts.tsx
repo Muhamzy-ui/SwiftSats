@@ -33,7 +33,7 @@ export const PayoutsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Quidax Payouts Ledger</h1>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Blockchain Payouts Ledger</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Automated blockchain withdrawal dispatches and explorer transaction hashes</p>
         </div>
 
