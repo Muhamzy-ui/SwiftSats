@@ -85,6 +85,23 @@ export async function request<T>(
     const errorData = data?.error || {};
     let message = errorData.message || data?.detail;
 
+    // If message is generic "Request validation failed" but errorData.details contains field breakdown
+    if ((!message || message === 'Request validation failed') && errorData.details && typeof errorData.details === 'object') {
+      const fieldList: string[] = [];
+      for (const [field, errs] of Object.entries(errorData.details)) {
+        const cleanField = field.replace(/_/g, ' ');
+        const capField = cleanField.charAt(0).toUpperCase() + cleanField.slice(1);
+        if (Array.isArray(errs) && errs.length > 0) {
+          fieldList.push(`${capField}: ${errs[0]}`);
+        } else if (typeof errs === 'string') {
+          fieldList.push(`${capField}: ${errs}`);
+        }
+      }
+      if (fieldList.length > 0) {
+        message = fieldList.join('; ');
+      }
+    }
+
     if (!message && typeof data === 'object' && data !== null) {
       const keys = Object.keys(data);
       if (keys.length > 0) {

@@ -17,6 +17,7 @@ function syncThemeToDOM(t: Theme) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
   const body = document.body;
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
 
   if (t === 'dark') {
     root.classList.add('dark');
@@ -25,12 +26,18 @@ function syncThemeToDOM(t: Theme) {
     if (body) {
       body.classList.add('dark');
     }
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', '#07080d');
+    }
   } else {
     root.classList.remove('dark');
     root.setAttribute('data-theme', 'light');
     root.style.colorScheme = 'light';
     if (body) {
       body.classList.remove('dark');
+    }
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute('content', '#f8fafc');
     }
   }
 }

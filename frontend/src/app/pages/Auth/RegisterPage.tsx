@@ -27,8 +27,15 @@ export const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim() || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
       setError('Please provide your email and a password.');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(cleanEmail)) {
+      setError('Please enter a complete, valid email address (e.g. name@gmail.com).');
       return;
     }
 
@@ -47,7 +54,7 @@ export const RegisterPage: React.FC = () => {
 
     try {
       await register({
-        email: email.trim(),
+        email: cleanEmail,
         password,
         full_name: fullName.trim(),
         phone: phone.trim(),
@@ -61,7 +68,7 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-8 animate-in fade-in duration-200">
+    <div className="min-h-[75vh] flex items-center justify-center px-4 pt-4 pb-8 sm:py-8 animate-in fade-in duration-200">
       <div className="w-full max-w-md space-y-6">
         {/* Header Branding */}
         <div className="text-center space-y-2">

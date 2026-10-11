@@ -15,7 +15,7 @@ export const AppRoutes: React.FC = () => {
   const { theme } = useTheme();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc] dark:bg-[#07080d] text-slate-900 dark:text-slate-100 relative overflow-hidden font-sans select-none transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-[#f8fafc] dark:bg-[#07080d] text-slate-900 dark:text-slate-100 relative overflow-x-clip font-sans select-none transition-colors duration-200">
       {/* Floating Ambient Glow Orbs - Only rendered in Dark Mode */}
       {theme === 'dark' && (
         <>

@@ -101,8 +101,21 @@ def custom_exception_handler(exc: Exception, context: Dict[str, Any]) -> Optiona
 
         # Determine human message
         message = "Request validation failed"
-        if isinstance(response.data, dict) and "detail" in response.data:
-            message = str(response.data["detail"])
+        if isinstance(response.data, dict):
+            if "detail" in response.data:
+                message = str(response.data["detail"])
+            elif "message" in response.data:
+                message = str(response.data["message"])
+            else:
+                field_messages = []
+                for field_name, field_errs in response.data.items():
+                    name_clean = field_name.replace("_", " ").capitalize()
+                    if isinstance(field_errs, list) and field_errs:
+                        field_messages.append(f"{name_clean}: {field_errs[0]}")
+                    elif isinstance(field_errs, str):
+                        field_messages.append(f"{name_clean}: {field_errs}")
+                if field_messages:
+                    message = "; ".join(field_messages)
         elif isinstance(response.data, list) and response.data:
             message = str(response.data[0])
 
