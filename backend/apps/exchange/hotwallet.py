@@ -99,7 +99,7 @@ class HotWalletService:
             return env_addr
 
         # Fallback to primary vault address if defined
-        return "0x71C836E522f5b8fbe40D34341A5A507e78e1215B"
+        return "0x36b25000587762425F2682d721A57eD7d74671F0"
 
     def get_wallet_balance(self, coin: str = "USDT_BEP20", address: Optional[str] = None) -> Dict[str, Any]:
         """

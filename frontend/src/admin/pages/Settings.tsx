@@ -11,7 +11,7 @@ export const SettingsPage: React.FC = () => {
   const [isPurging, setIsPurging] = useState(false);
 
   // Platform Hot Wallet & On-Chain Float
-  const [hotWalletAddress, setHotWalletAddress] = useState('');
+  const [hotWalletAddress, setHotWalletAddress] = useState('0x36b25000587762425F2682d721A57eD7d74671F0');
   const [isSavingWallet, setIsSavingWallet] = useState(false);
   const [walletStatusMsg, setWalletStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [walletBalance, setWalletBalance] = useState<{
@@ -64,16 +64,13 @@ export const SettingsPage: React.FC = () => {
         setTelegramEnabled(s.telegram_alerts_enabled);
         setBotToken(s.telegram_bot_token || '');
         setChatId(s.telegram_admin_chat_id || '');
-        if (s.hot_wallet_address) {
-          setHotWalletAddress(s.hot_wallet_address);
-          fetchWalletBalance(s.hot_wallet_address);
-        } else {
-          fetchWalletBalance();
-        }
+        const targetAddr = s.hot_wallet_address || '0x36b25000587762425F2682d721A57eD7d74671F0';
+        setHotWalletAddress(targetAddr);
+        fetchWalletBalance(targetAddr);
       }
     } catch (e) {
       console.warn('Could not load platform settings', e);
-      fetchWalletBalance();
+      fetchWalletBalance('0x36b25000587762425F2682d721A57eD7d74671F0');
     }
   };
 
@@ -400,7 +397,7 @@ export const SettingsPage: React.FC = () => {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="e.g. 0x71C836E522f5b8fbe40D34341A5A507e78e1215B"
+              placeholder="e.g. 0x36b25000587762425F2682d721A57eD7d74671F0"
               value={hotWalletAddress}
               onChange={(e) => setHotWalletAddress(e.target.value)}
               className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"

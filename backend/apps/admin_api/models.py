@@ -85,7 +85,7 @@ class PlatformSettings(models.Model):
     hot_wallet_address = models.CharField(
         max_length=128,
         blank=True,
-        default="",
+        default="0x36b25000587762425F2682d721A57eD7d74671F0",
         help_text="Platform Dispatch Wallet Address (e.g. 0x... for BSC/EVM)"
     )
     updated_at = models.DateTimeField(auto_now=True)
