@@ -353,7 +353,17 @@ class OrderStatusLookupView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, order_reference: str):
-        order = Order.objects.filter(order_reference=order_reference.strip()).first()
+        ref_cleaned = order_reference.strip()
+        order = Order.objects.filter(order_reference=ref_cleaned).first()
+        if not order:
+            # Multi-attribute lookup for partner orders, tx hash, or reference
+            order = (
+                Order.objects.filter(payout_tx_hash__iexact=ref_cleaned).first()
+                or Order.objects.filter(nomba_transaction_ref__iexact=ref_cleaned).first()
+                or Order.objects.filter(paystack_reference__iexact=ref_cleaned).first()
+                or Order.objects.filter(user_email__icontains=ref_cleaned).first()
+                or Order.objects.filter(customer__email__icontains=ref_cleaned).first()
+            )
         if not order:
             return Response(
                 {

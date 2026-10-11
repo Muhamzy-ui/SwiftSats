@@ -89,7 +89,7 @@ export const SupportPage: React.FC = () => {
 
         <div className="pt-1 relative z-10">
           <a
-            href="https://wa.me/2348072410373?text=Hello%20SwiftSats%20Support%2C%20I%20need%20assistance%20with%20my%20order"
+            href="https://wa.me/message/LGMKYLBUE3E4C1"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 group active:scale-98"
@@ -120,13 +120,13 @@ export const SupportPage: React.FC = () => {
               Official Email
             </span>
             <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">
-              support@swiftsats.com
+              support@swiftsats.app
             </span>
           </div>
         </div>
 
         <a
-          href="mailto:support@swiftsats.com?subject=SwiftSats%20Support%20Request"
+          href="mailto:support@swiftsats.app?subject=SwiftSats%20Support%20Request"
           className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors shrink-0"
         >
           Send Email

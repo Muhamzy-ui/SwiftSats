@@ -23,7 +23,7 @@ export const Footer: React.FC = () => {
             Help Center
           </Link>
           <a
-            href="https://wa.me/2348072410373?text=Hello%20SwiftSats%20Support%2C%20I%20need%20assistance"
+            href="https://wa.me/message/LGMKYLBUE3E4C1"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 font-bold text-emerald-600 dark:text-[#00e676] hover:underline bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-500/30"

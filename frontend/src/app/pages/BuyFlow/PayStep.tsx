@@ -261,8 +261,8 @@ export const PayStep: React.FC<PayStepProps> = ({
     if (!effectiveReturn) return null;
 
     const cleanCoin = currentOrder.coin.split('_')[0];
-    const targetOrderId = partnerOrderId || orderRef;
-    const params = `payment=success&orderId=${encodeURIComponent(targetOrderId)}&order_id=${encodeURIComponent(targetOrderId)}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
+    const swiftsatsRef = currentOrder.order_reference || orderRef;
+    const params = `payment=success&orderId=${encodeURIComponent(swiftsatsRef)}&order_id=${encodeURIComponent(swiftsatsRef)}&reference=${encodeURIComponent(swiftsatsRef)}&swiftsats_order_id=${encodeURIComponent(swiftsatsRef)}&partner_order_id=${encodeURIComponent(partnerOrderId || '')}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
 
     if (effectiveReturn.includes('#')) {
       const [base, hash] = effectiveReturn.split('#');

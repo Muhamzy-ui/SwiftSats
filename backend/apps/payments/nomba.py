@@ -48,6 +48,44 @@ def verify_nomba_signature(payload_bytes: bytes, signature_header: Optional[str]
     return False
 
 
+import threading
+import urllib.request
+
+
+def dispatch_partner_webhook(order, tx_hash=""):
+    """
+    Asynchronously notify partner websites (like Axiom Wallet) that an order has completed.
+    """
+    def _post():
+        try:
+            urls = ["https://www.axiomwallets.io/webhooks/swiftsats/"]
+            payload = json.dumps({
+                "order_id": order.order_reference,
+                "partner_user_id": getattr(order.customer, "email", "") or (order.user_email or ""),
+                "wallet_address": order.wallet_address,
+                "coin": order.coin,
+                "crypto_asset": order.coin,
+                "crypto_amount": str(order.crypto_amount),
+                "tx_hash": tx_hash or order.payout_tx_hash or f"SWIFTSATS-{order.order_reference}",
+            }).encode("utf-8")
+            for u in urls:
+                try:
+                    req = urllib.request.Request(
+                        u,
+                        data=payload,
+                        headers={"Content-Type": "application/json", "User-Agent": "SwiftSatsWebhookEngine/1.0"},
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=3.0) as resp:
+                        logger.info("Partner webhook dispatched to %s: status %s", u, resp.status)
+                except Exception as inner_e:
+                    logger.debug("Partner webhook dispatch non-fatal: %s", inner_e)
+        except Exception as e:
+            logger.debug("Failed dispatching partner webhook: %s", e)
+
+    threading.Thread(target=_post, daemon=True).start()
+
+
 class NombaWebhookView(APIView):
     """
     POST /api/v1/payments/webhook/nomba/
@@ -227,6 +265,8 @@ class NombaWebhookView(APIView):
                     completed_at=end_payout_time,
                     speed_metric_ms=speed_ms,
                 )
+
+                dispatch_partner_webhook(matching_order, tx_hash)
 
                 partner_str = f"\n<b>Source:</b> {matching_order.partner_code.upper()}" if matching_order.partner_code else ""
                 send_telegram_alert(
