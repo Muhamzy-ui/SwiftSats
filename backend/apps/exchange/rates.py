@@ -51,14 +51,15 @@ class RateService:
     def calculate_crypto_for_naira(
         self,
         coin: str,
-        fiat_amount_ngn: Decimal
+        fiat_amount_ngn: Decimal,
+        partner_code: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Compute how much crypto the user receives for a given Naira amount based on live rates.
         Pricing Rule:
-        - For >= $100 USD deposit: Flat $2.00 USD service fee (not percentage anymore).
-        - For <= $10 USD deposit: Flat $1.00 USD service fee.
-        - For $10 - $100 USD deposit: 5% service fee, capped at $2.00 USD max.
+        - SwiftSats Direct: For $2, $3, $4 deposits (approx_usd <= $4.50), flat ₦700 NGN fee.
+        - For >= $100 USD deposit: Flat $2.00 USD service fee.
+        - Standard / Partner integrations: Flat $1.00 USD service fee.
         """
         if coin not in COIN_METADATA:
             raise ValueError(f"Unsupported coin: {coin}")
@@ -75,9 +76,12 @@ class RateService:
         approx_usd = fiat_amount_ngn / usd_to_ngn_rate
 
         # Pricing rules:
-        # 1. From $100 USD upward: flat $2.00 USD service fee
-        # 2. Below $100 USD (including $10 - $100): flat $1.00 USD service fee
-        if approx_usd >= Decimal("100.0"):
+        if not partner_code and approx_usd <= Decimal("4.5"):
+            # Direct SwiftSats small order discount ($2, $3, $4)
+            service_fee_ngn = Decimal("700.00")
+            service_fee_usd = (Decimal("700.00") / usd_to_ngn_rate).quantize(Decimal("0.01"))
+            net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
+        elif approx_usd >= Decimal("100.0"):
             service_fee_usd = Decimal("2.00")
             service_fee_ngn = two_dollars_ngn
             net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)

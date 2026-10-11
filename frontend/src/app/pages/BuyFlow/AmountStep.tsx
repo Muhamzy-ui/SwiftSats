@@ -64,8 +64,13 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
-    const feeNgn = dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar);
-    const feeLabel = dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)';
+    const isSmallOrderDirect = !partnerCode && dollarAmount <= 4.5;
+    const feeNgn = isSmallOrderDirect
+      ? 700
+      : (dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar));
+    const feeLabel = isSmallOrderDirect
+      ? '(₦700 flat)'
+      : (dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)');
 
     if (isLockedAmount && initialAmount && parseFloat(initialAmount) >= 1000) {
       const totalNgnToPay = Math.round(parseFloat(initialAmount));

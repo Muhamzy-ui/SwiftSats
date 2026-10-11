@@ -97,9 +97,22 @@ class CreateQuoteView(APIView):
         coin = serializer.validated_data["coin"]
         amount_ngn = serializer.validated_data["amount_ngn"]
 
+        # Check partner attribution / integration
+        partner_param = (
+            request.data.get("partner_code")
+            or request.data.get("source")
+            or request.data.get("partner")
+            or request.data.get("ref")
+            or ""
+        ).strip().lower()
+
         # Calculate exact crypto amount and effective rate
         rate_service = RateService()
-        calc = rate_service.calculate_crypto_for_naira(coin=coin, fiat_amount_ngn=amount_ngn)
+        calc = rate_service.calculate_crypto_for_naira(
+            coin=coin,
+            fiat_amount_ngn=amount_ngn,
+            partner_code=partner_param or None,
+        )
 
         # Set quote expiration: 15 minutes
         now = timezone.now()
@@ -109,15 +122,6 @@ class CreateQuoteView(APIView):
         clean_fiat = Decimal(str(int(Decimal(str(amount_ngn)))))
         fiat_amount_expected = clean_fiat
         salt_kobo = 0
-
-        # Check partner attribution / integration
-        partner_param = (
-            request.data.get("partner_code")
-            or request.data.get("source")
-            or request.data.get("partner")
-            or request.data.get("ref")
-            or ""
-        ).strip().lower()
 
         partner_code_val = None
         if partner_param:
