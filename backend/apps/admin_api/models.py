@@ -89,6 +89,24 @@ class PlatformSettings(models.Model):
         default="",
         help_text="Platform Dispatch Wallet Address (e.g. 0x... for BSC/EVM)"
     )
+    hot_wallet_address_solana = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Platform Solana Dispatch Wallet Address"
+    )
+    hot_wallet_address_bitcoin = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Platform Bitcoin Dispatch Wallet Address"
+    )
+    hot_wallet_address_tron = models.CharField(
+        max_length=128,
+        blank=True,
+        default="",
+        help_text="Platform Tron Dispatch Wallet Address"
+    )
     hot_wallet_seed_phrase = models.CharField(
         max_length=512,
         blank=True,

@@ -645,11 +645,29 @@ class AdminPayoutModeSettingsView(APIView):
 
     def get(self, request):
         settings_obj = PlatformSettings.get_settings()
+        from apps.exchange.hotwallet import HotWalletService
         import os
+        hw = HotWalletService()
+        sol_addr = getattr(settings_obj, "hot_wallet_address_solana", "").strip() or hw.get_dispatch_address("SOL")
+        btc_addr = getattr(settings_obj, "hot_wallet_address_bitcoin", "").strip() or hw.get_dispatch_address("BTC")
+        tron_addr = getattr(settings_obj, "hot_wallet_address_tron", "").strip() or hw.get_dispatch_address("TRX")
+        bsp_addr = (settings_obj.hot_wallet_address or os.getenv("HOT_WALLET_ADDRESS", "")).strip() or hw.get_dispatch_address("USDT_BEP20")
+
         return Response({
             "success": True,
             "payout_mode": settings_obj.payout_mode,
-            "hot_wallet_address": settings_obj.hot_wallet_address or os.getenv("HOT_WALLET_ADDRESS", ""),
+            "hot_wallet_address": bsp_addr,
+            "hot_wallet_address_solana": sol_addr,
+            "hot_wallet_address_bitcoin": btc_addr,
+            "hot_wallet_address_tron": tron_addr,
+            "addresses_by_coin": {
+                "USDT_BEP20": bsp_addr,
+                "BNB": bsp_addr,
+                "SOL": sol_addr,
+                "BTC": btc_addr,
+                "USDT_TRC20": tron_addr,
+                "TRX": tron_addr,
+            },
             "use_paystack_virtual_accounts": getattr(settings_obj, "use_paystack_virtual_accounts", False),
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_name": settings_obj.settlement_account_name,
@@ -663,6 +681,7 @@ class AdminPayoutModeSettingsView(APIView):
         settings_obj = PlatformSettings.get_settings()
         payout_mode = request.data.get("payout_mode")
         hot_wallet_address = request.data.get("hot_wallet_address")
+        coin = str(request.data.get("coin", "")).upper()
         use_paystack = request.data.get("use_paystack_virtual_accounts")
         bank_name = request.data.get("settlement_bank_name")
         account_name = request.data.get("settlement_account_name")
@@ -675,7 +694,15 @@ class AdminPayoutModeSettingsView(APIView):
             settings_obj.payout_mode = payout_mode
 
         if hot_wallet_address is not None:
-            settings_obj.hot_wallet_address = str(hot_wallet_address).strip()
+            clean_addr = str(hot_wallet_address).strip()
+            if "SOL" in coin:
+                settings_obj.hot_wallet_address_solana = clean_addr
+            elif "BTC" in coin:
+                settings_obj.hot_wallet_address_bitcoin = clean_addr
+            elif "TRC" in coin or "TRX" in coin:
+                settings_obj.hot_wallet_address_tron = clean_addr
+            else:
+                settings_obj.hot_wallet_address = clean_addr
 
         if use_paystack is not None:
             settings_obj.use_paystack_virtual_accounts = bool(use_paystack)
@@ -698,18 +725,36 @@ class AdminPayoutModeSettingsView(APIView):
         send_telegram_alert(
             f"⚙️ <b>PLATFORM SETTINGS UPDATED</b>\n"
             f"<b>Payout Mode:</b> {settings_obj.payout_mode}\n"
-            f"<b>Platform Hot Wallet:</b> <code>{settings_obj.hot_wallet_address or 'Default'}</code>\n"
+            f"<b>Platform Hot Wallet ({coin or 'Default'}):</b> <code>{hot_wallet_address or settings_obj.hot_wallet_address or 'Default'}</code>\n"
             f"<b>Settlement Bank:</b> {settings_obj.settlement_bank_name}\n"
             f"<b>Settlement Acct:</b> {settings_obj.settlement_account_number}\n"
             f"<b>Telegram Alerts:</b> {'Active ✅' if settings_obj.telegram_alerts_enabled else 'Disabled ❌'}\n"
             f"<b>Updated by:</b> {request.user.email}"
         )
 
+        from apps.exchange.hotwallet import HotWalletService
+        hw = HotWalletService()
+        sol_addr = getattr(settings_obj, "hot_wallet_address_solana", "").strip() or hw.get_dispatch_address("SOL")
+        btc_addr = getattr(settings_obj, "hot_wallet_address_bitcoin", "").strip() or hw.get_dispatch_address("BTC")
+        tron_addr = getattr(settings_obj, "hot_wallet_address_tron", "").strip() or hw.get_dispatch_address("TRX")
+        bsp_addr = (settings_obj.hot_wallet_address or "").strip() or hw.get_dispatch_address("USDT_BEP20")
+
         return Response({
             "success": True,
             "message": "Settings updated successfully.",
             "payout_mode": settings_obj.payout_mode,
-            "hot_wallet_address": settings_obj.hot_wallet_address,
+            "hot_wallet_address": bsp_addr,
+            "hot_wallet_address_solana": sol_addr,
+            "hot_wallet_address_bitcoin": btc_addr,
+            "hot_wallet_address_tron": tron_addr,
+            "addresses_by_coin": {
+                "USDT_BEP20": bsp_addr,
+                "BNB": bsp_addr,
+                "SOL": sol_addr,
+                "BTC": btc_addr,
+                "USDT_TRC20": tron_addr,
+                "TRX": tron_addr,
+            },
             "use_paystack_virtual_accounts": settings_obj.use_paystack_virtual_accounts,
             "settlement_bank_name": settings_obj.settlement_bank_name,
             "settlement_account_number": settings_obj.settlement_account_number,

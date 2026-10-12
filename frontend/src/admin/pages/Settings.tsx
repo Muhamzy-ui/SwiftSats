@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, Wallet, Coins } from 'lucide-react';
+import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, Wallet, Coins, Copy, Check } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { SystemHealthData } from '../../shared/types';
 import { DevicePushManagerCard } from '../components/DevicePushManagerCard';
 
 const SUPPORTED_COINS = [
+  { id: 'SOL', label: 'Solana (SOL)', network: 'Solana Network', symbol: 'SOL' },
   { id: 'USDT_BEP20', label: 'USDT (BEP-20)', network: 'BNB Smart Chain', symbol: 'USDT' },
   { id: 'BNB', label: 'BNB (BEP-20)', network: 'BNB Smart Chain', symbol: 'BNB' },
-  { id: 'USDT_TRC20', label: 'USDT (TRC-20)', network: 'Tron Network', symbol: 'USDT' },
-  { id: 'SOL', label: 'Solana (SOL)', network: 'Solana Network', symbol: 'SOL' },
   { id: 'BTC', label: 'Bitcoin (BTC)', network: 'Bitcoin Network', symbol: 'BTC' },
+  { id: 'USDT_TRC20', label: 'USDT (TRC-20)', network: 'Tron Network', symbol: 'USDT' },
 ];
 
 export const SettingsPage: React.FC = () => {
@@ -20,8 +20,12 @@ export const SettingsPage: React.FC = () => {
   const [isPurging, setIsPurging] = useState(false);
 
   // Platform Hot Wallet & On-Chain Float
-  const [selectedCoin, setSelectedCoin] = useState('USDT_BEP20');
+  const [selectedCoin, setSelectedCoin] = useState(() => {
+    return localStorage.getItem('swiftsats_admin_selected_coin') || 'SOL';
+  });
   const [hotWalletAddress, setHotWalletAddress] = useState('');
+  const [coinAddresses, setCoinAddresses] = useState<Record<string, string>>({});
+  const [isCopied, setIsCopied] = useState(false);
   const [payoutMode, setPayoutMode] = useState<'AUTOMATED' | 'MANUAL'>('MANUAL');
   const [isTogglingPayoutMode, setIsTogglingPayoutMode] = useState(false);
   const [isSavingWallet, setIsSavingWallet] = useState(false);
@@ -65,6 +69,10 @@ export const SettingsPage: React.FC = () => {
       setWalletBalance(res);
       if (res.wallet_address) {
         setHotWalletAddress(res.wallet_address);
+        setCoinAddresses((prev) => ({
+          ...prev,
+          [activeCoin]: res.wallet_address,
+        }));
       }
     } catch (err) {
       console.error('Failed to query hot wallet balance', err);
@@ -83,9 +91,12 @@ export const SettingsPage: React.FC = () => {
         setTelegramEnabled(s.telegram_alerts_enabled);
         setBotToken(s.telegram_bot_token || '');
         setChatId(s.telegram_admin_chat_id || '');
-        const targetAddr = s.hot_wallet_address || '';
-        if (targetAddr && selectedCoin.includes('BEP20')) {
-          setHotWalletAddress(targetAddr);
+        if (s.addresses_by_coin) {
+          setCoinAddresses(s.addresses_by_coin);
+          const currentAddr = s.addresses_by_coin[selectedCoin] || '';
+          if (currentAddr) {
+            setHotWalletAddress(currentAddr);
+          }
         }
         fetchWalletBalance(selectedCoin);
       }
@@ -99,10 +110,15 @@ export const SettingsPage: React.FC = () => {
     setIsSavingWallet(true);
     setWalletStatusMsg(null);
     try {
-      await adminApi.updatePlatformSettings({
+      const res = await adminApi.updatePlatformSettings({
+        coin: selectedCoin,
         hot_wallet_address: hotWalletAddress.trim(),
       });
-      setWalletStatusMsg({ type: 'success', text: 'Platform hot wallet address updated successfully!' });
+      if (res.addresses_by_coin) {
+        setCoinAddresses(res.addresses_by_coin);
+      }
+      const coinLabel = SUPPORTED_COINS.find(c => c.id === selectedCoin)?.label || selectedCoin;
+      setWalletStatusMsg({ type: 'success', text: `Platform ${coinLabel} address saved successfully!` });
       fetchWalletBalance(selectedCoin, hotWalletAddress.trim());
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to update hot wallet address.';
@@ -110,6 +126,22 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setIsSavingWallet(false);
     }
+  };
+
+  const handleCopyAddress = () => {
+    if (!hotWalletAddress) return;
+    navigator.clipboard.writeText(hotWalletAddress.trim());
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleSelectCoin = (coinId: string) => {
+    setSelectedCoin(coinId);
+    localStorage.setItem('swiftsats_admin_selected_coin', coinId);
+    if (coinAddresses[coinId]) {
+      setHotWalletAddress(coinAddresses[coinId]);
+    }
+    fetchWalletBalance(coinId);
   };
 
   const handleTogglePayoutMode = async () => {
@@ -431,10 +463,7 @@ export const SettingsPage: React.FC = () => {
               <button
                 key={c.id}
                 type="button"
-                onClick={() => {
-                  setSelectedCoin(c.id);
-                  fetchWalletBalance(c.id);
-                }}
+                onClick={() => handleSelectCoin(c.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   selectedCoin === c.id
                     ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/30'
@@ -545,6 +574,15 @@ export const SettingsPage: React.FC = () => {
               onChange={(e) => setHotWalletAddress(e.target.value)}
               className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
+            <button
+              type="button"
+              onClick={handleCopyAddress}
+              className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer"
+              title="Copy address to clipboard"
+            >
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              <span>{isCopied ? 'Copied!' : 'Copy'}</span>
+            </button>
             <button
               type="button"
               onClick={handleSaveWallet}

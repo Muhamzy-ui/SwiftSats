@@ -229,6 +229,10 @@ export const adminApi = {
     success: boolean;
     payout_mode: 'AUTOMATED' | 'MANUAL';
     hot_wallet_address?: string;
+    hot_wallet_address_solana?: string;
+    hot_wallet_address_bitcoin?: string;
+    hot_wallet_address_tron?: string;
+    addresses_by_coin?: Record<string, string>;
     use_paystack_virtual_accounts: boolean;
     settlement_bank_name: string;
     settlement_account_name: string;
@@ -243,6 +247,7 @@ export const adminApi = {
   /** Update platform & notification settings */
   async updatePlatformSettings(data: {
     payout_mode?: 'AUTOMATED' | 'MANUAL';
+    coin?: string;
     hot_wallet_address?: string;
     use_paystack_virtual_accounts?: boolean;
     settlement_bank_name?: string;
@@ -251,7 +256,12 @@ export const adminApi = {
     telegram_alerts_enabled?: boolean;
     telegram_bot_token?: string;
     telegram_admin_chat_id?: string;
-  }): Promise<{ success: boolean; message: string; hot_wallet_address?: string }> {
+  }): Promise<{
+    success: boolean;
+    message: string;
+    hot_wallet_address?: string;
+    addresses_by_coin?: Record<string, string>;
+  }> {
     return request('/api/v1/admin/settings/payout-mode/', {
       method: 'POST',
       body: JSON.stringify(data),
