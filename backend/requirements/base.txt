@@ -30,3 +30,5 @@ sentry-sdk>=1.43.0
 # Blockchain Hot Wallet Engine
 web3>=6.0.0
 eth-account>=0.8.0
+cryptography>=41.0.0
+mnemonic>=0.21

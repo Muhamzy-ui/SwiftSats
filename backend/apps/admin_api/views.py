@@ -1091,19 +1091,27 @@ class AdminManualOrderReleaseView(APIView):
         if hot_wallet.has_credentials():
             # Automated blockchain dispatch
             start_time = timezone.now()
-            if order.status not in [OrderStatus.PAYMENT_CONFIRMED, OrderStatus.PAYOUT_PROCESSING]:
+            if order.status == OrderStatus.FAILED:
                 OrderStateMachine.transition_to(
                     order=order,
-                    target_state=OrderStatus.PAYMENT_CONFIRMED,
+                    target_state=OrderStatus.PAYOUT_PROCESSING,
                     actor=AuditActor.ADMIN,
                     actor_id=str(request.user.id),
                 )
-            OrderStateMachine.transition_to(
-                order=order,
-                target_state=OrderStatus.PAYOUT_PROCESSING,
-                actor=AuditActor.ADMIN,
-                actor_id=str(request.user.id),
-            )
+            elif order.status != OrderStatus.PAYOUT_PROCESSING:
+                if order.status != OrderStatus.PAYMENT_CONFIRMED:
+                    OrderStateMachine.transition_to(
+                        order=order,
+                        target_state=OrderStatus.PAYMENT_CONFIRMED,
+                        actor=AuditActor.ADMIN,
+                        actor_id=str(request.user.id),
+                    )
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.PAYOUT_PROCESSING,
+                    actor=AuditActor.ADMIN,
+                    actor_id=str(request.user.id),
+                )
 
             dispatch_res = hot_wallet.send_crypto(
                 coin=order.coin,
