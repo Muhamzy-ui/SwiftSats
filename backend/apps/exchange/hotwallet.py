@@ -295,7 +295,25 @@ class HotWalletService:
         Supports BSC (BEP-20), Tron (TRC-20), Bitcoin, and Solana.
         """
         import requests
-        target_addr = (address or self.get_dispatch_address(coin=coin)).strip()
+        coin_upper = (coin or "").upper()
+        if address:
+            addr_clean = address.strip()
+            # If coin is Solana, address must be 32-44 chars Base58 and NOT start with 0x
+            if "SOL" in coin_upper and (addr_clean.startswith("0x") or len(addr_clean) < 32 or len(addr_clean) > 44):
+                target_addr = self.get_dispatch_address(coin=coin)
+            # If coin is Bitcoin, address must start with bc1, 1, or 3
+            elif "BTC" in coin_upper and not (addr_clean.startswith("bc1") or addr_clean.startswith("1") or addr_clean.startswith("3")):
+                target_addr = self.get_dispatch_address(coin=coin)
+            # If coin is Tron, address must start with T
+            elif ("TRC" in coin_upper or coin_upper in ["TRX", "USDT_TRC20"]) and not addr_clean.startswith("T"):
+                target_addr = self.get_dispatch_address(coin=coin)
+            # If coin is EVM / BSC / BEP-20, address must start with 0x
+            elif any(x in coin_upper for x in ["BEP20", "BNB", "BSC", "ERC20", "BASE"]) and not addr_clean.startswith("0x"):
+                target_addr = self.get_dispatch_address(coin=coin)
+            else:
+                target_addr = addr_clean
+        else:
+            target_addr = self.get_dispatch_address(coin=coin).strip()
         if not target_addr:
             return {
                 "wallet_address": "",

@@ -84,10 +84,10 @@ export const SettingsPage: React.FC = () => {
         setBotToken(s.telegram_bot_token || '');
         setChatId(s.telegram_admin_chat_id || '');
         const targetAddr = s.hot_wallet_address || '';
-        if (targetAddr) {
+        if (targetAddr && selectedCoin.includes('BEP20')) {
           setHotWalletAddress(targetAddr);
         }
-        fetchWalletBalance(selectedCoin, targetAddr || undefined);
+        fetchWalletBalance(selectedCoin);
       }
     } catch (e) {
       console.warn('Could not load platform settings', e);
@@ -402,7 +402,7 @@ export const SettingsPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => fetchWalletBalance(selectedCoin, hotWalletAddress.trim() || undefined)}
+            onClick={() => fetchWalletBalance(selectedCoin)}
             disabled={isCheckingBalance}
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 self-start sm:self-auto cursor-pointer"
           >
@@ -529,12 +529,18 @@ export const SettingsPage: React.FC = () => {
         {/* Address Config */}
         <div>
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Platform Hot Wallet / Vault Address (BEP-20 / TRC-20 / SOL)
+            Platform Hot Wallet Address for {SUPPORTED_COINS.find(c => c.id === selectedCoin)?.label || selectedCoin}
           </label>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="e.g. 0xe99E64B6BeFDC68341775d5508FA51DE4e7309e2"
+              placeholder={
+                selectedCoin === 'SOL'
+                  ? 'e.g. DGsJivNtz6TomAgb9tYzJpicbnM2CC67JyEoA27WPgkA'
+                  : selectedCoin === 'BTC'
+                  ? 'e.g. bc1qmypt2kwx3gfjcdjxfjmw0a5ccq4pq0eep0jhhm'
+                  : 'e.g. 0xe99E64B6BeFDC68341775d5508FA51DE4e7309e2'
+              }
               value={hotWalletAddress}
               onChange={(e) => setHotWalletAddress(e.target.value)}
               className="flex-1 px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
