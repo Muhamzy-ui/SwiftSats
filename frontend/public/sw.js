@@ -1,11 +1,12 @@
 // SwiftSats Service Worker for PWA, Lockscreen Push & Background Notifications
-const CACHE_NAME = 'swiftsats-pwa-v1';
+const CACHE_NAME = 'swiftsats-pwa-v2';
 const PRECACHE_ASSETS = [
   '/manifest.json',
   '/favicon.png',
   '/logo192.png',
   '/logo512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/logo-emblem.png'
 ];
 
 self.addEventListener('install', (event) => {

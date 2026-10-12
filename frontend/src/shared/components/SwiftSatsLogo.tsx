@@ -21,7 +21,7 @@ export const SwiftSatsLogo: React.FC<LogoProps> = ({
         <img
           src="/logo-emblem.png"
           alt="SwiftSats"
-          className="w-full h-full object-cover rounded-xl sm:rounded-2xl"
+          className="w-full h-full object-contain p-0.5 rounded-xl sm:rounded-2xl"
           loading="eager"
         />
       </div>
@@ -33,7 +33,7 @@ export const SwiftSatsLogo: React.FC<LogoProps> = ({
             Swift<span className="text-[#00c853] dark:text-[#00e676]">Sats</span>
           </span>
           <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase leading-tight mt-0.5">
-            Instant Onramp
+            Buy Crypto In Minutes
           </span>
         </div>
       )}
