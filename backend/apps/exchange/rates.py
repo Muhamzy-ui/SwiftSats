@@ -8,7 +8,7 @@ import logging
 from django.core.cache import cache
 from django.conf import settings
 from .client import QuidaxClient
-from core.constants import SupportedCoin, COIN_METADATA, BASE_USD_TO_NGN_RATE, SERVICE_FEE_NGN
+from core.constants import SupportedCoin, BlockchainNetwork, COIN_METADATA, BASE_USD_TO_NGN_RATE, SERVICE_FEE_NGN
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +57,9 @@ class RateService:
         """
         Compute how much crypto the user receives for a given Naira amount based on live rates.
         Pricing Rule:
-        - SwiftSats Direct: For $2, $3, $4 deposits (approx_usd <= $4.50), flat ₦700 NGN fee.
+        - BTC & TRC-20 (Tron network on-chain fee is ~$1.00): Flat $2.00 USD service fee.
         - For >= $100 USD deposit: Flat $2.00 USD service fee.
+        - SwiftSats Direct: For $2, $3, $4 deposits (approx_usd <= $4.50), flat ₦700 NGN fee (non-TRC20/BTC).
         - Standard / Partner integrations: Flat $1.00 USD service fee.
         """
         if coin not in COIN_METADATA:
@@ -75,9 +76,17 @@ class RateService:
         two_dollars_ngn = (Decimal("2.0") * usd_to_ngn_rate).quantize(Decimal("0.01"))
         approx_usd = fiat_amount_ngn / usd_to_ngn_rate
 
+        is_trc20 = coin.upper() in ["USDT_TRC20", "TRX"] or meta.get("network") == BlockchainNetwork.TRC20
+
         # Pricing rules:
         if coin.upper() == "BTC":
             # Bitcoin: Flat $2.00 total fee ($1 normal service fee + $1 processing deducted from initial deposit)
+            service_fee_usd = Decimal("2.00")
+            service_fee_ngn = two_dollars_ngn
+            net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
+            network_fee_crypto = Decimal("0.00")
+        elif is_trc20:
+            # TRC-20 (Tron network on-chain fee is ~$1.00): Flat $2.00 service fee so platform covers $1 network gas and earns margin
             service_fee_usd = Decimal("2.00")
             service_fee_ngn = two_dollars_ngn
             net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)

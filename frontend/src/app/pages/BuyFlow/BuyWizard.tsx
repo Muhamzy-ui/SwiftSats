@@ -353,12 +353,22 @@ export const BuyWizard: React.FC = () => {
         if (raw > 1000) {
           targetNgn = Math.round(raw);
         } else {
-          targetNgn = Math.round(raw * 1398.99);
+          const ratePerDollar = 1398.99;
+          const isBtc = targetCoin === 'BTC';
+          const isTrc20 = targetCoin === 'USDT_TRC20';
+          const feeUsd = (isBtc || isTrc20 || raw >= 100) ? 2.0 : 1.0;
+          targetNgn = Math.round((raw + feeUsd) * ratePerDollar);
         }
       }
     } else if (params.get('amount_usd') || params.get('usd')) {
       const u = parseFloat(params.get('amount_usd') || params.get('usd') || '');
-      if (!isNaN(u) && u > 0) targetNgn = Math.round(u * 1398.99);
+      if (!isNaN(u) && u > 0) {
+        const ratePerDollar = 1398.99;
+        const isBtc = targetCoin === 'BTC';
+        const isTrc20 = targetCoin === 'USDT_TRC20';
+        const feeUsd = (isBtc || isTrc20 || u >= 100) ? 2.0 : 1.0;
+        targetNgn = Math.round((u + feeUsd) * ratePerDollar);
+      }
     }
 
     // 4. AUTO-JUMP DIRECTLY TO PAGE 4 (PAYSTEP):

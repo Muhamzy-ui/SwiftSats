@@ -59,25 +59,26 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   }, [currencyMode, dollarInput, cryptoInput, coinPriceUsd]);
 
   // Live calculated amounts:
-  // - BTC: $2.00 flat service fee ($1 normal + $1 processing deducted from initial deposit)
+  // - BTC & TRC-20 (Tron network on-chain fee is ~$1.00): $2.00 flat service fee
   // - >= $100 USD: $2.00 flat service fee
-  // - Direct small orders (<= $4.50): ₦700 flat fee
+  // - Direct small orders (<= $4.50): ₦700 flat fee (non-BTC/TRC20)
   // - Standard: $1.00 flat service fee
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
     const isBtc = selectedRate.coin === 'BTC';
-    const isSmallOrderDirect = !partnerCode && dollarAmount <= 4.5 && !isBtc;
-    const feeNgn = isBtc
+    const isTrc20 = selectedRate.coin === 'USDT_TRC20' || selectedRate.coin === 'TRX' || selectedRate.network === 'TRC20';
+    const isSmallOrderDirect = !partnerCode && dollarAmount <= 4.5 && !isBtc && !isTrc20;
+    const feeNgn = (isBtc || isTrc20 || dollarAmount >= 100.0)
       ? (2.0 * ratePerDollar)
       : (isSmallOrderDirect
         ? 700
-        : (dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar)));
-    const feeLabel = isBtc
+        : (1.0 * ratePerDollar));
+    const feeLabel = (isBtc || isTrc20 || dollarAmount >= 100.0)
       ? '($2.00 flat)'
       : (isSmallOrderDirect
         ? '(₦700 flat)'
-        : (dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)'));
+        : '($1.00 flat)');
 
     if (isLockedAmount && initialAmount && parseFloat(initialAmount) >= 1000) {
       const totalNgnToPay = Math.round(parseFloat(initialAmount));
