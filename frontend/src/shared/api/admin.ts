@@ -284,6 +284,38 @@ export const adminApi = {
     });
   },
 
+  /** Get VAPID public key for native browser Web Push */
+  async getWebPushVapidKey(): Promise<{ success: boolean; vapid_public_key: string }> {
+    return request('/api/v1/admin/webpush/vapid-key/');
+  },
+
+  /** Register this browser/device for native lockscreen push alerts */
+  async subscribeWebPush(data: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+    device_info?: string;
+  }): Promise<{ success: boolean; message: string }> {
+    return request('/api/v1/admin/webpush/subscribe/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /** Unregister this browser/device from push alerts */
+  async unsubscribeWebPush(endpoint: string): Promise<{ success: boolean; message: string }> {
+    return request('/api/v1/admin/webpush/unsubscribe/', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint }),
+    });
+  },
+
+  /** Send immediate test push alert to this phone/computer */
+  async testWebPush(): Promise<{ success: boolean; delivered_to: number; message: string; error?: string }> {
+    return request('/api/v1/admin/webpush/test/', {
+      method: 'POST',
+    });
+  },
+
   /** 1-Tap manual release of crypto to customer wallet (or manual tx_hash dispatch) */
   async releaseOrder(orderReference: string, txHash?: string): Promise<{ success: boolean; message: string; tx_hash?: string; error?: string; payout_error?: string; status: string }> {
     return request(`/api/v1/admin/orders/${orderReference}/release/`, {

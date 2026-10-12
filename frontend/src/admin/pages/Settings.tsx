@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, Wallet, Coins } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { SystemHealthData } from '../../shared/types';
+import { DevicePushManagerCard } from '../components/DevicePushManagerCard';
 
 const SUPPORTED_COINS = [
   { id: 'USDT_BEP20', label: 'USDT (BEP-20)', network: 'BNB Smart Chain', symbol: 'USDT' },
@@ -241,8 +242,11 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 24/7 Mobile Lockscreen & Telegram Push Alerts Hub */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-emerald-500/30 dark:border-emerald-500/20 shadow-subtle space-y-6">
+      {/* Native Browser & Device Real-Time Push Alerts (Zero Telegram Needed) */}
+      <DevicePushManagerCard />
+
+      {/* 24/7 Mobile Lockscreen & Telegram Push Alerts Hub (Optional Alternative) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 shadow-subtle space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-[#00e676]">

@@ -306,7 +306,7 @@ class CustomerRegisterView(APIView):
         # Link any existing unlinked orders made with this email address
         Order.objects.filter(user_email__iexact=email, customer__isnull=True).update(customer=customer)
 
-        # Notify Admin on Telegram of new user signup
+        # Notify Admin on Telegram & Native Device Push of new user signup
         try:
             from core.telegram import send_telegram_alert
             send_telegram_alert(
@@ -314,6 +314,17 @@ class CustomerRegisterView(APIView):
                 f"<b>Name:</b> {full_name or 'N/A'}\n"
                 f"<b>Email:</b> <code>{email}</code>\n"
                 f"<b>Phone:</b> {phone or 'N/A'}"
+            )
+        except Exception:
+            pass
+
+        try:
+            from core.webpush import send_admin_webpush
+            send_admin_webpush(
+                title="👤 New User Signed Up!",
+                body=f"{full_name or email} created a SwiftSats account",
+                url="/admin/users",
+                tag="new-user"
             )
         except Exception:
             pass

@@ -319,7 +319,7 @@ class LockAndGeneratePaymentView(APIView):
         # Send instant receipt and tracking email to user
         send_order_confirmation_email(updated_order)
 
-        # Instant alert to Admin Telegram
+        # Instant alert to Admin Telegram & Native Device Push
         try:
             partner_tag = f" (via {updated_order.partner_code.upper()})" if updated_order.partner_code else ""
             send_telegram_alert(
@@ -332,6 +332,17 @@ class LockAndGeneratePaymentView(APIView):
             )
         except Exception as e:
             logger.warning("Telegram order notification failed: %s", e)
+
+        try:
+            from core.webpush import send_admin_webpush
+            send_admin_webpush(
+                title="🛒 New Order Created",
+                body=f"{updated_order.order_reference}: ₦{updated_order.fiat_amount_expected:,.2f} for {updated_order.crypto_amount} {updated_order.coin}",
+                url=f"/admin/orders?search={updated_order.order_reference}",
+                tag=f"order-{updated_order.order_reference}"
+            )
+        except Exception as e:
+            logger.warning("Webpush order notification failed: %s", e)
 
         return Response({
             "success": True,

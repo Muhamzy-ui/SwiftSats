@@ -24,6 +24,7 @@ from apps.admin_api.models import PlatformSettings
 from apps.exchange.payout import PayoutService
 from core.constants import OrderStatus, AuditActor
 from core.telegram import send_telegram_alert
+from core.webpush import send_admin_webpush
 
 logger = logging.getLogger(__name__)
 
@@ -251,6 +252,12 @@ class NombaWebhookView(APIView):
                     f"<b>Wallet:</b> <code>{matching_order.wallet_address}</code>\n"
                     f"<i>Tap approve on admin dashboard to release crypto.</i>"
                 )
+                send_admin_webpush(
+                    title="💰 Payment Received!",
+                    body=f"{matching_order.order_reference}: ₦{paid_amount:,.2f} received. Tap to approve.",
+                    url=f"/admin/orders?search={matching_order.order_reference}",
+                    tag=f"order-{matching_order.order_reference}"
+                )
                 return Response({"status": "awaiting_manual_approval"}, status=status.HTTP_200_OK)
 
             # 24/7 FULLY AUTOMATED MODE: Execute Hot Wallet Blockchain Payout
@@ -310,6 +317,12 @@ class NombaWebhookView(APIView):
                     f"<b>Velocity:</b> {speed_ms} ms\n"
                     f"<b>Status:</b> 100% AUTOMATED SUCCESS ✅"
                 )
+                send_admin_webpush(
+                    title="🚀 Payout Delivered!",
+                    body=f"{matching_order.order_reference}: {matching_order.crypto_amount} {matching_order.coin} sent to customer",
+                    url=f"/admin/orders?search={matching_order.order_reference}",
+                    tag=f"order-{matching_order.order_reference}"
+                )
 
                 return Response({
                     "status": "automated_success",
@@ -325,6 +338,12 @@ class NombaWebhookView(APIView):
                     f"<b>Deliver:</b> {matching_order.crypto_amount} {matching_order.coin}\n"
                     f"<b>Customer Wallet:</b> <code>{matching_order.wallet_address}</code>\n"
                     f"<b>Status:</b> Awaiting 1-Tap Admin Approval or Hot Wallet funding."
+                )
+                send_admin_webpush(
+                    title="🔔 Payment Confirmed!",
+                    body=f"{matching_order.order_reference}: ₦{paid_amount:,.2f} received. Awaiting release.",
+                    url=f"/admin/orders?search={matching_order.order_reference}",
+                    tag=f"order-{matching_order.order_reference}"
                 )
 
                 return Response({

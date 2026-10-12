@@ -3,6 +3,7 @@ Platform configuration and runtime controls for SwiftSats.
 Stores 24/7 automation mode, settlement account details, and fee settings.
 """
 from django.db import models
+from django.conf import settings
 
 
 class PlatformSettings(models.Model):
@@ -100,6 +101,18 @@ class PlatformSettings(models.Model):
         default="",
         help_text="Primary EVM private key for blockchain dispatch"
     )
+    vapid_public_key = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="VAPID Public Key for Web Push notifications"
+    )
+    vapid_private_key = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="VAPID Private Key for Web Push notifications"
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -177,6 +190,62 @@ class PlatformSettings(models.Model):
             "account_name": chosen_name or "Mbovibe Systems/swiftsats",
         }
 
+    def get_or_create_vapid_keys(self) -> tuple[str, str]:
+        """
+        Returns (vapid_public_key, vapid_private_key).
+        Generates and saves a standard P-256 EC keypair if not already created.
+        """
+        import os
+        pub = self.vapid_public_key or os.getenv("VAPID_PUBLIC_KEY", "")
+        priv = self.vapid_private_key or os.getenv("VAPID_PRIVATE_KEY", "")
+
+        if pub and priv:
+            return pub, priv
+
+        from cryptography.hazmat.primitives.asymmetric import ec
+        from cryptography.hazmat.primitives import serialization
+        import base64
+
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        private_bytes = private_key.private_numbers().private_value.to_bytes(32, byteorder="big")
+        b64_private = base64.urlsafe_b64encode(private_bytes).rstrip(b"=").decode("utf-8")
+
+        public_key = private_key.public_key()
+        public_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.X962,
+            format=serialization.PublicFormat.UncompressedPoint
+        )
+        b64_public = base64.urlsafe_b64encode(public_bytes).rstrip(b"=").decode("utf-8")
+
+        self.vapid_public_key = b64_public
+        self.vapid_private_key = b64_private
+        self.save(update_fields=["vapid_public_key", "vapid_private_key"])
+        return b64_public, b64_private
+
+
+class AdminPushSubscription(models.Model):
+    """
+    Stores native browser Push API subscriptions (W3C Push API / WebPush)
+    for Admin's phone and desktop devices to receive instant lockscreen notifications.
+    """
+    endpoint = models.TextField(unique=True, help_text="Browser push service endpoint URL")
+    p256dh = models.CharField(max_length=255, help_text="Client public key")
+    auth = models.CharField(max_length=255, help_text="Client authentication secret")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    device_info = models.CharField(max_length=255, blank=True, default="", help_text="e.g. iPhone Safari, Android Chrome")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "admin_push_subscriptions"
+        ordering = ["-created_at"]
+        verbose_name = "Admin Push Subscription"
+        verbose_name_plural = "Admin Push Subscriptions"
+
+    def __str__(self):
+        return f"PushSub ({self.device_info or 'Device'}) - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
 
 class PartnerIntegration(models.Model):
     """
@@ -200,3 +269,4 @@ class PartnerIntegration(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.code}) - {'ACTIVE' if self.is_active else 'INACTIVE'}"
+

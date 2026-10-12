@@ -14,6 +14,7 @@ import {
 import { Receipt, DollarSign, Clock, Percent, ArrowRight, RefreshCw, BarChart2, TrendingUp } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
 import { SystemHealthCard } from '../components/SystemHealthCard';
+import { DevicePushBanner } from '../components/DevicePushBanner';
 import { StatusBadge } from '../../shared/components/StatusBadge';
 import { adminApi } from '../../shared/api/admin';
 import { DashboardStats, TrendChartPoint, AdminOrderSummary } from '../../shared/types';
@@ -118,6 +119,9 @@ export const DashboardPage: React.FC = () => {
           <span>Refresh Data</span>
         </button>
       </div>
+
+      {/* Native Device Real-Time Push Notifications Banner */}
+      <DevicePushBanner />
 
       {/* 24/7 Nomba Automation & Payout Mode Control Banner */}
       <div className={`p-4 rounded-2xl border transition-all ${

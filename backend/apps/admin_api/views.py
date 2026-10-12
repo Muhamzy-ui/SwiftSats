@@ -790,6 +790,104 @@ class AdminTestTelegramAlertView(APIView):
             )
 
 
+class AdminWebPushVapidKeyView(APIView):
+    """
+    GET /api/v1/admin/webpush/vapid-key/
+    Returns the VAPID Public Key required by the browser to subscribe to push.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        settings_obj = PlatformSettings.get_settings()
+        pub_key, _ = settings_obj.get_or_create_vapid_keys()
+        return Response({
+            "success": True,
+            "vapid_public_key": pub_key,
+        })
+
+
+class AdminWebPushSubscribeView(APIView):
+    """
+    POST /api/v1/admin/webpush/subscribe/
+    Registers a browser's PushSubscription for lock screen real-time alerts.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        endpoint = request.data.get("endpoint")
+        keys = request.data.get("keys", {})
+        p256dh = keys.get("p256dh") or request.data.get("p256dh")
+        auth = keys.get("auth") or request.data.get("auth")
+        device_info = request.data.get("device_info", "")
+
+        if not endpoint or not p256dh or not auth:
+            return Response(
+                {"success": False, "error": "Incomplete push subscription payload."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from .models import AdminPushSubscription
+        sub_obj, created = AdminPushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={
+                "p256dh": p256dh,
+                "auth": auth,
+                "user": request.user,
+                "device_info": device_info,
+                "is_active": True,
+            }
+        )
+        return Response({
+            "success": True,
+            "created": created,
+            "message": "Device successfully registered for real-time lockscreen notifications!",
+        })
+
+
+class AdminWebPushUnsubscribeView(APIView):
+    """
+    POST /api/v1/admin/webpush/unsubscribe/
+    Unsubscribes a device from push alerts.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        endpoint = request.data.get("endpoint")
+        if endpoint:
+            from .models import AdminPushSubscription
+            AdminPushSubscription.objects.filter(endpoint=endpoint).delete()
+        return Response({"success": True, "message": "Device unsubscribed."})
+
+
+class AdminWebPushTestView(APIView):
+    """
+    POST /api/v1/admin/webpush/test/
+    Immediately triggers a test lockscreen push notification to all subscribed Admin devices.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from core.webpush import send_admin_webpush
+        count = send_admin_webpush(
+            title="⚡ SwiftSats Real-Time Alert",
+            body="🔔 Real-time push notifications are active! You will receive instant alerts even when the app is closed.",
+            url="/admin/orders",
+            tag="swiftsats-test-alert"
+        )
+        if count > 0:
+            return Response({
+                "success": True,
+                "delivered_to": count,
+                "message": f"Test push alert sent to {count} device(s)! Check your screen.",
+            })
+        else:
+            return Response({
+                "success": False,
+                "delivered_to": 0,
+                "error": "No registered push devices found. Please click 'Enable Device Push' on this device first.",
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
 class AdminManualOrderReleaseView(APIView):
     """
     POST /api/v1/admin/orders/<str:order_reference>/release/

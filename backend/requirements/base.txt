@@ -21,6 +21,7 @@ psycopg2-binary>=2.9.9
 # HTTP Clients & Utilities
 requests>=2.31.0
 urllib3>=2.2.1
+pywebpush>=2.0.0
 
 # Production server & Monitoring
 gunicorn>=21.2.0
