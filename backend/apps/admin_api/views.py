@@ -753,22 +753,39 @@ class AdminTestTelegramAlertView(APIView):
     """
     POST /api/v1/admin/settings/test-telegram/
     Sends an immediate test push ping to the configured Telegram bot.
+    Optionally accepts bot_token and chat_id in request payload.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        success = send_telegram_alert(
+        from core.telegram import send_telegram_alert_detailed
+        token = request.data.get("bot_token")
+        chat_id = request.data.get("chat_id")
+        save_first = request.data.get("save", False)
+
+        if save_first and (token or chat_id):
+            settings_obj = PlatformSettings.get_settings()
+            if token is not None:
+                settings_obj.telegram_bot_token = str(token).strip()
+            if chat_id is not None:
+                settings_obj.telegram_admin_chat_id = str(chat_id).strip()
+            settings_obj.telegram_alerts_enabled = True
+            settings_obj.save()
+
+        success, err_msg = send_telegram_alert_detailed(
             f"⚡ <b>SWIFTSATS PHONE NOTIFICATION TEST</b>\n\n"
             f"🔔 Your lockscreen & background alerts are working perfectly!\n"
             f"👤 Admin: <code>{request.user.email}</code>\n"
             f"⏰ Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')}\n\n"
-            f"You will receive instant alerts here whenever a customer pays, an order is created, or a payout is released."
+            f"You will receive instant alerts here whenever a customer transfers Naira, an order is created, or a payout triggers.",
+            custom_token=token,
+            custom_chat_id=chat_id,
         )
         if success:
-            return Response({"success": True, "message": "Test notification delivered to your phone!"})
+            return Response({"success": True, "message": "Test notification delivered! Check your phone lockscreen."})
         else:
             return Response(
-                {"success": False, "error": "Failed to send alert. Please verify your Telegram Bot Token and Chat ID in settings."},
+                {"success": False, "error": err_msg or "Failed to send alert. Please verify your Telegram Bot Token and Chat ID."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

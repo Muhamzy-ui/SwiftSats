@@ -89,6 +89,21 @@ export const AdminNotificationBell: React.FC = () => {
                 ))
               )}
             </div>
+
+            {/* Footer: Closed App Alerts */}
+            <div className="p-2.5 bg-slate-50/80 dark:bg-slate-900/80 border-t border-slate-100 dark:border-white/[0.04] flex items-center justify-between text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400">Want alerts when app is closed?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate('/admin/settings');
+                }}
+                className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+              >
+                Connect Telegram Bot →
+              </button>
+            </div>
           </div>
         </>
       )}

@@ -277,9 +277,10 @@ export const adminApi = {
   },
 
   /** Send instant test ping to admin's phone via Telegram */
-  async testTelegramAlert(): Promise<{ success: boolean; message?: string; error?: string }> {
+  async testTelegramAlert(payload?: { bot_token?: string; chat_id?: string; save?: boolean }): Promise<{ success: boolean; message?: string; error?: string }> {
     return request('/api/v1/admin/settings/test-telegram/', {
       method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined,
     });
   },
 

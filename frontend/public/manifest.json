@@ -27,5 +27,19 @@
   "background_color": "#07080d",
   "theme_color": "#00e676",
   "display": "standalone",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "shortcuts": [
+    {
+      "name": "SwiftAdmin Operator",
+      "short_name": "Admin",
+      "description": "SwiftSats Operator Admin Panel & Payouts",
+      "url": "/admin",
+      "icons": [
+        {
+          "src": "/logo192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

@@ -53,7 +53,9 @@
 
         // Dynamic PWA Manifest for Admin Console vs User Onramp
         try {
-          if (window.location.pathname.startsWith('/admin')) {
+          var hasAdmin = !!localStorage.getItem('swiftsats_admin_token');
+          var isCustomerView = sessionStorage.getItem('swiftsats_view_customer_site') === 'true';
+          if (window.location.pathname.startsWith('/admin') || (hasAdmin && !isCustomerView)) {
             var manifestLink = document.querySelector('link[rel="manifest"]');
             if (manifestLink) {
               manifestLink.setAttribute('href', '/admin-manifest.json');

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, MessageCircle, User } from 'lucide-react';
+import { Sun, Moon, MessageCircle, User, ShieldCheck } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { SwiftSatsLogo } from './SwiftSatsLogo';
@@ -8,6 +8,7 @@ import { SwiftSatsLogo } from './SwiftSatsLogo';
 export const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, isAuthenticated } = useAuth();
+  const hasAdminSession = typeof localStorage !== 'undefined' && !!localStorage.getItem('swiftsats_admin_token');
 
   const displayName = user?.full_name?.trim().split(' ')[0] || 'Account';
 
@@ -25,6 +26,23 @@ export const Header: React.FC = () => {
 
         {/* Right Action Bar */}
         <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Quick Admin Shortcut if logged in as Admin */}
+          {hasAdminSession && (
+            <Link
+              to="/admin"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem('swiftsats_view_customer_site');
+                } catch (e) {}
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-blue-500/15 hover:bg-blue-500/25 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-[11px] sm:text-xs font-bold transition-all shadow-xs"
+              title="Operator Admin Console"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+              <span>Admin Console</span>
+            </Link>
+          )}
+
           {/* WhatsApp Support Pill */}
           <a
             href="https://wa.me/message/LGMKYLBUE3E4C1"

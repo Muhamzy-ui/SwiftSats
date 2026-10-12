@@ -144,8 +144,8 @@ export const SettingsPage: React.FC = () => {
     try {
       await adminApi.updatePlatformSettings({
         telegram_alerts_enabled: telegramEnabled,
-        telegram_bot_token: botToken,
-        telegram_admin_chat_id: chatId,
+        telegram_bot_token: botToken.trim(),
+        telegram_admin_chat_id: chatId.trim(),
       });
       setTelegramStatusMsg({ type: 'success', text: 'Telegram notification settings saved successfully!' });
     } catch (e: unknown) {
@@ -160,9 +160,13 @@ export const SettingsPage: React.FC = () => {
     setIsTestingTelegram(true);
     setTelegramStatusMsg(null);
     try {
-      const res = await adminApi.testTelegramAlert();
+      const res = await adminApi.testTelegramAlert({
+        bot_token: botToken.trim(),
+        chat_id: chatId.trim(),
+        save: true,
+      });
       if (res.success) {
-        setTelegramStatusMsg({ type: 'success', text: res.message || 'Test alert delivered! Check your phone screen.' });
+        setTelegramStatusMsg({ type: 'success', text: res.message || '⚡ Test alert delivered! Check your phone lockscreen.' });
       } else {
         setTelegramStatusMsg({ type: 'error', text: res.error || 'Failed to send test alert.' });
       }
@@ -277,20 +281,54 @@ export const SettingsPage: React.FC = () => {
           </div>
         )}
 
+        {/* 60-Second Setup Guide */}
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+          <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs uppercase tracking-wider">
+            ⚡ Quick 60-Second Setup (Receive Phone Alerts When Admin is Closed):
+          </span>
+          <div className="space-y-2 text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <p>
+                Open <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">@BotFather</a> on Telegram, send <code className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">/newbot</code>, give it a name (e.g. <em>SwiftAdminAlertsBot</em>), and copy the <strong>HTTP API Token</strong>.
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <p>
+                Open <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline">@userinfobot</a> on Telegram, send <code className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-mono text-[10px]">/start</code>, and copy your numeric <strong>Id</strong> (e.g. 583920194).
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <p className="font-semibold text-amber-700 dark:text-amber-300">
+                CRITICAL: Search for your new bot on Telegram and tap <u>&quot;START&quot;</u> so Telegram permits it to message your phone!
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">4</span>
+              <p>
+                Paste the Token and Chat ID below and tap <strong>&quot;⚡ Test Alert to My Phone&quot;</strong>. Your phone will immediately ring!
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Telegram Bot Token
             </label>
             <input
-              type="password"
-              placeholder="e.g. 7123456789:AAFx..."
+              type="text"
+              autoComplete="off"
+              placeholder="e.g. 7123456789:AAFxz98kLk09..."
               value={botToken}
               onChange={(e) => setBotToken(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-              Create a free bot via <span className="font-semibold text-slate-600 dark:text-slate-300">@BotFather</span> on Telegram and paste token.
+              Created via <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">@BotFather</a>.
             </p>
           </div>
 
@@ -300,13 +338,14 @@ export const SettingsPage: React.FC = () => {
             </label>
             <input
               type="text"
+              autoComplete="off"
               placeholder="e.g. 583920194"
               value={chatId}
               onChange={(e) => setChatId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-              Get your numeric ID by sending <code className="text-[10px]">/start</code> to <span className="font-semibold text-slate-600 dark:text-slate-300">@userinfobot</span>.
+              Found via <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">@userinfobot</a>.
             </p>
           </div>
         </div>
