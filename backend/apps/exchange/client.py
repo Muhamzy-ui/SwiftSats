@@ -6,6 +6,7 @@ Includes automatic retry logic, caching, and fallback simulation for local devel
 from decimal import Decimal
 from typing import Any, Dict, Optional
 import sys
+import json
 import logging
 import secrets
 import requests
@@ -26,20 +27,20 @@ def is_dev_or_test_environment() -> bool:
 
 # Mock reference rates in NGN for development / testing (based on ₦1,398.99 / $1 USD)
 MOCK_BASE_RATES_NGN: Dict[str, Decimal] = {
-    SupportedCoin.BTC: (Decimal("83042.96") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.BTC: (Decimal("83400.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
     SupportedCoin.USDC: Decimal("1398.99"),
-    SupportedCoin.BNB: (Decimal("746.77") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.BNB: (Decimal("750.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
     SupportedCoin.USDT_ERC20: Decimal("1398.99"),
     SupportedCoin.USDT_TRC20: Decimal("1398.99"),
-    SupportedCoin.SOL: (Decimal("150.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.SOL: (Decimal("111.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
     SupportedCoin.USDT_BEP20: Decimal("1398.99"),
-    SupportedCoin.ETH: (Decimal("2600.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
-    SupportedCoin.BCH: (Decimal("350.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
-    SupportedCoin.TRX: (Decimal("0.24") * Decimal("1398.99")).quantize(Decimal("0.01")),
-    SupportedCoin.DOGE: (Decimal("0.15") * Decimal("1398.99")).quantize(Decimal("0.01")),
-    SupportedCoin.POL: (Decimal("0.35") * Decimal("1398.99")).quantize(Decimal("0.01")),
-    SupportedCoin.SHIB: (Decimal("0.000015") * Decimal("1398.99")).quantize(Decimal("0.01")),
-    SupportedCoin.XLM: (Decimal("0.18") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.ETH: (Decimal("2550.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.BCH: (Decimal("280.00") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.TRX: (Decimal("0.33") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.DOGE: (Decimal("0.09") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.POL: (Decimal("0.10") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.SHIB: (Decimal("0.0000055") * Decimal("1398.99")).quantize(Decimal("0.01")),
+    SupportedCoin.XLM: (Decimal("0.20") * Decimal("1398.99")).quantize(Decimal("0.01")),
     SupportedCoin.USDC_BASE: Decimal("1398.99"),
 }
 
@@ -76,8 +77,8 @@ class QuidaxClient:
 
     def get_all_market_tickers(self) -> Dict[str, Decimal]:
         """
-        Fetch all market tickers from Quidax in a single batch request, cached for speed.
-        Dynamically resolves direct NGN pairs and cross-calculates USDT pairs with the real USD/NGN rate.
+        Fetch all market tickers from Quidax & Binance in a resilient multi-source batch request.
+        Dynamically resolves direct NGN pairs and cross-calculates USD/USDT pairs with the real USD/NGN rate.
         """
         cache_key = "quidax:all_tickers"
         cached = cache.get(cache_key)
@@ -85,42 +86,74 @@ class QuidaxClient:
             return cached
 
         tickers: Dict[str, Decimal] = dict(MOCK_BASE_RATES_NGN)
-        if self.is_live:
-            try:
-                url = f"{self.base_url}/markets/tickers"
-                # Fast 1.5s timeout: keeps UI snappy, falls back smoothly if remote exchange lags
-                response = requests.get(url, headers=self._get_headers(), timeout=1.5)
-                if response.status_code == 200:
-                    data = response.json().get("data", {})
-                    # 1. Determine standard USD/NGN benchmark for SwiftSats (1398.99)
-                    usdt_ngn = Decimal("1398.99")
-                    tickers["_usd_to_ngn"] = usdt_ngn
+        usdt_ngn = getattr(settings, "BASE_USD_TO_NGN_RATE", Decimal("1398.99"))
+        tickers["_usd_to_ngn"] = usdt_ngn
 
-                    # 2. Map all supported coins to real live prices
-                    for coin, meta in COIN_METADATA.items():
-                        q_curr = meta.get("quidax_currency", "").lower()
-                        if q_curr == "matic":
-                            q_curr = "pol"
+        # 1. Primary Source: Quidax Public Market Tickers (Open API, no key required)
+        try:
+            url = f"{self.base_url}/markets/tickers"
+            response = requests.get(url, headers={"User-Agent": "SwiftSats-Engine/1.0", "Accept": "application/json"}, timeout=2.5)
+            if response.status_code == 200:
+                data = response.json().get("data", {})
+                for coin, meta in COIN_METADATA.items():
+                    q_curr = meta.get("quidax_currency", "").lower()
+                    if q_curr == "matic":
+                        q_curr = "pol"
 
-                        direct_pair = f"{q_curr}ngn"
-                        usdt_pair = f"{q_curr}usdt"
+                    direct_pair = f"{q_curr}ngn"
+                    usdt_pair = f"{q_curr}usdt"
 
-                        if direct_pair in data:
-                            ticker = data[direct_pair].get("ticker", {})
-                            price = ticker.get("last") or ticker.get("buy")
-                            if price:
-                                tickers[coin] = Decimal(str(price))
-                        elif usdt_pair in data:
-                            ticker = data[usdt_pair].get("ticker", {})
-                            price_usdt = ticker.get("last") or ticker.get("buy")
-                            if price_usdt:
-                                tickers[coin] = (Decimal(str(price_usdt)) * usdt_ngn).quantize(Decimal("0.01"))
-                else:
-                    logger.warning("Quidax returned status %s for tickers, using reference rates", response.status_code)
-            except Exception as exc:
-                logger.warning("Quidax batch ticker fetch failed (%s), using reference rates", exc)
+                    if direct_pair in data:
+                        ticker = data[direct_pair].get("ticker", {})
+                        price = ticker.get("last") or ticker.get("buy")
+                        if price:
+                            tickers[coin] = Decimal(str(price))
+                    elif usdt_pair in data:
+                        ticker = data[usdt_pair].get("ticker", {})
+                        price_usdt = ticker.get("last") or ticker.get("buy")
+                        if price_usdt:
+                            tickers[coin] = (Decimal(str(price_usdt)) * usdt_ngn).quantize(Decimal("0.01"))
+            else:
+                logger.warning("Quidax returned status %s for tickers", response.status_code)
+        except Exception as exc:
+            logger.warning("Quidax batch ticker fetch failed (%s)", exc)
 
-        cache.set(cache_key, tickers, timeout=300)
+        # 2. Ultra-Fast Secondary Redundancy: Binance Public Ticker API (Zero auth required, <200ms latency)
+        # Always cross-verify or populate real-time volatile spot prices
+        try:
+            binance_pairs = {
+                SupportedCoin.BTC: "BTCUSDT",
+                SupportedCoin.SOL: "SOLUSDT",
+                SupportedCoin.ETH: "ETHUSDT",
+                SupportedCoin.BNB: "BNBUSDT",
+                SupportedCoin.TRX: "TRXUSDT",
+                SupportedCoin.DOGE: "DOGEUSDT",
+                SupportedCoin.POL: "POLUSDT",
+                SupportedCoin.XLM: "XLMUSDT",
+                SupportedCoin.BCH: "BCHUSDT",
+                SupportedCoin.SHIB: "SHIBUSDT",
+            }
+            symbols_param = json.dumps(list(binance_pairs.values()), separators=(',', ':'))
+            b_resp = requests.get(
+                "https://api.binance.com/api/v3/ticker/price",
+                params={"symbols": symbols_param},
+                headers={"User-Agent": "SwiftSats-Engine/1.0"},
+                timeout=2.0
+            )
+            if b_resp.status_code == 200:
+                b_prices = {
+                    item["symbol"]: Decimal(str(item["price"]))
+                    for item in b_resp.json()
+                    if isinstance(item, dict) and "symbol" in item and "price" in item
+                }
+                for coin, sym in binance_pairs.items():
+                    if sym in b_prices and b_prices[sym] > 0:
+                        live_usd = b_prices[sym]
+                        tickers[coin] = (live_usd * usdt_ngn).quantize(Decimal("0.01"))
+        except Exception as b_exc:
+            logger.warning("Binance ticker fetch failed (%s)", b_exc)
+
+        cache.set(cache_key, tickers, timeout=60)
         return tickers
 
     def get_live_rate_for_coin(self, coin: str) -> Decimal:

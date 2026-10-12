@@ -70,7 +70,7 @@ class RateService:
         all_tickers = self.client.get_all_market_tickers()
         wholesale_rate = all_tickers.get(coin) or self.client.get_live_rate_for_coin(coin)
         usd_price = (wholesale_rate / usd_to_ngn_rate).quantize(Decimal("0.0001"))
-        network_fee_crypto = meta["network_fee_crypto"]
+        network_fee_crypto = Decimal("0.00")
 
         two_dollars_ngn = (Decimal("2.0") * usd_to_ngn_rate).quantize(Decimal("0.01"))
         approx_usd = fiat_amount_ngn / usd_to_ngn_rate
@@ -99,9 +99,8 @@ class RateService:
         dollar_value = (net_deposit_ngn / usd_to_ngn_rate).quantize(Decimal("0.01"))
         gross_crypto = (net_deposit_ngn / wholesale_rate).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
 
-        net_crypto = (gross_crypto - network_fee_crypto).quantize(Decimal("0.00000001"), rounding=ROUND_DOWN)
-        if net_crypto <= 0:
-            net_crypto = gross_crypto
+        # 100% of the purchased crypto is delivered. Platform service fee in fiat already covers gas/network fees.
+        net_crypto = gross_crypto
 
         return {
             "coin": coin,
