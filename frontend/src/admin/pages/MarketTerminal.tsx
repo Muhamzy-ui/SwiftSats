@@ -43,6 +43,7 @@ export const MarketTerminal: React.FC = () => {
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const currentBarRef = useRef<{ time: any; open: number; high: number; low: number; close: number } | null>(null);
 
   const [selectedPair, setSelectedPair] = useState<MarketPair>(SUPPORTED_PAIRS[0]);
   const [timeframe, setTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1D'>('15m');
@@ -177,6 +178,8 @@ export const MarketTerminal: React.FC = () => {
       });
     }
 
+    const lastBar = candleData[candleData.length - 1];
+    currentBarRef.current = { ...lastBar };
     candleSeries.setData(candleData);
     volumeSeries.setData(volumeData);
     setCurrentPrice(p);
@@ -222,33 +225,31 @@ export const MarketTerminal: React.FC = () => {
   // Live WebSocket/Tick generator simulation (updates the active candle in real-time)
   useEffect(() => {
     const timer = setInterval(() => {
-      if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+      if (!candleSeriesRef.current || !volumeSeriesRef.current || !currentBarRef.current) return;
 
-      setCurrentPrice((prev) => {
-        const delta = (Math.random() - 0.49) * (prev * 0.0008);
-        const nextPrice = Number((prev + delta).toFixed(selectedPair.decimals));
-        setLastTickDirection(delta >= 0 ? 'up' : 'down');
+      const bar = currentBarRef.current;
+      const delta = (Math.random() - 0.49) * (bar.close * 0.0006);
+      const nextPrice = Number((bar.close + delta).toFixed(selectedPair.decimals));
+      setLastTickDirection(delta >= 0 ? 'up' : 'down');
 
-        const nowSec = Math.floor(Date.now() / 1000) as any;
-        // Update active candle with new close price
-        candleSeriesRef.current?.update({
-          time: nowSec,
-          open: prev,
-          high: Math.max(prev, nextPrice) + Math.random() * (prev * 0.0002),
-          low: Math.min(prev, nextPrice) - Math.random() * (prev * 0.0002),
-          close: nextPrice,
-        });
+      bar.high = Math.max(bar.high, nextPrice);
+      bar.low = Math.min(bar.low, nextPrice);
+      bar.close = nextPrice;
 
-        const isUp = nextPrice >= prev;
-        const barColor = isUp ? (isChinese ? 'rgba(255, 51, 75, 0.45)' : 'rgba(0, 230, 118, 0.45)') : (isChinese ? 'rgba(0, 230, 118, 0.45)' : 'rgba(255, 59, 92, 0.45)');
-        volumeSeriesRef.current?.update({
-          time: nowSec,
-          value: Math.floor(Math.random() * 25 + 5),
-          color: barColor,
-        });
+      candleSeriesRef.current.update(bar);
 
-        return nextPrice;
+      const isUp = bar.close >= bar.open;
+      const barColor = isUp
+        ? (isChinese ? 'rgba(255, 51, 75, 0.45)' : 'rgba(0, 230, 118, 0.45)')
+        : (isChinese ? 'rgba(0, 230, 118, 0.45)' : 'rgba(255, 59, 92, 0.45)');
+
+      volumeSeriesRef.current.update({
+        time: bar.time,
+        value: Math.floor(Math.random() * 25 + 5),
+        color: barColor,
       });
+
+      setCurrentPrice(nextPrice);
     }, 1500);
 
     return () => clearInterval(timer);
@@ -269,7 +270,8 @@ export const MarketTerminal: React.FC = () => {
       });
     }
 
-    for (let i = 1; i <= 5; i--) {
+    // FIXED: i++ instead of infinite loop i--
+    for (let i = 1; i <= 5; i++) {
       bids.push({
         price: Number((p - i * step).toFixed(selectedPair.decimals)),
         amount: Number((Math.random() * 4.2 + 0.5).toFixed(3)),
