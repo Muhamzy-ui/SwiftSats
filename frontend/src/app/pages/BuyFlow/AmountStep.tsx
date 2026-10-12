@@ -28,9 +28,9 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   
   // Calculate starting dollar value from optional URL parameter
   const getInitialDollar = () => {
-    if (!initialAmount) return '10';
+    if (!initialAmount) return selectedRate.coin === 'BTC' ? '20' : '10';
     const num = parseFloat(initialAmount);
-    if (isNaN(num)) return '10';
+    if (isNaN(num)) return selectedRate.coin === 'BTC' ? '20' : '10';
     // If value looks like Naira (e.g. >= 1000), convert to USD equivalent
     if (num >= 1000) {
       return (num / ratePerDollar).toFixed(2);
@@ -46,7 +46,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
 
   const [symbol] = selectedRate.coin.split('_');
   const coinPriceUsd = parseFloat(selectedRate.price_usd || '1.00');
-  const minUsd = parseFloat(selectedRate.min_amount_usd || '1.00');
+  const minUsd = parseFloat(selectedRate.min_amount_usd || (selectedRate.coin === 'BTC' ? '15.00' : '1.00'));
 
   // Active numeric dollar value
   const dollarAmount = useMemo(() => {
@@ -59,18 +59,25 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   }, [currencyMode, dollarInput, cryptoInput, coinPriceUsd]);
 
   // Live calculated amounts:
+  // - BTC: $2.00 flat service fee ($1 normal + $1 processing deducted from initial deposit)
   // - >= $100 USD: $2.00 flat service fee
-  // - < $100 USD: $1.00 flat service fee
+  // - Direct small orders (<= $4.50): ₦700 flat fee
+  // - Standard: $1.00 flat service fee
   const calculations = useMemo(() => {
     if (dollarAmount <= 0) return null;
 
-    const isSmallOrderDirect = !partnerCode && dollarAmount <= 4.5;
-    const feeNgn = isSmallOrderDirect
-      ? 700
-      : (dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar));
-    const feeLabel = isSmallOrderDirect
-      ? '(₦700 flat)'
-      : (dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)');
+    const isBtc = selectedRate.coin === 'BTC';
+    const isSmallOrderDirect = !partnerCode && dollarAmount <= 4.5 && !isBtc;
+    const feeNgn = isBtc
+      ? (2.0 * ratePerDollar)
+      : (isSmallOrderDirect
+        ? 700
+        : (dollarAmount >= 100.0 ? (2.0 * ratePerDollar) : (1.0 * ratePerDollar)));
+    const feeLabel = isBtc
+      ? '($2.00 flat)'
+      : (isSmallOrderDirect
+        ? '(₦700 flat)'
+        : (dollarAmount >= 100.0 ? '($2.00 flat)' : '($1.00 flat)'));
 
     if (isLockedAmount && initialAmount && parseFloat(initialAmount) >= 1000) {
       const totalNgnToPay = Math.round(parseFloat(initialAmount));
@@ -96,7 +103,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       feeLabel,
       totalNgnToPay,
     };
-  }, [dollarAmount, coinPriceUsd, ratePerDollar, isLockedAmount, initialAmount]);
+  }, [dollarAmount, coinPriceUsd, ratePerDollar, isLockedAmount, initialAmount, selectedRate.coin, partnerCode]);
 
   const handleDollarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9.]/g, '');
@@ -117,9 +124,9 @@ export const AmountStep: React.FC<AmountStepProps> = ({
   };
 
   const handleProceed = async () => {
-    const minUsd = parseFloat(selectedRate.min_amount_usd || '1.00');
-    if (dollarAmount < minUsd) {
-      setErrorMsg(`Minimum deposit is $${minUsd.toFixed(2)} USD`);
+    const minLimit = parseFloat(selectedRate.min_amount_usd || (selectedRate.coin === 'BTC' ? '15.00' : '1.00'));
+    if (dollarAmount < minLimit) {
+      setErrorMsg(`Minimum order for ${selectedRate.name || selectedRate.coin} is $${minLimit.toFixed(2)} USD (₦${Math.round(minLimit * ratePerDollar).toLocaleString()})`);
       return;
     }
     if (dollarAmount > 5000) {
@@ -245,7 +252,7 @@ export const AmountStep: React.FC<AmountStepProps> = ({
       {/* Quick Select Dollar Value Pills */}
       {!isLockedAmount && (
         <div className="flex flex-wrap gap-1.5 pt-0.5">
-          {PRESET_DOLLAR_VALUES.map((val) => {
+          {PRESET_DOLLAR_VALUES.filter((val) => val >= minUsd).map((val) => {
             const isSelected = currencyMode === 'USD' && dollarAmount === val;
             return (
               <button

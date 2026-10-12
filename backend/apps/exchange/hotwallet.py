@@ -113,6 +113,9 @@ def addr_to_script_pubkey(addr: str) -> bytes:
     if addr.startswith("bc1q"):
         ver, prog = bech32_decode(addr)
         return bytes([ver, len(prog)]) + prog
+    elif addr.startswith("bc1p"):
+        ver, prog = bech32_decode(addr)
+        return bytes([0x51, len(prog)]) + prog
     elif addr.startswith("1"):
         raw = b58decode(addr)[:-4]
         return b"\x76\xa9\x14" + raw[1:] + b"\x88\xac"

@@ -23,10 +23,10 @@ const INITIAL_DEFAULT_RATES: LiveRate[] = [
     is_featured: true,
     speed_category: 'Standard',
     estimated_delivery_time: 'Instant (~10 min)',
-    min_amount_usd: '1.00',
-    min_amount_ngn: '1500.00',
+    min_amount_usd: '15.00',
+    min_amount_ngn: '21000.00',
     max_amount_ngn: '5000000.00',
-    network_fee_crypto: '0.00005',
+    network_fee_crypto: '0.00',
   },
   {
     coin: 'USDC',

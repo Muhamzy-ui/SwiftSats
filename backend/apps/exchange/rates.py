@@ -76,7 +76,13 @@ class RateService:
         approx_usd = fiat_amount_ngn / usd_to_ngn_rate
 
         # Pricing rules:
-        if not partner_code and approx_usd <= Decimal("4.5"):
+        if coin.upper() == "BTC":
+            # Bitcoin: Flat $2.00 total fee ($1 normal service fee + $1 processing deducted from initial deposit)
+            service_fee_usd = Decimal("2.00")
+            service_fee_ngn = two_dollars_ngn
+            net_deposit_ngn = max(Decimal("0.01"), fiat_amount_ngn - service_fee_ngn)
+            network_fee_crypto = Decimal("0.00")
+        elif not partner_code and approx_usd <= Decimal("4.5"):
             # Direct SwiftSats small order discount ($2, $3, $4)
             service_fee_ngn = Decimal("700.00")
             service_fee_usd = (Decimal("700.00") / usd_to_ngn_rate).quantize(Decimal("0.01"))
