@@ -77,18 +77,19 @@ export const adminApi = {
   },
 
   /** Dashboard metrics and trend chart data */
-  async getDashboard(): Promise<{
+  async getDashboard(params?: { timeframe?: 'today' | 'yesterday' | '3d' | '7d' | '30d' }): Promise<{
     success: boolean;
     stats: DashboardStats;
     charts: { orders_trend: TrendChartPoint[] };
     recent_activity: AdminOrderSummary[];
   }> {
+    const query = params?.timeframe ? `?timeframe=${params.timeframe}` : '';
     return request<{
       success: boolean;
       stats: DashboardStats;
       charts: { orders_trend: TrendChartPoint[] };
       recent_activity: AdminOrderSummary[];
-    }>('/api/v1/admin/dashboard/');
+    }>(`/api/v1/admin/dashboard/${query}`);
   },
 
   /** Filtered order list */

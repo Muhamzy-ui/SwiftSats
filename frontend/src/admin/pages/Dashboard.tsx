@@ -29,6 +29,7 @@ export const DashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [chartMode, setChartMode] = useState<'line' | 'candle'>('line');
   const [metricScope, setMetricScope] = useState<'completed' | 'all'>('completed');
+  const [timeframe, setTimeframe] = useState<'today' | 'yesterday' | '3d' | '7d' | '30d'>('7d');
 
   // Chart high-contrast colors (Neon Green and Electric Red/Crimson - NEVER dark or black)
   const isDark = theme === 'dark';
@@ -45,14 +46,20 @@ export const DashboardPage: React.FC = () => {
     }));
   }, [chartData, metricScope]);
 
+  const periodStats = React.useMemo(() => {
+    const totalOrders = activeChartData.reduce((acc, d) => acc + (d.chart_orders || 0), 0);
+    const totalVolume = activeChartData.reduce((acc, d) => acc + (d.chart_volume || 0), 0);
+    return { totalOrders, totalVolume };
+  }, [activeChartData]);
+
   const [isTogglingMode, setIsTogglingMode] = useState(false);
   const [payoutMode, setPayoutMode] = useState<'AUTOMATED' | 'MANUAL'>('MANUAL');
   const [toggleNotice, setToggleNotice] = useState<string | null>(null);
 
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
+  const fetchDashboardData = async (activeTimeframe = timeframe, isSilent = false) => {
+    if (!isSilent) setIsLoading(true);
     try {
-      const res = await adminApi.getDashboard();
+      const res = await adminApi.getDashboard({ timeframe: activeTimeframe });
       if (res.success) {
         setStats(res.stats);
         if (res.stats?.payout_mode) {
@@ -64,7 +71,7 @@ export const DashboardPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load dashboard', err);
     } finally {
-      setIsLoading(false);
+      if (!isSilent) setIsLoading(false);
     }
   };
 
@@ -92,8 +99,13 @@ export const DashboardPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    fetchDashboardData(timeframe);
+    // Real-time ticking / live moving feed every 10 seconds
+    const interval = setInterval(() => {
+      fetchDashboardData(timeframe, true);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [timeframe]);
 
   const isAutomated = payoutMode === 'AUTOMATED';
 
@@ -111,7 +123,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <button
-          onClick={fetchDashboardData}
+          onClick={() => fetchDashboardData()}
           disabled={isLoading}
           className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-subtle transition-colors"
         >
@@ -211,12 +223,16 @@ export const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Orders & Volume Trend Chart with Red & Green Lines/Candles */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-subtle flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Orders & Volume Flow (7 Days)
+                  Orders & Volume Flow ({timeframe === 'today' ? 'Today (Hourly)' : timeframe === 'yesterday' ? 'Yesterday (Hourly)' : timeframe === '3d' ? '3 Days' : timeframe === '30d' ? '30 Days' : '1 Week'})
                 </h2>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>LIVE FEED</span>
+                </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   metricScope === 'completed'
                     ? 'bg-emerald-500/15 text-emerald-600 dark:text-[#00e676]'
@@ -226,11 +242,34 @@ export const DashboardPage: React.FC = () => {
                 </span>
               </div>
               <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                Daily turnover (Green) vs order velocity (Red) • {metricScope === 'completed' ? 'Settled transactions' : 'All checkout attempts'}
+                Turnover (Green) vs Velocity (Red) • {periodStats.totalOrders} Orders ({formatNaira(periodStats.totalVolume)}) in this view
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Timeframe Selector: Today | Yesterday | 3 Days | 1 Week | 1 Month */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                {[
+                  { key: 'today', label: 'Today' },
+                  { key: 'yesterday', label: 'Yesterday' },
+                  { key: '3d', label: '3 Days' },
+                  { key: '7d', label: '1 Week' },
+                  { key: '30d', label: '1 Month' },
+                ].map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setTimeframe(t.key as any)}
+                    className={`px-2 py-1 rounded-md transition-all text-[11px] ${
+                      timeframe === t.key
+                        ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-[#00e676] font-bold shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
               {/* Legend with Green and Red Indicators */}
               <div className="flex items-center gap-3 text-xs font-semibold mr-1">
                 <span className="flex items-center gap-1.5 text-rose-600 dark:text-[#ff3b5c]">
@@ -357,6 +396,9 @@ export const DashboardPage: React.FC = () => {
                     name="Orders"
                     stroke={redColor}
                     strokeWidth={3}
+                    isAnimationActive={true}
+                    animationDuration={700}
+                    animationEasing="ease-in-out"
                     dot={{ r: 4, fill: redColor, strokeWidth: 2, stroke: isDark ? '#07080d' : '#ffffff' }}
                     activeDot={{ r: 6, fill: redColor }}
                   />
@@ -368,6 +410,9 @@ export const DashboardPage: React.FC = () => {
                     name="Volume (₦)"
                     stroke={greenColor}
                     strokeWidth={3}
+                    isAnimationActive={true}
+                    animationDuration={700}
+                    animationEasing="ease-in-out"
                     dot={{ r: 4, fill: greenColor, strokeWidth: 2, stroke: isDark ? '#07080d' : '#ffffff' }}
                     activeDot={{ r: 6, fill: greenColor }}
                   />
@@ -416,9 +461,27 @@ export const DashboardPage: React.FC = () => {
                     ]}
                   />
                   {/* RED BARS/CANDLES FOR ORDERS */}
-                  <Bar yAxisId="left" dataKey="chart_orders" name="Orders" fill={redColor} radius={[4, 4, 0, 0]} />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="chart_orders"
+                    name="Orders"
+                    fill={redColor}
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={true}
+                    animationDuration={700}
+                    animationEasing="ease-in-out"
+                  />
                   {/* GREEN BARS/CANDLES FOR VOLUME */}
-                  <Bar yAxisId="right" dataKey="chart_volume" name="Volume (₦)" fill={greenColor} radius={[4, 4, 0, 0]} />
+                  <Bar
+                    yAxisId="right"
+                    dataKey="chart_volume"
+                    name="Volume (₦)"
+                    fill={greenColor}
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={true}
+                    animationDuration={700}
+                    animationEasing="ease-in-out"
+                  />
                 </BarChart>
               )}
             </ResponsiveContainer>

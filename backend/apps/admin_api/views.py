@@ -105,27 +105,106 @@ class AdminDashboardView(APIView):
         all_spread_rev = (total_volume * (spread_pct / Decimal("100.0"))).quantize(Decimal("0.01"))
         total_net_revenue = (all_fee_rev + all_spread_rev).quantize(Decimal("0.01"))
 
-        # 2. 7-Day Trend Chart
-        trend_days = 7
+        # 2. Trend Chart (Today, Yesterday, 3 Days, 1 Week (7d), 1 Month (30d))
+        timeframe = request.query_params.get("timeframe", "7d").lower().strip()
         daily_trends = []
-        for i in range(trend_days - 1, -1, -1):
-            day_dt = today_start - timedelta(days=i)
-            next_day_dt = day_dt + timedelta(days=1)
-            day_qs = Order.objects.filter(created_at__gte=day_dt, created_at__lt=next_day_dt)
-            completed_qs = day_qs.filter(status=OrderStatus.COMPLETED)
-            completed_count = completed_qs.count()
-            completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
-            total_count = day_qs.count()
-            total_vol = float(day_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
-            daily_trends.append({
-                "date": day_dt.strftime("%b %d"),
-                "orders": completed_count,
-                "volume": completed_vol,
-                "completed_orders": completed_count,
-                "completed_volume": completed_vol,
-                "total_orders": total_count,
-                "total_volume": total_vol,
-            })
+
+        if timeframe == "today":
+            for h in range(0, 24, 2):
+                slot_start = today_start + timedelta(hours=h)
+                slot_end = slot_start + timedelta(hours=2)
+                slot_qs = Order.objects.filter(created_at__gte=slot_start, created_at__lt=slot_end)
+                completed_qs = slot_qs.filter(status=OrderStatus.COMPLETED)
+                completed_count = completed_qs.count()
+                completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                total_count = slot_qs.count()
+                total_vol = float(slot_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                daily_trends.append({
+                    "date": f"{h:02d}:00",
+                    "orders": completed_count,
+                    "volume": completed_vol,
+                    "completed_orders": completed_count,
+                    "completed_volume": completed_vol,
+                    "total_orders": total_count,
+                    "total_volume": total_vol,
+                })
+        elif timeframe == "yesterday":
+            for h in range(0, 24, 2):
+                slot_start = yesterday_start + timedelta(hours=h)
+                slot_end = slot_start + timedelta(hours=2)
+                slot_qs = Order.objects.filter(created_at__gte=slot_start, created_at__lt=slot_end)
+                completed_qs = slot_qs.filter(status=OrderStatus.COMPLETED)
+                completed_count = completed_qs.count()
+                completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                total_count = slot_qs.count()
+                total_vol = float(slot_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                daily_trends.append({
+                    "date": f"{h:02d}:00",
+                    "orders": completed_count,
+                    "volume": completed_vol,
+                    "completed_orders": completed_count,
+                    "completed_volume": completed_vol,
+                    "total_orders": total_count,
+                    "total_volume": total_vol,
+                })
+        elif timeframe in ("3d", "3days"):
+            for i in range(2, -1, -1):
+                day_dt = today_start - timedelta(days=i)
+                next_day_dt = day_dt + timedelta(days=1)
+                day_qs = Order.objects.filter(created_at__gte=day_dt, created_at__lt=next_day_dt)
+                completed_qs = day_qs.filter(status=OrderStatus.COMPLETED)
+                completed_count = completed_qs.count()
+                completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                total_count = day_qs.count()
+                total_vol = float(day_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                daily_trends.append({
+                    "date": day_dt.strftime("%a %d"),
+                    "orders": completed_count,
+                    "volume": completed_vol,
+                    "completed_orders": completed_count,
+                    "completed_volume": completed_vol,
+                    "total_orders": total_count,
+                    "total_volume": total_vol,
+                })
+        elif timeframe in ("30d", "1m", "month"):
+            for i in range(29, -1, -1):
+                day_dt = today_start - timedelta(days=i)
+                next_day_dt = day_dt + timedelta(days=1)
+                day_qs = Order.objects.filter(created_at__gte=day_dt, created_at__lt=next_day_dt)
+                completed_qs = day_qs.filter(status=OrderStatus.COMPLETED)
+                completed_count = completed_qs.count()
+                completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                total_count = day_qs.count()
+                total_vol = float(day_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                daily_trends.append({
+                    "date": day_dt.strftime("%b %d"),
+                    "orders": completed_count,
+                    "volume": completed_vol,
+                    "completed_orders": completed_count,
+                    "completed_volume": completed_vol,
+                    "total_orders": total_count,
+                    "total_volume": total_vol,
+                })
+        else:
+            trend_days = 7
+            for i in range(trend_days - 1, -1, -1):
+                day_dt = today_start - timedelta(days=i)
+                next_day_dt = day_dt + timedelta(days=1)
+                day_qs = Order.objects.filter(created_at__gte=day_dt, created_at__lt=next_day_dt)
+                completed_qs = day_qs.filter(status=OrderStatus.COMPLETED)
+                completed_count = completed_qs.count()
+                completed_vol = float(completed_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                total_count = day_qs.count()
+                total_vol = float(day_qs.aggregate(vol=Sum("fiat_amount_ngn"))["vol"] or 0)
+                daily_trends.append({
+                    "date": day_dt.strftime("%b %d"),
+                    "orders": completed_count,
+                    "volume": completed_vol,
+                    "completed_orders": completed_count,
+                    "completed_volume": completed_vol,
+                    "total_orders": total_count,
+                    "total_volume": total_vol,
+                })
 
         # 3. Overall Success Rate (Actual completed vs finished orders)
         total_finished = Order.objects.filter(status__in=[OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.REFUNDED]).count()
