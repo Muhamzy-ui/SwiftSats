@@ -404,6 +404,20 @@ class OrderStatusLookupView(APIView):
             order.virtual_account_name = "Mbovibe Systems/swiftsats"
             order.save(update_fields=["virtual_account_number", "virtual_bank_name", "virtual_account_name"])
 
+        # Real-time auto-expiration: If order is unfulfilled and quote window has elapsed
+        if order.status in [OrderStatus.QUOTE_LOCKED, OrderStatus.AWAITING_PAYMENT] and order.is_quote_expired:
+            try:
+                from apps.orders.state_machine import OrderStateMachine
+                from core.constants import AuditActor
+                OrderStateMachine.transition_to(
+                    order=order,
+                    target_state=OrderStatus.CANCELLED,
+                    actor=AuditActor.CRON_CLEANUP,
+                    metadata={"reason": "Quote payment window expired without confirmed deposit"},
+                )
+            except Exception as exc:
+                logger.warning("Could not auto-expire order %s: %s", order.order_reference, exc)
+
         return Response({
             "success": True,
             "status": order.status,

@@ -68,16 +68,16 @@ export function cancelStoredOrder(order_reference: string): void {
 /**
  * Returns the most recent open order on this device if one exists.
  * An open order has status 'AWAITING_PAYMENT' or 'QUOTE_LOCKED'
- * and was created within the active operational window (60 minutes).
+ * and was created within the active rate lock window (15 minutes).
  */
 export function getOpenOrder(): LocalTrackedOrder | null {
   const orders = getStoredRecentOrders();
   const now = Date.now();
-  const ONE_HOUR = 60 * 60 * 1000;
+  const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
   const open = orders.find((o) => {
     const isOpenStatus = o.status === 'AWAITING_PAYMENT' || o.status === 'QUOTE_LOCKED';
-    const isRecent = !o.timestamp || (now - o.timestamp) < ONE_HOUR;
+    const isRecent = !o.timestamp || (now - o.timestamp) < FIFTEEN_MINUTES;
     return isOpenStatus && isRecent;
   });
 

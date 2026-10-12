@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Lock,
   Volume2,
+  MessageCircle,
 } from 'lucide-react';
 import { ordersApi } from '../../shared/api/orders';
 import { OrderPublic } from '../../shared/types';
@@ -541,6 +542,83 @@ export const OrderStatusPage: React.FC = () => {
             </div>
           )}
 
+          {/* Failed Transaction Support Card */}
+          {order.status === 'FAILED' && (
+            <div className="p-5 sm:p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-500/40 space-y-4 shadow-sm animate-in fade-in">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black text-rose-950 dark:text-rose-200">
+                    Transaction Needs Attention
+                  </h3>
+                  <p className="text-xs text-rose-800 dark:text-rose-300 leading-relaxed">
+                    The automatic blockchain dispatch could not be finalized. Your deposit and funds are completely safe.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-rose-200 dark:border-rose-800/60 text-xs space-y-1.5">
+                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                  If you have completed your bank transfer, our operations team will manually release your crypto or issue an instant refund upon receiving your message.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+                <a
+                  href={`https://wa.me/message/LGMKYLBUE3E4C1?text=${encodeURIComponent(
+                    `Hello SwiftSats Support, my order ${order.order_reference} shows Failed. I would like assistance with my payout.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-98"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Chat with Support on WhatsApp</span>
+                </a>
+                <Link
+                  to="/support"
+                  className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                >
+                  <span>Support Center</span>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Cancelled / Expired Action Bar */}
+          {order.status === 'CANCELLED' && (
+            <div className="p-5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-slate-700 space-y-3">
+              <div className="flex items-center gap-2.5 text-slate-800 dark:text-slate-200 font-bold text-xs">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span>Order Expired / Cancelled</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                The payment window for this rate lock has closed. No funds were debited. If you already sent money, contact support immediately with your proof.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                <Link
+                  to="/"
+                  className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs text-center"
+                >
+                  Start New Order
+                </Link>
+                <a
+                  href={`https://wa.me/message/LGMKYLBUE3E4C1?text=${encodeURIComponent(
+                    `Hello SwiftSats Support, my order ${order.order_reference} expired but I already made a bank transfer.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-4 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-500" />
+                  <span>I Already Sent Money</span>
+                </a>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-3 text-xs divide-y divide-slate-100 dark:divide-white/[0.06]">
             <div className="flex justify-between items-center py-2">
               <span className="text-slate-500 dark:text-slate-400">Destination Network</span>
@@ -577,7 +655,17 @@ export const OrderStatusPage: React.FC = () => {
             ) : (
               <div className="flex justify-between items-center py-2">
                 <span className="text-slate-500 dark:text-slate-400">Blockchain State</span>
-                <span className="text-amber-500 dark:text-amber-400 font-medium">Awaiting payment verification</span>
+                {order.status === 'FAILED' ? (
+                  <span className="text-rose-500 dark:text-rose-400 font-medium">Payout pending manual resolution</span>
+                ) : order.status === 'CANCELLED' ? (
+                  <span className="text-slate-400 font-medium">Quote expired</span>
+                ) : order.status === 'VERIFYING' ? (
+                  <span className="text-blue-500 dark:text-blue-400 font-medium">Verifying bank deposit...</span>
+                ) : order.status === 'PAYOUT_PROCESSING' ? (
+                  <span className="text-emerald-500 dark:text-emerald-400 font-medium">Broadcasting to blockchain...</span>
+                ) : (
+                  <span className="text-amber-500 dark:text-amber-400 font-medium">Awaiting payment verification</span>
+                )}
               </div>
             )}
 

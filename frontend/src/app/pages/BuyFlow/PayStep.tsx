@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, ExternalLink, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Bell } from 'lucide-react';
+import { Copy, Check, ExternalLink, Clock, ShieldAlert, Upload, CheckCircle2, XCircle, AlertTriangle, AlertCircle, MessageCircle, RefreshCw, Bell } from 'lucide-react';
 import { OrderLockedResponse, OrderDetail } from '../../../shared/types';
 import { ordersApi } from '../../../shared/api/orders';
 import { formatNaira, formatSpeed } from '../../../shared/utils/formatters';
@@ -65,21 +65,33 @@ export const PayStep: React.FC<PayStepProps> = ({
     ? rawAcc
     : '1623796514';
 
-  // 15-Minute Countdown Timer - Guaranteed active real-time reading
+  const handleExpireOrder = React.useCallback(async () => {
+    try {
+      ordersApi.cancelOrder(orderRef);
+    } catch (_) {}
+    cancelStoredOrder(orderRef);
+    setCurrentOrder((prev) => ({ ...prev, status: 'CANCELLED' }));
+  }, [orderRef]);
+
+  // 15-Minute Countdown Timer - Expires order if not paid within window
   useEffect(() => {
-    if (currentOrder.status === 'COMPLETED') return;
+    if (currentOrder.status === 'COMPLETED' || currentOrder.status === 'CANCELLED' || currentOrder.status === 'FAILED') return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          return 900; // Auto-renew operational rate lock
+          clearInterval(timer);
+          if (!paymentConfirmedByUser && !receiptSubmitted) {
+            handleExpireOrder();
+          }
+          return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentOrder.status]);
+  }, [currentOrder.status, paymentConfirmedByUser, receiptSubmitted, handleExpireOrder]);
 
   // Format seconds into MM:SS
   const formatTimer = (seconds: number) => {
@@ -378,6 +390,62 @@ export const PayStep: React.FC<PayStepProps> = ({
     }
   };
 
+  const isFailed = currentOrder.status === 'FAILED';
+
+  if (isFailed) {
+    return (
+      <div className="text-center space-y-6 py-6 animate-in zoom-in-95 duration-300">
+        <div className="w-16 h-16 rounded-full bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-500/40 text-rose-500 flex items-center justify-center mx-auto shadow-lg shadow-rose-500/20">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+
+        <div className="space-y-1.5">
+          <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            Payout Needs Attention
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+            Order <strong className="font-mono text-slate-800 dark:text-slate-200">{orderRef}</strong> could not be automatically dispatched on-chain. Your funds are 100% secure.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] text-xs space-y-2 text-left">
+          <div className="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400">
+            <span>Amount:</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-white">{formatNaira(currentOrder.fiat_amount_ngn)} ({currentOrder.crypto_amount} {currentOrder.coin.split('_')[0]})</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400">
+            <span>Destination:</span>
+            <span className="font-mono text-slate-900 dark:text-white truncate max-w-[200px]">{currentOrder.masked_wallet_address}</span>
+          </div>
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+            Our 24/7 operations team is on standby to dispatch your crypto manually or process an instant refund.
+          </p>
+        </div>
+
+        <div className="space-y-2 pt-1">
+          <a
+            href={`https://wa.me/message/LGMKYLBUE3E4C1?text=${encodeURIComponent(
+              `Hello SwiftSats Support, my order ${orderRef} shows Failed. I would like assistance with my payout.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>Chat with Support on WhatsApp</span>
+          </a>
+          <button
+            type="button"
+            onClick={() => (window.location.href = `/order-status/${orderRef}`)}
+            className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all"
+          >
+            View Live Tracking Details
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const isCancelled = currentOrder.status === 'CANCELLED';
 
   if (isCancelled) {
@@ -389,10 +457,10 @@ export const PayStep: React.FC<PayStepProps> = ({
 
         <div className="space-y-1.5">
           <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            Order Cancelled
+            Order Expired / Cancelled
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Order <strong className="font-mono text-slate-800 dark:text-slate-200">{orderRef}</strong> has been cancelled. Your locked exchange rate and virtual settlement account have been released.
+            Order <strong className="font-mono text-slate-800 dark:text-slate-200">{orderRef}</strong> has expired. The locked exchange rate and virtual settlement account have been released.
           </p>
         </div>
 
@@ -400,19 +468,32 @@ export const PayStep: React.FC<PayStepProps> = ({
           <p>No funds were debited. You can start a new exchange whenever you're ready.</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (onCancel) {
-              onCancel();
-            } else {
-              window.location.href = '/';
-            }
-          }}
-          className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all active:scale-98"
-        >
-          Start a New Order
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              if (onCancel) {
+                onCancel();
+              } else {
+                window.location.href = '/';
+              }
+            }}
+            className="flex-1 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm shadow-lg shadow-emerald-500/20 transition-all active:scale-98"
+          >
+            Start a New Order
+          </button>
+          <a
+            href={`https://wa.me/message/LGMKYLBUE3E4C1?text=${encodeURIComponent(
+              `Hello SwiftSats Support, my order ${orderRef} expired, but I already made a bank transfer.`
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-3.5 px-4 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all"
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-500" />
+            <span>Already Transferred?</span>
+          </a>
+        </div>
       </div>
     );
   }

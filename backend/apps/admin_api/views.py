@@ -205,6 +205,22 @@ class AdminOrdersListView(APIView):
         if date_to:
             qs = qs.filter(created_at__lte=date_to)
 
+        # Auto-expire stale unfulfilled orders past their payment window
+        stale_orders = Order.objects.filter(
+            status__in=[OrderStatus.QUOTE_LOCKED, OrderStatus.AWAITING_PAYMENT],
+            quote_expires_at__lt=timezone.now(),
+        )[:50]
+        for stale in stale_orders:
+            try:
+                OrderStateMachine.transition_to(
+                    order=stale,
+                    target_state=OrderStatus.CANCELLED,
+                    actor=AuditActor.CRON_CLEANUP,
+                    metadata={"reason": "Quote expired without deposit"},
+                )
+            except Exception:
+                pass
+
         # Summary counts for stat cards
         total_count = Order.objects.count()
         completed_count = Order.objects.filter(status=OrderStatus.COMPLETED).count()
