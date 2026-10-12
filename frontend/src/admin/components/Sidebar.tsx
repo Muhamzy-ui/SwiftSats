@@ -17,6 +17,7 @@ import {
   X,
   Globe,
   Smartphone,
+  CandlestickChart,
   ExternalLink,
 } from 'lucide-react';
 import { SystemHealthCard } from './SystemHealthCard';
@@ -37,6 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isHealthy = true, onNavigate, 
 
   const navItems = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { to: '/admin/terminal', label: 'Market Terminal', icon: CandlestickChart },
     { to: '/admin/orders', label: 'Orders Pipeline', icon: Layers },
     { to: '/admin/integrations', label: 'Linked Websites', icon: Link2 },
     { to: '/admin/users', label: 'Users & Customers', icon: Users },

@@ -12,6 +12,7 @@ import { ReportsPage } from './pages/Reports';
 import { SettingsPage } from './pages/Settings';
 import { UsersPage } from './pages/Users';
 import { IntegrationsPage } from './pages/Integrations';
+import { MarketTerminal } from './pages/MarketTerminal';
 
 export const AdminRoutes: React.FC = () => {
   return (
@@ -19,6 +20,8 @@ export const AdminRoutes: React.FC = () => {
       <Route path="login" element={<AdminLoginPage />} />
       <Route element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
+        <Route path="terminal" element={<MarketTerminal />} />
+        <Route path="market" element={<MarketTerminal />} />
         <Route path="orders" element={<OrdersPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="customers" element={<UsersPage />} />

@@ -11,7 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { Receipt, DollarSign, Clock, Percent, ArrowRight, RefreshCw, BarChart2, TrendingUp } from 'lucide-react';
+import { Receipt, DollarSign, Clock, Percent, ArrowRight, RefreshCw, BarChart2, TrendingUp, CandlestickChart } from 'lucide-react';
 import { StatCard } from '../components/StatCard';
 import { SystemHealthCard } from '../components/SystemHealthCard';
 import { DevicePushBanner } from '../components/DevicePushBanner';
@@ -122,14 +122,25 @@ export const DashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => fetchDashboardData()}
-          disabled={isLoading}
-          className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-subtle transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
-          <span>Refresh Data</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/admin/terminal"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-xs font-bold text-emerald-600 dark:text-[#00e676] shadow-subtle transition-all"
+            title="Open Pro Candlestick Trading Desk with customer fills"
+          >
+            <CandlestickChart className="w-3.5 h-3.5 text-[#00e676]" />
+            <span>Market Terminal</span>
+          </Link>
+
+          <button
+            onClick={() => fetchDashboardData()}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-subtle transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* Native Device Real-Time Push Notifications Banner */}
