@@ -274,7 +274,9 @@ export const PayStep: React.FC<PayStepProps> = ({
 
     const cleanCoin = currentOrder.coin.split('_')[0];
     const swiftsatsRef = currentOrder.order_reference || orderRef;
-    const params = `payment=success&orderId=${encodeURIComponent(swiftsatsRef)}&order_id=${encodeURIComponent(swiftsatsRef)}&reference=${encodeURIComponent(swiftsatsRef)}&swiftsats_order_id=${encodeURIComponent(swiftsatsRef)}&partner_order_id=${encodeURIComponent(partnerOrderId || '')}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
+    const fiatVal = parseFloat(currentOrder.fiat_amount_expected || currentOrder.fiat_amount_ngn || '7000') || 7000;
+    const usdVal = (fiatVal / 1425).toFixed(2);
+    const params = `payment=success&orderId=${encodeURIComponent(swiftsatsRef)}&order_id=${encodeURIComponent(swiftsatsRef)}&reference=${encodeURIComponent(swiftsatsRef)}&swiftsats_order_id=${encodeURIComponent(swiftsatsRef)}&partner_order_id=${encodeURIComponent(partnerOrderId || '')}&coin=${encodeURIComponent(cleanCoin)}&amount=${encodeURIComponent(currentOrder.crypto_amount)}&crypto_amount=${encodeURIComponent(currentOrder.crypto_amount)}&amount_usd=${encodeURIComponent(usdVal)}&amount_ngn=${encodeURIComponent(String(fiatVal))}${currentOrder.tx_hash ? `&tx_hash=${encodeURIComponent(currentOrder.tx_hash)}` : ''}`;
 
     if (effectiveReturn.includes('#')) {
       const [base, hash] = effectiveReturn.split('#');
