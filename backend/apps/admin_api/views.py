@@ -780,6 +780,51 @@ class AdminHotWalletBalanceView(APIView):
         bal_info = hw.get_wallet_balance(coin=coin, address=custom_address)
         account = hw.get_configured_account()
 
+        from apps.exchange.rates import RateService
+        from core.constants import COIN_METADATA
+        from decimal import Decimal
+        try:
+            rs = RateService()
+            token_bal = Decimal(str(bal_info.get("token_balance", "0")))
+            gas_bal = Decimal(str(bal_info.get("gas_balance", "0")))
+
+            all_tickers = rs.client.get_all_market_tickers() or {}
+            usd_to_ngn = rs.get_live_usd_to_ngn_rate() or Decimal("1398.99")
+            coin_upper = coin.upper()
+
+            def resolve_coin_usd(c_name: str) -> Decimal:
+                cu = c_name.upper()
+                if "USDT" in cu or "USDC" in cu:
+                    return Decimal("1.00")
+                key = "SOL" if "SOL" in cu else ("BTC" if "BTC" in cu else ("BNB" if "BNB" in cu else ("TRX" if "TRX" in cu else ("ETH" if "ETH" in cu else cu))))
+                rate_ngn = all_tickers.get(key)
+                if not rate_ngn:
+                    try:
+                        rate_ngn = rs.client.get_live_rate_for_coin(key)
+                    except Exception:
+                        rate_ngn = None
+                if rate_ngn and rate_ngn > 0:
+                    return (Decimal(str(rate_ngn)) / usd_to_ngn).quantize(Decimal("0.01"))
+                meta = COIN_METADATA.get(key) or {}
+                if meta.get("price_usd"):
+                    return Decimal(str(meta["price_usd"])).quantize(Decimal("0.01"))
+                return Decimal("1.00")
+
+            price_usd = resolve_coin_usd(coin_upper)
+            gas_symbol = bal_info.get("gas_symbol", "BNB")
+            gas_price_usd = resolve_coin_usd(gas_symbol)
+
+            usd_value = (token_bal * price_usd).quantize(Decimal("0.01"))
+            gas_usd_value = (gas_bal * gas_price_usd).quantize(Decimal("0.01"))
+            ngn_value = (usd_value * usd_to_ngn).quantize(Decimal("0.01"))
+        except Exception:
+            price_usd = Decimal("1.00")
+            usd_value = Decimal("0.00")
+            gas_price_usd = Decimal("1.00")
+            gas_usd_value = Decimal("0.00")
+            usd_to_ngn = Decimal("1425.00")
+            ngn_value = Decimal("0.00")
+
         return Response({
             "success": True,
             "wallet_address": bal_info.get("wallet_address", ""),
@@ -791,6 +836,12 @@ class AdminHotWalletBalanceView(APIView):
             "has_private_key": bool(account),
             "coin": coin,
             "network": bal_info.get("network", "BNB Smart Chain (BEP-20)"),
+            "price_usd": str(price_usd),
+            "usd_value": str(usd_value),
+            "gas_price_usd": str(gas_price_usd),
+            "gas_usd_value": str(gas_usd_value),
+            "usd_to_ngn_rate": str(usd_to_ngn),
+            "ngn_value": str(ngn_value),
         })
 
 

@@ -280,6 +280,12 @@ export const adminApi = {
     has_private_key: boolean;
     coin: string;
     network: string;
+    price_usd?: string;
+    usd_value?: string;
+    gas_price_usd?: string;
+    gas_usd_value?: string;
+    usd_to_ngn_rate?: string;
+    ngn_value?: string;
   }> {
     const params = new URLSearchParams({ coin });
     if (address) params.set('address', address);

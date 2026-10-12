@@ -38,6 +38,12 @@ export const SettingsPage: React.FC = () => {
     has_private_key: boolean;
     wallet_address: string;
     network: string;
+    price_usd?: string;
+    usd_value?: string;
+    gas_price_usd?: string;
+    gas_usd_value?: string;
+    usd_to_ngn_rate?: string;
+    ngn_value?: string;
   } | null>(null);
   const [isCheckingBalance, setIsCheckingBalance] = useState(false);
 
@@ -493,7 +499,24 @@ export const SettingsPage: React.FC = () => {
                 ? `${parseFloat(walletBalance.token_balance).toFixed(selectedCoin.includes('BTC') ? 6 : selectedCoin.includes('SOL') ? 4 : 2)} ${SUPPORTED_COINS.find(c => c.id === selectedCoin)?.symbol || ''}`
                 : '—'}
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+            {walletBalance && (
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400">
+                <span>
+                  ≈ ${walletBalance.usd_value ? parseFloat(walletBalance.usd_value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'} USD
+                </span>
+                {walletBalance.ngn_value && parseFloat(walletBalance.ngn_value) > 0 && (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                    (₦{Math.round(parseFloat(walletBalance.ngn_value)).toLocaleString()})
+                  </span>
+                )}
+                {walletBalance.price_usd && parseFloat(walletBalance.price_usd) > 0 && !selectedCoin.includes('USDT') && (
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
+                    • 1 {SUPPORTED_COINS.find(c => c.id === selectedCoin)?.symbol || selectedCoin} = ${parseFloat(walletBalance.price_usd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-0.5">
               {walletBalance && parseFloat(walletBalance.token_balance) > 0
                 ? '✅ Float available for payouts'
                 : '⚠️ Empty float. Deposit crypto before releasing orders'}
@@ -511,7 +534,12 @@ export const SettingsPage: React.FC = () => {
             <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
               {walletBalance ? `${parseFloat(walletBalance.gas_balance).toFixed(4)} ${walletBalance.gas_symbol}` : '—'}
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+            {walletBalance && walletBalance.gas_usd_value && parseFloat(walletBalance.gas_usd_value) > 0 && (
+              <div className="text-xs font-semibold font-mono text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                <span>≈ ${parseFloat(walletBalance.gas_usd_value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD</span>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-0.5">
               {walletBalance?.has_gas
                 ? `✅ Gas available for blockchain transfers`
                 : `⚠️ Need min ${walletBalance?.gas_symbol === 'TRX' ? '15 TRX' : walletBalance?.gas_symbol === 'SOL' ? '0.005 SOL' : '0.0005 BNB'} for gas`}
