@@ -175,6 +175,20 @@ export const CashAppLogo: React.FC<LogoProps> = ({ className = 'w-9 h-9', size =
   </svg>
 );
 
+export const NairaLogo: React.FC<LogoProps> = ({ className = 'w-9 h-9', size = 36 }) => (
+  <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+    <circle cx="16" cy="16" r="16" fill="#008751" />
+    <circle cx="16" cy="16" r="13" stroke="white" strokeWidth="1" strokeOpacity="0.3" fill="none" />
+    <path
+      d="M10 8.5V23.5M10 14.5H22M10 17.5H22M22 8.5V23.5M10.5 9.5L21.5 22.5"
+      stroke="white"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const GoldCheckmark: React.FC<{ className?: string }> = ({ className = 'w-3.5 h-3.5' }) => (
   <svg viewBox="0 0 16 16" fill="none" className={className}>
     <circle cx="8" cy="8" r="7" fill="#EAB308" />
@@ -190,6 +204,7 @@ export const getCoinLogo = (coin: string, size = 36): React.ReactNode => {
   if (upper.includes('ERC20')) return <TetherLogo size={size} network="ERC20" />;
   if (upper.includes('TRC20') || upper.includes('USDT_TRC20')) return <TetherLogo size={size} network="TRC20" />;
   if (upper.includes('BEP20')) return <TetherLogo size={size} network="BEP20" />;
+  if (upper.includes('USDT') || upper.includes('TETHER')) return <TetherLogo size={size} />;
   if (upper.includes('SOL')) return <SolanaLogo size={size} />;
   if (upper.includes('ETH')) return <EthereumLogo size={size} />;
   if (upper.includes('BCH')) return <BitcoinCashLogo size={size} />;
@@ -198,8 +213,34 @@ export const getCoinLogo = (coin: string, size = 36): React.ReactNode => {
   if (upper.includes('POL') || upper.includes('MATIC')) return <PolygonLogo size={size} />;
   if (upper.includes('SHIB')) return <ShibaLogo size={size} />;
   if (upper.includes('XLM')) return <StellarLogo size={size} />;
+  if (upper.includes('NGN') || upper.includes('NAIRA')) return <NairaLogo size={size} />;
   if (upper.includes('ALIPAY')) return <AlipayLogo size={size} />;
   if (upper.includes('VENMO')) return <VenmoLogo size={size} />;
   if (upper.includes('CASHAPP')) return <CashAppLogo size={size} />;
   return <BitcoinLogo size={size} />;
+};
+
+/**
+ * Renders a circular profile-picture style avatar for any crypto coin
+ * with a glowing ring, backdrop, and optional live activity dot
+ */
+export const CoinProfileAvatar: React.FC<{
+  coin: string;
+  size?: number;
+  className?: string;
+  showStatusDot?: boolean;
+}> = ({ coin, size = 28, className = '', showStatusDot = false }) => {
+  return (
+    <div
+      className={`relative inline-flex items-center justify-center shrink-0 rounded-full p-0.5 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 border border-slate-700/80 shadow-md ${className}`}
+      style={{ width: size + 6, height: size + 6 }}
+    >
+      <div className="rounded-full overflow-hidden flex items-center justify-center bg-slate-950 w-full h-full">
+        {getCoinLogo(coin, size)}
+      </div>
+      {showStatusDot && (
+        <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00e676] ring-2 ring-[#0b0f17] shadow-xs shadow-emerald-500/50 animate-pulse" />
+      )}
+    </div>
+  );
 };
