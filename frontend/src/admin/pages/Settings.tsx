@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, Wallet, Coins, Copy, Check } from 'lucide-react';
+import { ShieldCheck, Server, AlertTriangle, RefreshCw, Send, Smartphone, Save, Wallet, Coins, Copy, Check, EyeOff } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { SystemHealthData } from '../../shared/types';
 import { DevicePushManagerCard } from '../components/DevicePushManagerCard';
@@ -54,6 +54,28 @@ export const SettingsPage: React.FC = () => {
   const [isSavingTelegram, setIsSavingTelegram] = useState(false);
   const [isTestingTelegram, setIsTestingTelegram] = useState(false);
   const [telegramStatusMsg, setTelegramStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Admin Gatekeeper URL Cloaking Secret Key
+  const [adminSecretKey, setAdminSecretKey] = useState(() => {
+    return localStorage.getItem('swiftsats_admin_secret_key') || 'swift';
+  });
+  const [isCopiedGateLink, setIsCopiedGateLink] = useState(false);
+  const [savedKeyMsg, setSavedKeyMsg] = useState<string | null>(null);
+
+  const handleSaveSecretKey = () => {
+    const trimmed = adminSecretKey.trim().toLowerCase();
+    if (!trimmed) return;
+    localStorage.setItem('swiftsats_admin_secret_key', trimmed);
+    setSavedKeyMsg('Secret passkey updated! Anyone visiting without this key will get a 404.');
+    setTimeout(() => setSavedKeyMsg(null), 3500);
+  };
+
+  const handleCopySecretGateLink = () => {
+    const url = `${window.location.origin}/admin?key=${adminSecretKey.trim()}`;
+    navigator.clipboard.writeText(url);
+    setIsCopiedGateLink(true);
+    setTimeout(() => setIsCopiedGateLink(false), 2500);
+  };
 
   const fetchHealth = async () => {
     setIsLoading(true);
@@ -661,6 +683,72 @@ export const SettingsPage: React.FC = () => {
             <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-800">
               Enabled
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Admin URL Cloaking & Anti-Discovery Gate */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-subtle space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <EyeOff className="w-4 h-4 text-emerald-500" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Admin URL Cloaking & Anti-Discovery Gate
+            </h2>
+          </div>
+          <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            404 Wall Active
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          Protects your Admin Console from being guessed or discovered by external visitors. If anyone types <code className="text-slate-300 bg-slate-800 px-1 py-0.5 rounded">/admin</code> directly into their browser, the system presents a <strong>404 Page Not Found</strong> error so they cannot see or access your login page. Only visiting with your secret passkey unlocks the portal on that device.
+        </p>
+
+        {savedKeyMsg && (
+          <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
+            {savedKeyMsg}
+          </div>
+        )}
+
+        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-3">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Secret Admin Gate Passkey
+            </label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                value={adminSecretKey}
+                onChange={(e) => setAdminSecretKey(e.target.value)}
+                placeholder="e.g. swift or mysecretkey"
+                className="flex-1 px-3 py-2 text-xs font-mono rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 text-slate-900 dark:text-white"
+              />
+              <button
+                type="button"
+                onClick={handleSaveSecretKey}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-lg transition-all shadow-xs cursor-pointer"
+              >
+                Save Passkey
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="text-xs">
+              <span className="text-slate-400 block text-[11px]">Your Secret Unlocking URL:</span>
+              <span className="font-mono text-emerald-400 font-bold break-all">
+                {window.location.origin}/admin?key={adminSecretKey.trim()}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopySecretGateLink}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all cursor-pointer shrink-0"
+            >
+              {isCopiedGateLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{isCopiedGateLink ? 'Copied Link!' : 'Copy Secret Link'}</span>
+            </button>
           </div>
         </div>
       </div>

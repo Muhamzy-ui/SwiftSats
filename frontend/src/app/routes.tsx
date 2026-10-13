@@ -9,6 +9,7 @@ import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
 import { Header } from '../shared/components/Header';
 import { MobileBottomNav } from '../shared/components/MobileBottomNav';
+import { NotFoundPage } from '../shared/components/NotFoundPage';
 import { useTheme } from '../shared/context/ThemeContext';
 
 export const AppRoutes: React.FC = () => {
@@ -49,6 +50,7 @@ export const AppRoutes: React.FC = () => {
                   <Route path="login" element={<LoginPage />} />
                   <Route path="signup" element={<RegisterPage />} />
                   <Route path="register" element={<RegisterPage />} />
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </main>
               <MobileBottomNav />

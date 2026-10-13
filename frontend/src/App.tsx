@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { AppRoutes } from './app/routes';
 import { AdminRoutes } from './admin/routes';
+import { AdminGatekeeper } from './admin/components/AdminGatekeeper';
 import { ThemeProvider } from './shared/context/ThemeContext';
 import { AuthProvider } from './shared/context/AuthContext';
 
@@ -23,8 +24,15 @@ const AdminSessionRouter: React.FC = () => {
 
   return (
     <Routes>
-      {/* Admin Section (Protected) */}
-      <Route path="/admin/*" element={<AdminRoutes />} />
+      {/* Admin Section (Protected & Cloaked behind 404 wall) */}
+      <Route
+        path="/admin/*"
+        element={
+          <AdminGatekeeper>
+            <AdminRoutes />
+          </AdminGatekeeper>
+        }
+      />
 
       {/* Public Buy Flow & Track Order */}
       <Route path="/*" element={<AppRoutes />} />
