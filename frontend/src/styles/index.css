@@ -121,3 +121,21 @@ html.dark .glass-panel-hover:hover {
 .animate-ambient-glow {
   animation: ambient-float 8s ease-in-out infinite;
 }
+
+/* Completely suppress and hide TradingView logo watermark */
+#tv-attr-logo,
+a#tv-attr-logo,
+[id*="tv-attr-logo"],
+a[href*="tradingview.com"],
+[class*="tv-attr-logo"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  z-index: -999 !important;
+}

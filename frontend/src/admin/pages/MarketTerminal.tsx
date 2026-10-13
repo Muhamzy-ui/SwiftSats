@@ -151,6 +151,7 @@ export const MarketTerminal: React.FC = () => {
         textColor: '#94a3b8',
         fontSize: 11,
         fontFamily: 'Inter, system-ui, sans-serif',
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: 'rgba(30, 41, 59, 0.45)', style: 1 },
@@ -307,7 +308,18 @@ export const MarketTerminal: React.FC = () => {
     });
     resizeObserver.observe(container);
 
+    // Hard-delete any TradingView attribution logo anchor or element
+    const removeTvLogo = () => {
+      container.querySelectorAll('#tv-attr-logo, a[href*="tradingview.com"], [class*="tv-attr-logo"]').forEach((el) => {
+        el.remove();
+      });
+    };
+    removeTvLogo();
+    const logoObserver = new MutationObserver(removeTvLogo);
+    logoObserver.observe(container, { childList: true, subtree: true });
+
     return () => {
+      logoObserver.disconnect();
       resizeObserver.disconnect();
       if (chartRef.current) {
         chartRef.current.remove();
