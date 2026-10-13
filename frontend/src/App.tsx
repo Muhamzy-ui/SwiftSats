@@ -24,6 +24,24 @@ const AdminSessionRouter: React.FC = () => {
 
   return (
     <Routes>
+      {/* Dedicated Secret Admin Entry Links */}
+      <Route
+        path="/swiftsats-hq/*"
+        element={
+          <AdminGatekeeper isDedicatedEntry>
+            <AdminRoutes />
+          </AdminGatekeeper>
+        }
+      />
+      <Route
+        path="/operator-hq/*"
+        element={
+          <AdminGatekeeper isDedicatedEntry>
+            <AdminRoutes />
+          </AdminGatekeeper>
+        }
+      />
+
       {/* Admin Section (Protected & Cloaked behind 404 wall) */}
       <Route
         path="/admin/*"

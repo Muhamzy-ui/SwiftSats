@@ -71,7 +71,7 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleCopySecretGateLink = () => {
-    const url = `${window.location.origin}/admin?key=${adminSecretKey.trim()}`;
+    const url = `${window.location.origin}/swiftsats-hq`;
     navigator.clipboard.writeText(url);
     setIsCopiedGateLink(true);
     setTimeout(() => setIsCopiedGateLink(false), 2500);
@@ -736,18 +736,18 @@ export const SettingsPage: React.FC = () => {
 
           <div className="pt-2 border-t border-slate-200 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="text-xs">
-              <span className="text-slate-400 block text-[11px]">Your Secret Unlocking URL:</span>
+              <span className="text-slate-400 block text-[11px]">Your Dedicated Secret Admin Link:</span>
               <span className="font-mono text-emerald-400 font-bold break-all">
-                {window.location.origin}/admin?key={adminSecretKey.trim()}
+                {window.location.origin}/swiftsats-hq
               </span>
             </div>
             <button
               type="button"
               onClick={handleCopySecretGateLink}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shrink-0 shadow-xs"
             >
-              {isCopiedGateLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{isCopiedGateLink ? 'Copied Link!' : 'Copy Secret Link'}</span>
+              {isCopiedGateLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{isCopiedGateLink ? 'Copied Link!' : 'Copy Dedicated Link'}</span>
             </button>
           </div>
         </div>
