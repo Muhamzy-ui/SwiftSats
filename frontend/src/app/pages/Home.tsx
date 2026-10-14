@@ -87,8 +87,8 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Speed S Emblem & BUY • TRADE • GROW Tagline */}
-          <div className="flex flex-col items-center justify-center pt-2 sm:pt-0 sm:pl-4 sm:border-l sm:border-emerald-500/15">
+          {/* Right Column: Speed S Emblem & BUY • TRADE • GROW Tagline (Hidden on mobile) */}
+          <div className="hidden sm:flex flex-col items-center justify-center pt-2 sm:pt-0 sm:pl-4 sm:border-l sm:border-emerald-500/15">
             <div className="relative group-hover:scale-105 transition-transform duration-300 flex items-center justify-center">
               {/* Radial ambient glow behind emblem */}
               <div className="absolute inset-0 bg-[#00e676]/20 blur-xl rounded-full" />
