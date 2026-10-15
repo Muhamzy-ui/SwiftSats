@@ -12,6 +12,8 @@ import {
   AlertCircle,
   Send,
   CheckCircle2,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { adminApi } from '../../shared/api/admin';
 import { AdminOrderSummary, AdminOrderDetail } from '../../shared/types';
@@ -172,24 +174,99 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeConfirmModal, setPurgeConfirmModal] = useState<'completed' | 'all' | null>(null);
+  const [purgeNotice, setPurgeNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleExecutePurge = async (target: 'completed' | 'all') => {
+    setIsPurging(true);
+    setPurgeNotice(null);
+    try {
+      const res = await adminApi.purgeOrders(target);
+      setPurgeNotice({
+        type: 'success',
+        message: res.message || `Successfully purged ${res.purged_count} orders.`,
+      });
+      setPurgeConfirmModal(null);
+      if (selectedOrderId) {
+        setSelectedOrderId(null);
+      }
+      fetchOrders();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Purge operation failed.';
+      setPurgeNotice({ type: 'error', message: msg });
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Orders Pipeline</h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Comprehensive audit and status control for all crypto conversions</p>
         </div>
 
-        <button
-          onClick={fetchOrders}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-subtle transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {summary.completed > 0 && (
+            <button
+              type="button"
+              onClick={() => setPurgeConfirmModal('completed')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-semibold text-rose-700 dark:text-rose-300 transition-colors shadow-xs cursor-pointer"
+              title="Delete completed orders from database and graph"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>Delete Completed ({summary.completed})</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setPurgeConfirmModal('all')}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors shadow-xs cursor-pointer"
+            title="Purge all orders (total reset)"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Purge All</span>
+          </button>
+
+          <button
+            onClick={fetchOrders}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-subtle transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-emerald-600' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
       </div>
+
+      {/* Purge Notice Banner */}
+      {purgeNotice && (
+        <div className={`p-4 rounded-xl border flex items-center justify-between text-xs font-semibold animate-in fade-in ${
+          purgeNotice.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+            : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+        }`}>
+          <div className="flex items-center gap-2">
+            {purgeNotice.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            )}
+            <span>{purgeNotice.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPurgeNotice(null)}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Summary KPI Pills */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -597,6 +674,60 @@ export const OrdersPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Purge Confirmation Modal */}
+      {purgeConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="p-2.5 rounded-xl bg-rose-100 dark:bg-rose-950/60">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {purgeConfirmModal === 'completed'
+                    ? 'Delete All Completed Orders?'
+                    : 'Purge Entire Orders Ledger?'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {purgeConfirmModal === 'completed'
+                    ? 'This will permanently remove all completed orders, their audit history, and clear them from the dashboard volume graph.'
+                    : 'This will permanently erase all orders (completed, pending, failed) and reset the entire pipeline to 0.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900 text-rose-900 dark:text-rose-300 text-xs">
+              <span className="font-bold block mb-0.5">Permanent Ledger Action:</span>
+              {purgeConfirmModal === 'completed' ? (
+                <span>All {summary.completed} completed orders will be permanently wiped. Active in-progress orders ({summary.pending}) will remain safe.</span>
+              ) : (
+                <span>All {summary.total} orders will be completely erased. Graph and order pipeline will be reset to 0.</span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPurgeConfirmModal(null)}
+                disabled={isPurging}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExecutePurge(purgeConfirmModal)}
+                disabled={isPurging}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin' : ''}`} />
+                <span>{isPurging ? 'Deleting...' : 'Confirm & Delete Now'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

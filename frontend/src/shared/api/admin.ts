@@ -348,11 +348,17 @@ export const adminApi = {
     });
   },
 
-  /** Wipe all mock / test orders and clear the ledger (Super Admin only) */
-  async purgeTestOrders(): Promise<{ success: boolean; message: string; purged_count: number }> {
+  /** Wipe orders and clear the ledger (Super Admin only). target: 'completed' | 'all' | 'test_only' */
+  async purgeOrders(target: 'completed' | 'all' | 'test_only' = 'test_only'): Promise<{ success: boolean; message: string; purged_count: number; target: string }> {
     return request('/api/v1/admin/orders/purge/', {
       method: 'POST',
+      body: JSON.stringify({ target, purge_all: target === 'all' }),
     });
+  },
+
+  /** Wipe all mock / test orders and clear the ledger (Super Admin only) */
+  async purgeTestOrders(): Promise<{ success: boolean; message: string; purged_count: number }> {
+    return this.purgeOrders('test_only');
   },
 
   /** Fetch registered customer accounts and statistics */

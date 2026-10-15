@@ -239,7 +239,7 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handlePurgeAllOrders = async () => {
+  const handlePurgeOrders = async (target: 'completed' | 'all' | 'test_only') => {
     if (!dangerConfirm) {
       setDangerNotice('Please click the confirmation checkbox first.');
       return;
@@ -247,8 +247,8 @@ export const SettingsPage: React.FC = () => {
     setIsPurging(true);
     setDangerNotice(null);
     try {
-      const res = await adminApi.purgeTestOrders();
-      setDangerNotice(res.message || 'All test orders purged successfully.');
+      const res = await adminApi.purgeOrders(target);
+      setDangerNotice(res.message || 'Orders purged successfully.');
       setDangerConfirm(false);
       fetchHealth();
     } catch (err: unknown) {
@@ -784,15 +784,34 @@ export const SettingsPage: React.FC = () => {
             </label>
           </div>
 
-          <button
-            type="button"
-            onClick={handlePurgeAllOrders}
-            disabled={!dangerConfirm || isPurging}
-            className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-40 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1.5"
-          >
-            <AlertTriangle className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin' : ''}`} />
-            <span>{isPurging ? 'Purging Orders...' : 'Purge All Test & Mock Orders'}</span>
-          </button>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => handlePurgeOrders('completed')}
+              disabled={!dangerConfirm || isPurging}
+              className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-40 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <AlertTriangle className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin' : ''}`} />
+              <span>Delete Completed Orders & Graph Data</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePurgeOrders('all')}
+              disabled={!dangerConfirm || isPurging}
+              className="px-4 py-2 rounded-lg border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950 text-rose-700 dark:text-rose-300 disabled:opacity-40 font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <AlertTriangle className={`w-3.5 h-3.5 ${isPurging ? 'animate-spin' : ''}`} />
+              <span>Purge All Orders (Total Reset)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePurgeOrders('test_only')}
+              disabled={!dangerConfirm || isPurging}
+              className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-40 font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Purge Uncompleted Test Orders</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

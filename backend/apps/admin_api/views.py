@@ -1347,7 +1347,10 @@ class AdminVerifyOrderPayoutView(APIView):
 class AdminPurgeOrdersView(APIView):
     """
     POST /api/v1/admin/orders/purge/
-    Purges test/mock orders and clears the ledger, safely preserving completed orders.
+    Purges orders and clears audit history:
+    - target='completed': removes only COMPLETED orders, resetting completed metrics and graph volume.
+    - target='all': complete clean slate (removes all orders & history).
+    - target='test_only' (default): removes non-completed test orders.
     Super Admin only.
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -1356,12 +1359,19 @@ class AdminPurgeOrdersView(APIView):
         if not getattr(request.user, "is_superuser", False) and getattr(request.user, "role", "") != AdminRole.SUPER_ADMIN:
             return Response({"error": "Unauthorized. Super Admin only."}, status=status.HTTP_403_FORBIDDEN)
 
-        # Preserve completed orders by default
-        purge_all = request.data.get("purge_all", False)
-        if purge_all:
+        purge_target = request.data.get("target")
+        if not purge_target:
+            purge_target = "all" if request.data.get("purge_all") else "test_only"
+
+        if purge_target == "all":
             to_delete = Order.objects.all()
+            target_desc = "all orders"
+        elif purge_target == "completed":
+            to_delete = Order.objects.filter(status=OrderStatus.COMPLETED)
+            target_desc = "completed orders"
         else:
             to_delete = Order.objects.exclude(status=OrderStatus.COMPLETED)
+            target_desc = "uncompleted test orders"
 
         count = to_delete.count()
         refs = list(to_delete.values_list("order_reference", flat=True))
@@ -1369,16 +1379,19 @@ class AdminPurgeOrdersView(APIView):
         if refs:
             AuditLog.objects.filter(order_reference__in=refs).delete()
 
+        admin_email = getattr(request.user, "email", "admin")
         send_telegram_alert(
-            f"🗑️ <b>TEST ORDERS PURGED</b>\n"
-            f"<b>Count:</b> {count} test orders deleted\n"
-            f"<b>Executed by:</b> {request.user.email}"
+            f"🗑️ <b>ORDERS PURGED</b>\n"
+            f"<b>Target:</b> {target_desc.title()}\n"
+            f"<b>Count:</b> {count} orders permanently removed\n"
+            f"<b>Executed by:</b> {admin_email}"
         )
 
         return Response({
             "success": True,
-            "message": f"Successfully purged {count} test orders. Completed records remain preserved.",
+            "message": f"Successfully purged {count} {target_desc}. Audit history and dashboard graph updated.",
             "purged_count": count,
+            "target": purge_target,
         })
 
 
